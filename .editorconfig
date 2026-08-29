@@ -30,6 +30,9 @@ dotnet_naming_style.camel_case_with_underscore.capitalization = camel_case
 # Nullable
 dotnet_diagnostic.CS8618.severity = error
 
+[src/ContentForge.Domain/ContentTypes/FieldConfiguration.cs]
+dotnet_diagnostic.CA1720.severity = none
+
 [tests/**/*.cs]
 dotnet_diagnostic.CA1707.severity = none
 
