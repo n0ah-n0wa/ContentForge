@@ -8,6 +8,7 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <PackageReference Include="NSubstitute" />
     <PackageReference Include="coverlet.collector" />
     <PackageReference Include="FluentAssertions" />
     <PackageReference Include="Microsoft.NET.Test.Sdk" />
@@ -17,6 +18,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\..\src\ContentForge.Application\ContentForge.Application.csproj" />
+    <ProjectReference Include="..\..\src\ContentForge.Domain\ContentForge.Domain.csproj" />
   </ItemGroup>
 
   <ItemGroup>

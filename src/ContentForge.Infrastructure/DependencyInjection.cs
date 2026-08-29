@@ -16,6 +16,8 @@ public static class DependencyInjection
     {
         ArgumentNullException.ThrowIfNull(services);
 
+        services.AddApplicationPortStubs();
+
         return services;
     }
 }

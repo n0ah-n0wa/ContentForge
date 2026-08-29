@@ -1,102 +1,71 @@
-using System.Reflection;
 using FluentAssertions;
 using NetArchTest.Rules;
-using ApiProgram = ContentForge.Api.Program;
 
 namespace ContentForge.ArchitectureTests;
 
 public sealed class LayerDependencyTests
 {
-    private static readonly Assembly _domainAssembly = typeof(ContentForge.Domain.DomainAssembly).Assembly;
-    private static readonly Assembly _applicationAssembly = typeof(ContentForge.Application.ApplicationAssembly).Assembly;
-    private static readonly Assembly _infrastructureAssembly = typeof(ContentForge.Infrastructure.DependencyInjection).Assembly;
-    private static readonly Assembly _apiAssembly = typeof(ApiProgram).Assembly;
-
-    [Fact]
-    public void Domain_ShouldNotReferenceInfrastructure()
+    [Theory]
+    [MemberData(nameof(DomainForbiddenDependencyCases))]
+    public void Domain_ShouldNotHaveForbiddenDependency(string forbiddenDependency)
     {
-        var result = Types.InAssembly(_domainAssembly)
+        var result = Types.InAssembly(ArchitectureAssemblies.Domain)
             .ShouldNot()
-            .HaveDependencyOn("ContentForge.Infrastructure")
+            .HaveDependencyOn(forbiddenDependency)
             .GetResult();
 
-        result.IsSuccessful.Should().BeTrue(result.GetFailureReport());
+        result.IsSuccessful.Should().BeTrue(
+            $"Domain must not depend on '{forbiddenDependency}'. Failing types: {result.GetFailureReport()}");
     }
 
-    [Fact]
-    public void Domain_ShouldNotReferenceApi()
+    [Theory]
+    [MemberData(nameof(ApplicationForbiddenDependencyCases))]
+    public void Application_ShouldNotHaveForbiddenDependency(string forbiddenDependency)
     {
-        var result = Types.InAssembly(_domainAssembly)
+        var result = Types.InAssembly(ArchitectureAssemblies.Application)
             .ShouldNot()
-            .HaveDependencyOn("ContentForge.Api")
+            .HaveDependencyOn(forbiddenDependency)
             .GetResult();
 
-        result.IsSuccessful.Should().BeTrue(result.GetFailureReport());
+        result.IsSuccessful.Should().BeTrue(
+            $"Application must not depend on '{forbiddenDependency}'. Failing types: {result.GetFailureReport()}");
     }
 
-    [Fact]
-    public void Domain_ShouldNotReferenceApplication()
+    [Theory]
+    [MemberData(nameof(InfrastructureForbiddenDependencyCases))]
+    public void Infrastructure_ShouldNotHaveForbiddenDependency(string forbiddenDependency)
     {
-        var result = Types.InAssembly(_domainAssembly)
+        var result = Types.InAssembly(ArchitectureAssemblies.Infrastructure)
             .ShouldNot()
-            .HaveDependencyOn("ContentForge.Application")
+            .HaveDependencyOn(forbiddenDependency)
             .GetResult();
 
-        result.IsSuccessful.Should().BeTrue(result.GetFailureReport());
+        result.IsSuccessful.Should().BeTrue(
+            $"Infrastructure must not depend on '{forbiddenDependency}'. Failing types: {result.GetFailureReport()}");
     }
 
-    [Fact]
-    public void Application_ShouldNotReferenceInfrastructure()
+    [Theory]
+    [MemberData(nameof(ApiForbiddenDependencyCases))]
+    public void Api_ShouldNotHaveForbiddenDependency(string forbiddenDependency)
     {
-        var result = Types.InAssembly(_applicationAssembly)
+        var result = Types.InAssembly(ArchitectureAssemblies.Api)
             .ShouldNot()
-            .HaveDependencyOn("ContentForge.Infrastructure")
+            .HaveDependencyOn(forbiddenDependency)
             .GetResult();
 
-        result.IsSuccessful.Should().BeTrue(result.GetFailureReport());
+        result.IsSuccessful.Should().BeTrue(
+            $"Api must not depend on '{forbiddenDependency}'. Failing types: {result.GetFailureReport()}");
     }
 
-    [Fact]
-    public void Application_ShouldNotReferenceApi()
-    {
-        var result = Types.InAssembly(_applicationAssembly)
-            .ShouldNot()
-            .HaveDependencyOn("ContentForge.Api")
-            .GetResult();
+    public static IEnumerable<object[]> DomainForbiddenDependencyCases() =>
+        ArchitectureRules.DomainForbiddenDependencies.Select(item => new object[] { item });
 
-        result.IsSuccessful.Should().BeTrue(result.GetFailureReport());
-    }
+    public static IEnumerable<object[]> ApplicationForbiddenDependencyCases() =>
+        ArchitectureRules.ApplicationForbiddenDependencies.Select(item => new object[] { item });
 
-    [Fact]
-    public void Infrastructure_ShouldNotReferenceApi()
-    {
-        var result = Types.InAssembly(_infrastructureAssembly)
-            .ShouldNot()
-            .HaveDependencyOn("ContentForge.Api")
-            .GetResult();
+    public static IEnumerable<object[]> InfrastructureForbiddenDependencyCases() =>
+        ArchitectureRules.InfrastructureForbiddenDependencies.Select(item => new object[] { item });
 
-        result.IsSuccessful.Should().BeTrue(result.GetFailureReport());
-    }
-
-    [Fact]
-    public void Api_ShouldReferenceApplicationAndInfrastructure()
-    {
-        _apiAssembly.GetReferencedAssemblies()
-            .Select(a => a.Name)
-            .Should()
-            .Contain(["ContentForge.Application", "ContentForge.Infrastructure"]);
-    }
-}
-
-internal static class TestResultExtensions
-{
-    internal static string GetFailureReport(this TestResult result)
-    {
-        if (result.IsSuccessful || result.FailingTypes is null)
-        {
-            return string.Empty;
-        }
-
-        return string.Join(", ", result.FailingTypes.Select(t => t.FullName));
-    }
+    public static IEnumerable<object[]> ApiForbiddenDependencyCases() =>
+        ArchitectureRules.ApiForbiddenDependencies.Select(item => new object[] { item });
 }
