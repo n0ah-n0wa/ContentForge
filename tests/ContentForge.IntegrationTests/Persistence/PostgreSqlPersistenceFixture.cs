@@ -35,14 +35,28 @@ public sealed class PostgreSqlPersistenceFixture : IAsyncLifetime
         await using var scope = Services.CreateAsyncScope();
         var dbContext = scope.ServiceProvider.GetRequiredService<AppDbContext>();
 
-        if (!await dbContext.Database.CanConnectAsync())
-        {
-            throw new InvalidOperationException(
-                "PostgreSQL test database is unavailable. Start it with: docker compose -f docker-compose.test.yml up -d");
-        }
+        await WaitForDatabaseAsync(dbContext);
 
         await dbContext.Database.MigrateAsync();
         await ResetDatabaseAsync();
+    }
+
+    private static async Task WaitForDatabaseAsync(AppDbContext dbContext)
+    {
+        const int maxAttempts = 30;
+
+        for (var attempt = 1; attempt <= maxAttempts; attempt++)
+        {
+            if (await dbContext.Database.CanConnectAsync())
+            {
+                return;
+            }
+
+            await Task.Delay(TimeSpan.FromSeconds(1));
+        }
+
+        throw new InvalidOperationException(
+            "PostgreSQL test database is unavailable. Start it with: docker compose -f docker-compose.test.yml up -d");
     }
 
     public async Task DisposeAsync()

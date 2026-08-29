@@ -9,6 +9,22 @@ on:
 jobs:
   backend:
     runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: contentforge
+          POSTGRES_PASSWORD: contentforge
+          POSTGRES_DB: contentforge_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd="pg_isready -U contentforge -d contentforge_test"
+          --health-interval=5s
+          --health-timeout=3s
+          --health-retries=10
+    env:
+      CONTENTFORGE_TEST_DB_CONNECTION: Host=localhost;Port=5432;Database=contentforge_test;Username=contentforge;Password=contentforge
     steps:
       - uses: actions/checkout@v4
 
