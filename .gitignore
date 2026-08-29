@@ -1,0 +1,54 @@
+## .NET
+**/bin/
+**/obj/
+*.tsbuildinfo
+*.user
+*.suo
+*.userosscache
+*.sln.docstates
+*.DotSettings.user
+project.lock.json
+project.fragment.lock.json
+artifacts/
+*.nupkg
+*.snupkg
+
+## User secrets
+secrets.json
+
+## IDE
+.vs/
+.idea/
+*.swp
+*~
+
+## OS
+.DS_Store
+Thumbs.db
+
+## Frontend
+frontend/contentforge-web/node_modules/
+frontend/contentforge-web/dist/
+frontend/contentforge-web/.env
+frontend/contentforge-web/.env.local
+frontend/contentforge-web/.env.*.local
+frontend/contentforge-web/coverage/
+
+## Docker
+.docker/
+
+## Logs
+*.log
+logs/
+
+## Test results
+TestResults/
+coverage/
+*.trx
+*.coverage
+*.coveragexml
+
+## Environment
+.env
+.env.local
+.env.*.local

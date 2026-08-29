@@ -1,0 +1,10 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <RootNamespace>ContentForge.Domain</RootNamespace>
+    <AssemblyName>ContentForge.Domain</AssemblyName>
+    <Description>ContentForge domain layer — entities, value objects, and business rules.</Description>
+    <IsPackable>false</IsPackable>
+  </PropertyGroup>
+
+</Project>

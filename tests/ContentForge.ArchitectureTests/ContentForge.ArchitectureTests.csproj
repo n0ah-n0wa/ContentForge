@@ -1,0 +1,30 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <RootNamespace>ContentForge.ArchitectureTests</RootNamespace>
+    <AssemblyName>ContentForge.ArchitectureTests</AssemblyName>
+    <IsPackable>false</IsPackable>
+    <IsTestProject>true</IsTestProject>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="coverlet.collector" />
+    <PackageReference Include="FluentAssertions" />
+    <PackageReference Include="Microsoft.NET.Test.Sdk" />
+    <PackageReference Include="NetArchTest.Rules" />
+    <PackageReference Include="xunit" />
+    <PackageReference Include="xunit.runner.visualstudio" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\src\ContentForge.Api\ContentForge.Api.csproj" />
+    <ProjectReference Include="..\..\src\ContentForge.Application\ContentForge.Application.csproj" />
+    <ProjectReference Include="..\..\src\ContentForge.Domain\ContentForge.Domain.csproj" />
+    <ProjectReference Include="..\..\src\ContentForge.Infrastructure\ContentForge.Infrastructure.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Using Include="Xunit" />
+  </ItemGroup>
+
+</Project>

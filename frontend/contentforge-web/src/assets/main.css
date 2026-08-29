@@ -1,0 +1,42 @@
+:root {
+  color: #1f2933;
+  background-color: #f5f7fa;
+  font-family: Inter, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  line-height: 1.5;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+}
+
+.app-shell {
+  min-height: 100vh;
+}
+
+.app-header {
+  padding: 1.5rem 2rem;
+  background: #0f172a;
+  color: #f8fafc;
+}
+
+.app-header h1 {
+  margin: 0 0 0.25rem;
+  font-size: 1.75rem;
+}
+
+.app-header p {
+  margin: 0;
+  opacity: 0.85;
+}
+
+.app-main {
+  padding: 2rem;
+}
+
+.home-view h2 {
+  margin-top: 0;
+}
