@@ -106,6 +106,39 @@ public sealed class MediaAsset
             isDeleted: false);
     }
 
+    internal static MediaAsset Restore(
+        MediaId id,
+        string fileName,
+        string originalFileName,
+        string contentType,
+        long size,
+        StorageKey storageKey,
+        UserId uploadedBy,
+        string? url,
+        int? width,
+        int? height,
+        string? altText,
+        string? title,
+        string? description,
+        DateTimeOffset uploadedAt,
+        bool isDeleted) =>
+        new(
+            id,
+            fileName,
+            originalFileName,
+            contentType,
+            size,
+            storageKey,
+            url,
+            width,
+            height,
+            altText,
+            title,
+            description,
+            uploadedBy,
+            uploadedAt,
+            isDeleted);
+
     public void UpdateMetadata(
         string? altText,
         string? title,

@@ -96,4 +96,16 @@ public sealed class AuditLogEntry
             ipAddress,
             userAgent);
     }
+
+    internal static AuditLogEntry Restore(
+        AuditLogId id,
+        DateTimeOffset timestamp,
+        UserId? userId,
+        AuditAction action,
+        string entityType,
+        string entityId,
+        string? metadata,
+        string? ipAddress,
+        string? userAgent) =>
+        new(id, timestamp, userId, action, entityType, entityId, metadata, ipAddress, userAgent);
 }
