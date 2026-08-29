@@ -4,11 +4,11 @@ namespace ContentForge.ArchitectureTests;
 
 internal static class ProjectReferenceReader
 {
-    private static readonly Lazy<string> SolutionRoot = new(LocateSolutionRoot);
+    private static readonly Lazy<string> _solutionRoot = new(LocateSolutionRoot);
 
     internal static IEnumerable<string> GetContentForgeProjectReferences(string projectName)
     {
-        var projectPath = Path.Combine(SolutionRoot.Value, "src", projectName, $"{projectName}.csproj");
+        var projectPath = Path.Combine(_solutionRoot.Value, "src", projectName, $"{projectName}.csproj");
 
         if (!File.Exists(projectPath))
         {
