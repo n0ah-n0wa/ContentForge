@@ -24,8 +24,14 @@ internal static class ProjectReferenceReader
             .Descendants(projectReferenceElement)
             .Select(element => element.Attribute("Include")?.Value)
             .Where(include => include is not null)
-            .Select(include => Path.GetFileNameWithoutExtension(include!))
+            .Select(include => GetReferencedProjectName(include!))
             .Where(name => name.StartsWith("ContentForge.", StringComparison.Ordinal));
+    }
+
+    private static string GetReferencedProjectName(string includePath)
+    {
+        var normalizedPath = includePath.Replace('\\', Path.DirectorySeparatorChar);
+        return Path.GetFileNameWithoutExtension(normalizedPath);
     }
 
     private static string LocateSolutionRoot()
@@ -34,7 +40,8 @@ internal static class ProjectReferenceReader
 
         while (directory is not null)
         {
-            if (File.Exists(Path.Combine(directory.FullName, "ContentForge.sln")))
+            if (File.Exists(Path.Combine(directory.FullName, "ContentForge.sln")) ||
+                File.Exists(Path.Combine(directory.FullName, "Directory.Build.props")))
             {
                 return directory.FullName;
             }
