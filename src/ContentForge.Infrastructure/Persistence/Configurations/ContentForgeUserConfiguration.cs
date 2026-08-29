@@ -4,25 +4,18 @@ using ContentForge.Infrastructure.Persistence.Entities;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
 
-internal sealed class UserEntityConfiguration : IEntityTypeConfiguration<UserEntity>
+internal sealed class ContentForgeUserConfiguration : IEntityTypeConfiguration<ContentForgeUser>
 {
-    public void Configure(EntityTypeBuilder<UserEntity> builder)
+    public void Configure(EntityTypeBuilder<ContentForgeUser> builder)
     {
         builder.ToTable("Users");
-
-        builder.HasKey(user => user.Id);
-
-        builder.Property(user => user.Email)
-            .HasMaxLength(320)
-            .IsRequired();
 
         builder.Property(user => user.DisplayName)
             .HasMaxLength(200)
             .IsRequired();
 
-        builder.Property(user => user.PasswordHash)
-            .HasMaxLength(512)
-            .IsRequired();
+        builder.Property(user => user.Email)
+            .HasMaxLength(320);
 
         builder.HasIndex(user => user.Email)
             .IsUnique();

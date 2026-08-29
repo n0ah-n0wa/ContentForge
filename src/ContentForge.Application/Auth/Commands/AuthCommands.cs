@@ -3,6 +3,7 @@ namespace ContentForge.Application.Auth.Commands;
 using ContentForge.Application.Abstractions;
 using ContentForge.Application.Auth.Models;
 using ContentForge.Application.Common;
+using ContentForge.Application.Common.Exceptions;
 using ContentForge.Domain.Audit;
 using FluentValidation;
 
@@ -40,30 +41,46 @@ public sealed class LoginCommandHandler
 
     public async Task<LoginResultDto> HandleAsync(LoginCommand command, CancellationToken cancellationToken)
     {
-        var result = await _authenticationService.LoginAsync(
-            command.Request,
-            command.IpAddress,
-            command.UserAgent,
-            cancellationToken);
+        try
+        {
+            var result = await _authenticationService.LoginAsync(
+                command.Request,
+                command.IpAddress,
+                command.UserAgent,
+                cancellationToken);
 
-        await _auditService.RecordAsync(
-            AuditAction.LoginSucceeded,
-            entityType: "User",
-            entityId: result.UserId.Value.ToString(),
-            userId: result.UserId,
-            ipAddress: command.IpAddress,
-            userAgent: command.UserAgent,
-            cancellationToken: cancellationToken);
+            await _auditService.RecordAsync(
+                AuditAction.LoginSucceeded,
+                entityType: "User",
+                entityId: result.UserId.Value.ToString(),
+                userId: result.UserId,
+                ipAddress: command.IpAddress,
+                userAgent: command.UserAgent,
+                cancellationToken: cancellationToken);
 
-        return new LoginResultDto(
-            result.UserId.Value,
-            result.Email,
-            result.DisplayName,
-            result.Role,
-            result.AccessToken,
-            result.AccessTokenExpiresAt,
-            result.RefreshToken,
-            result.RefreshTokenExpiresAt);
+            return new LoginResultDto(
+                result.UserId.Value,
+                result.Email,
+                result.DisplayName,
+                result.Role,
+                result.AccessToken,
+                result.AccessTokenExpiresAt,
+                result.RefreshToken,
+                result.RefreshTokenExpiresAt);
+        }
+        catch (AuthenticationFailedException)
+        {
+            await _auditService.RecordAsync(
+                AuditAction.LoginFailed,
+                entityType: "User",
+                entityId: command.Request.Email.Trim().ToLowerInvariant(),
+                userId: null,
+                ipAddress: command.IpAddress,
+                userAgent: command.UserAgent,
+                cancellationToken: cancellationToken);
+
+            throw;
+        }
     }
 }
 
@@ -90,12 +107,14 @@ public sealed class LogoutCommandHandler
     {
         var (userId, _) = ApplicationGuard.RequireAuthenticatedUser(_currentUser);
 
-        if (command.Request.UserId != userId)
+        if (command.Request.UserId != userId.Value)
         {
             throw new Common.Exceptions.ForbiddenApplicationException("Users may only terminate their own session.");
         }
 
-        await _authenticationService.LogoutAsync(command.Request, cancellationToken);
+        await _authenticationService.LogoutAsync(
+            new LogoutRequest(userId.Value, command.Request.RefreshToken),
+            cancellationToken);
     }
 }
 

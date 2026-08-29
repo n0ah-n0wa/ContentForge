@@ -337,7 +337,7 @@ internal static class AuditLogMapper
 
 internal static class UserAccountMapper
 {
-    internal static UserAccount ToDomain(UserEntity entity)
+    internal static UserAccount ToDomain(ContentForgeUser entity)
     {
         var roleName = entity.UserRoles
             .Select(userRole => userRole.Role.Name)
@@ -346,9 +346,9 @@ internal static class UserAccountMapper
 
         return new UserAccount(
             UserId.From(entity.Id),
-            entity.Email,
+            entity.Email ?? string.Empty,
             entity.DisplayName,
-            entity.PasswordHash,
+            entity.PasswordHash ?? string.Empty,
             entity.IsActive,
             Enum.Parse<RoleName>(roleName),
             entity.CreatedAt,
@@ -356,29 +356,43 @@ internal static class UserAccountMapper
             entity.LastLoginAt);
     }
 
-    internal static UserEntity ToEntity(UserAccount domain) => new()
+    internal static ContentForgeUser ToEntity(UserAccount domain)
     {
-        Id = domain.Id.Value,
-        Email = domain.Email.Trim().ToLowerInvariant(),
-        DisplayName = domain.DisplayName,
-        PasswordHash = domain.PasswordHash,
-        IsActive = domain.IsActive,
-        CreatedAt = domain.CreatedAt,
-        UpdatedAt = domain.UpdatedAt,
-        LastLoginAt = domain.LastLoginAt,
-        UserRoles =
-        [
-            new UserRoleEntity
-            {
-                UserId = domain.Id.Value,
-                RoleId = AuthorizationSeedIds.RoleId(domain.Role),
-            },
-        ],
-    };
+        var normalizedEmail = domain.Email.Trim().ToLowerInvariant();
+        return new ContentForgeUser
+        {
+            Id = domain.Id.Value,
+            UserName = normalizedEmail,
+            NormalizedUserName = normalizedEmail.ToUpperInvariant(),
+            Email = normalizedEmail,
+            NormalizedEmail = normalizedEmail.ToUpperInvariant(),
+            EmailConfirmed = true,
+            SecurityStamp = Guid.NewGuid().ToString(),
+            DisplayName = domain.DisplayName,
+            PasswordHash = domain.PasswordHash,
+            IsActive = domain.IsActive,
+            CreatedAt = domain.CreatedAt,
+            UpdatedAt = domain.UpdatedAt,
+            LastLoginAt = domain.LastLoginAt,
+            LockoutEnabled = true,
+            UserRoles =
+            [
+                new UserRoleEntity
+                {
+                    UserId = domain.Id.Value,
+                    RoleId = AuthorizationSeedIds.RoleId(domain.Role),
+                },
+            ],
+        };
+    }
 
-    internal static void UpdateEntity(UserEntity entity, UserAccount domain)
+    internal static void UpdateEntity(ContentForgeUser entity, UserAccount domain)
     {
-        entity.Email = domain.Email.Trim().ToLowerInvariant();
+        var normalizedEmail = domain.Email.Trim().ToLowerInvariant();
+        entity.UserName = normalizedEmail;
+        entity.NormalizedUserName = normalizedEmail.ToUpperInvariant();
+        entity.Email = normalizedEmail;
+        entity.NormalizedEmail = normalizedEmail.ToUpperInvariant();
         entity.DisplayName = domain.DisplayName;
         entity.PasswordHash = domain.PasswordHash;
         entity.IsActive = domain.IsActive;

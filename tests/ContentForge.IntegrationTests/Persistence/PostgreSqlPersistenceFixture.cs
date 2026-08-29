@@ -25,6 +25,12 @@ public sealed class PostgreSqlPersistenceFixture : IAsyncLifetime
             {
                 ["Database:Provider"] = "PostgreSQL",
                 ["Database:ConnectionString"] = ConnectionString,
+                ["Jwt:Issuer"] = "ContentForge.Test",
+                ["Jwt:Audience"] = "ContentForge.Test.Admin",
+                ["Jwt:SigningKey"] = "TEST_ONLY_SIGNING_KEY_32_CHARS_MINIMUM_VALUE",
+                ["Jwt:AccessTokenLifetimeMinutes"] = "15",
+                ["Jwt:RefreshTokenLifetimeDays"] = "7",
+                ["ASPNETCORE_ENVIRONMENT"] = "Testing",
             })
             .Build();
 
@@ -77,6 +83,10 @@ public sealed class PostgreSqlPersistenceFixture : IAsyncLifetime
         await dbContext.Database.ExecuteSqlRawAsync(
             """
             TRUNCATE TABLE
+                "RefreshTokens",
+                "UserClaims",
+                "UserLogins",
+                "UserTokens",
                 "ContentEntryRelations",
                 "ContentVersions",
                 "ContentEntries",

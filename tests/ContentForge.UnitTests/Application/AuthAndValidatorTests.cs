@@ -79,7 +79,7 @@ public sealed class AuthCommandTests
         var handler = new LogoutCommandHandler(authenticationService, currentUser);
 
         var action = () => handler.HandleAsync(
-            new LogoutCommand { Request = new LogoutRequest(ApplicationTestData.AuthorUserId) },
+            new LogoutCommand { Request = new LogoutRequest(ApplicationTestData.AuthorUserId.Value) },
             CancellationToken.None);
 
         await action.Should().ThrowAsync<ForbiddenApplicationException>();
@@ -123,6 +123,32 @@ public sealed class ValidatorTests
             RoleName.Viewer);
 
         validator.Validate(command).IsValid.Should().BeFalse();
+    }
+
+    [Fact]
+    public void CreateUserCommandValidator_LetterOnlyLongPassword_FailsValidation()
+    {
+        var validator = new ContentForge.Application.Users.Commands.CreateUserCommandValidator();
+        var command = new ContentForge.Application.Users.Commands.CreateUserCommand(
+            "user@example.com",
+            "User",
+            "aaaaaaaaaaaa",
+            RoleName.Viewer);
+
+        validator.Validate(command).IsValid.Should().BeFalse();
+    }
+
+    [Fact]
+    public void CreateUserCommandValidator_StrongPassword_PassesValidation()
+    {
+        var validator = new ContentForge.Application.Users.Commands.CreateUserCommandValidator();
+        var command = new ContentForge.Application.Users.Commands.CreateUserCommand(
+            "user@example.com",
+            "User",
+            "SecurePassword123!",
+            RoleName.Viewer);
+
+        validator.Validate(command).IsValid.Should().BeTrue();
     }
 
     [Fact]

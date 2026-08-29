@@ -1,9 +1,16 @@
 namespace ContentForge.Infrastructure.Persistence;
 
 using ContentForge.Infrastructure.Persistence.Entities;
+using Microsoft.AspNetCore.Identity;
+using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore;
 
-public sealed class AppDbContext : DbContext
+public sealed class AppDbContext : IdentityUserContext<
+    ContentForgeUser,
+    Guid,
+    IdentityUserClaim<Guid>,
+    IdentityUserLogin<Guid>,
+    IdentityUserToken<Guid>>
 {
     public AppDbContext(DbContextOptions<AppDbContext> options)
         : base(options)
@@ -21,8 +28,6 @@ public sealed class AppDbContext : DbContext
         EnforceVersionImmutability();
         return base.SaveChanges();
     }
-
-    public DbSet<UserEntity> Users => Set<UserEntity>();
 
     public DbSet<RoleEntity> Roles => Set<RoleEntity>();
 
@@ -46,16 +51,27 @@ public sealed class AppDbContext : DbContext
 
     public DbSet<AuditLogEntity> AuditLogs => Set<AuditLogEntity>();
 
-    protected override void OnModelCreating(ModelBuilder modelBuilder)
+    public DbSet<RefreshTokenEntity> RefreshTokens => Set<RefreshTokenEntity>();
+
+    protected override void OnModelCreating(ModelBuilder builder)
     {
-        ArgumentNullException.ThrowIfNull(modelBuilder);
-        modelBuilder.ApplyConfigurationsFromAssembly(typeof(AppDbContext).Assembly);
-        ConfigureProviderSpecificIndexes(modelBuilder);
+        ArgumentNullException.ThrowIfNull(builder);
+        base.OnModelCreating(builder);
+        builder.ApplyConfigurationsFromAssembly(typeof(AppDbContext).Assembly);
+        ConfigureIdentityTables(builder);
+        ConfigureProviderSpecificIndexes(builder);
     }
 
-    private void ConfigureProviderSpecificIndexes(ModelBuilder modelBuilder)
+    private static void ConfigureIdentityTables(ModelBuilder builder)
     {
-        modelBuilder.Entity<ContentEntryEntity>()
+        builder.Entity<IdentityUserClaim<Guid>>().ToTable("UserClaims");
+        builder.Entity<IdentityUserLogin<Guid>>().ToTable("UserLogins");
+        builder.Entity<IdentityUserToken<Guid>>().ToTable("UserTokens");
+    }
+
+    private void ConfigureProviderSpecificIndexes(ModelBuilder builder)
+    {
+        builder.Entity<ContentEntryEntity>()
             .HasIndex(entry => new { entry.ContentTypeId, entry.Slug })
             .IsUnique()
             .HasFilter(DatabaseIndexFilters.SoftDelete(Database.IsNpgsql()));

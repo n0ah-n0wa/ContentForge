@@ -9,6 +9,7 @@ using ContentForge.Infrastructure.Services;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Hosting;
 
 /// <summary>
 /// Dependency injection registration for infrastructure services.
@@ -21,7 +22,10 @@ public static class DependencyInjection
     /// <param name="services">The service collection.</param>
     /// <param name="configuration">Application configuration.</param>
     /// <returns>The service collection for chaining.</returns>
-    public static IServiceCollection AddInfrastructure(this IServiceCollection services, IConfiguration configuration)
+    public static IServiceCollection AddInfrastructure(
+        this IServiceCollection services,
+        IConfiguration configuration,
+        IHostEnvironment? environment = null)
     {
         ArgumentNullException.ThrowIfNull(services);
         ArgumentNullException.ThrowIfNull(configuration);
@@ -42,6 +46,7 @@ public static class DependencyInjection
             DesignTimeDbContextFactory.ConfigureProvider(options, databaseOptions);
         });
 
+        services.AddContentForgeAuthentication(configuration, environment);
         services.AddApplicationPortStubs();
         services.AddScoped<IUnitOfWork, EfUnitOfWork>();
         services.AddScoped<IAuditService, EfAuditService>();

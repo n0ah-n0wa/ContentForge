@@ -6,7 +6,7 @@ public sealed class UserRoleEntity
 
     public Guid RoleId { get; set; }
 
-    public UserEntity User { get; set; } = null!;
+    public ContentForgeUser User { get; set; } = null!;
 
     public RoleEntity Role { get; set; } = null!;
 }

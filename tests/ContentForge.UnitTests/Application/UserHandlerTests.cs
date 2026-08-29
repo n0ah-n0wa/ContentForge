@@ -22,7 +22,8 @@ public sealed class UserHandlerTests
             ApplicationTestData.CreateCurrentUser(ApplicationTestData.EditorUserId, ApplicationTestData.AdministratorRole),
             ApplicationTestData.CreateClock(),
             RepositorySubstituteExtensions.CreateAuditService(),
-            Substitute.For<IPasswordHasher>());
+            Substitute.For<IPasswordHasher>(),
+            new CreateUserCommandValidator());
 
         var action = () => handler.HandleAsync(
             new CreateUserCommand("user@example.com", "User", "SecurePassword123!", RoleName.Viewer),
@@ -54,7 +55,8 @@ public sealed class UserHandlerTests
             RepositorySubstituteExtensions.CreateUnitOfWork(),
             ApplicationTestData.CreateCurrentUser(ApplicationTestData.EditorUserId, ApplicationTestData.AdministratorRole),
             ApplicationTestData.CreateClock(),
-            RepositorySubstituteExtensions.CreateAuditService());
+            RepositorySubstituteExtensions.CreateAuditService(),
+            Substitute.For<ISessionInvalidationService>());
 
         var result = await handler.HandleAsync(new DisableUserCommand(userId.Value), CancellationToken.None);
 

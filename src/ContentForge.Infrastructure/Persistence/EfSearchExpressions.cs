@@ -57,15 +57,15 @@ internal static class EfSearchExpressions
                 || EF.Functions.Like(media.OriginalFileName, pattern)
                 || EF.Functions.Like(media.Title ?? string.Empty, pattern));
 
-    internal static IQueryable<UserEntity> WhereUserContains(
-        this IQueryable<UserEntity> query,
+    internal static IQueryable<ContentForgeUser> WhereUserContains(
+        this IQueryable<ContentForgeUser> query,
         AppDbContext dbContext,
         string pattern) =>
         dbContext.Database.IsNpgsql()
             ? query.Where(user =>
-                EF.Functions.ILike(user.Email, pattern)
+                EF.Functions.ILike(user.Email ?? string.Empty, pattern)
                 || EF.Functions.ILike(user.DisplayName, pattern))
             : query.Where(user =>
-                EF.Functions.Like(user.Email, pattern)
+                EF.Functions.Like(user.Email ?? string.Empty, pattern)
                 || EF.Functions.Like(user.DisplayName, pattern));
 }

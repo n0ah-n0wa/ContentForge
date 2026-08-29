@@ -12,5 +12,9 @@ public interface ICurrentUserService
 
     RoleDefinition? Role { get; }
 
+    string? Email { get; }
+
+    string? DisplayName { get; }
+
     bool IsAuthenticated { get; }
 }

@@ -1,5 +1,6 @@
 using ContentForge.Application.Audit.Queries;
 using ContentForge.Application.Auth.Commands;
+using ContentForge.Application.Auth.Queries;
 using ContentForge.Application.Content.Commands;
 using ContentForge.Application.Content.Queries;
 using ContentForge.Application.ContentTypes.Commands;
@@ -40,6 +41,7 @@ public static class DependencyInjection
         services.AddScoped<LoginCommandHandler>();
         services.AddScoped<LogoutCommandHandler>();
         services.AddScoped<RefreshTokenCommandHandler>();
+        services.AddScoped<GetAuthenticatedUserQueryHandler>();
 
         services.AddScoped<CreateContentTypeCommandHandler>();
         services.AddScoped<UpdateContentTypeCommandHandler>();

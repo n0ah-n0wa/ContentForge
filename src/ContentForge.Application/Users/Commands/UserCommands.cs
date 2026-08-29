@@ -4,6 +4,7 @@ using ContentForge.Application.Abstractions;
 using ContentForge.Application.Abstractions.Persistence;
 using ContentForge.Application.Common;
 using ContentForge.Application.Common.Exceptions;
+using ContentForge.Application.Common.Validation;
 using ContentForge.Application.Mapping;
 using ContentForge.Application.Users.Models;
 using ContentForge.Domain.Audit;
@@ -23,7 +24,7 @@ public sealed class CreateUserCommandValidator : AbstractValidator<CreateUserCom
     {
         RuleFor(command => command.Email).NotEmpty().EmailAddress();
         RuleFor(command => command.DisplayName).NotEmpty();
-        RuleFor(command => command.Password).NotEmpty().MinimumLength(12);
+        RuleFor(command => command.Password).ApplyPasswordPolicy();
         RuleFor(command => command.Role).IsInEnum();
     }
 }
@@ -36,6 +37,7 @@ public sealed class CreateUserCommandHandler
     private readonly IDateTimeProvider _clock;
     private readonly IAuditService _auditService;
     private readonly IPasswordHasher _passwordHasher;
+    private readonly IValidator<CreateUserCommand> _validator;
 
     public CreateUserCommandHandler(
         IUserRepository repository,
@@ -43,7 +45,8 @@ public sealed class CreateUserCommandHandler
         ICurrentUserService currentUser,
         IDateTimeProvider clock,
         IAuditService auditService,
-        IPasswordHasher passwordHasher)
+        IPasswordHasher passwordHasher,
+        IValidator<CreateUserCommand> validator)
     {
         _repository = repository;
         _unitOfWork = unitOfWork;
@@ -51,10 +54,13 @@ public sealed class CreateUserCommandHandler
         _clock = clock;
         _auditService = auditService;
         _passwordHasher = passwordHasher;
+        _validator = validator;
     }
 
     public async Task<UserDto> HandleAsync(CreateUserCommand command, CancellationToken cancellationToken)
     {
+        await CommandValidator.EnsureValidAsync(_validator, command, cancellationToken);
+
         var (actorId, role) = ApplicationGuard.RequireAuthenticatedUser(_currentUser);
         ApplicationGuard.EnsurePermission(role, Permissions.UserCreate);
 
@@ -161,19 +167,22 @@ public sealed class DisableUserCommandHandler
     private readonly ICurrentUserService _currentUser;
     private readonly IDateTimeProvider _clock;
     private readonly IAuditService _auditService;
+    private readonly ISessionInvalidationService _sessionInvalidation;
 
     public DisableUserCommandHandler(
         IUserRepository repository,
         IUnitOfWork unitOfWork,
         ICurrentUserService currentUser,
         IDateTimeProvider clock,
-        IAuditService auditService)
+        IAuditService auditService,
+        ISessionInvalidationService sessionInvalidation)
     {
         _repository = repository;
         _unitOfWork = unitOfWork;
         _currentUser = currentUser;
         _clock = clock;
         _auditService = auditService;
+        _sessionInvalidation = sessionInvalidation;
     }
 
     public async Task<UserDto> HandleAsync(DisableUserCommand command, CancellationToken cancellationToken)
@@ -192,6 +201,7 @@ public sealed class DisableUserCommandHandler
         user = user.Disable(_clock.UtcNow);
         await _repository.UpdateAsync(user, cancellationToken);
         await _unitOfWork.SaveChangesAsync(cancellationToken);
+        await _sessionInvalidation.InvalidateUserSessionsAsync(user.Id, cancellationToken);
 
         await _auditService.RecordAsync(
             AuditAction.UserDisabled,

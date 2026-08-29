@@ -101,13 +101,13 @@ internal sealed class EfUserRepository(AppDbContext dbContext) : IUserRepository
         return roles.Select(RoleDefinitionMapper.ToDomain).ToList();
     }
 
-    private IQueryable<UserEntity> LoadUserQuery() =>
+    private IQueryable<ContentForgeUser> LoadUserQuery() =>
         dbContext.Users
             .AsNoTracking()
             .Include(user => user.UserRoles)
             .ThenInclude(userRole => userRole.Role);
 
-    private static IQueryable<UserEntity> ApplySort(IQueryable<UserEntity> query, SortRequest sort) =>
+    private static IQueryable<ContentForgeUser> ApplySort(IQueryable<ContentForgeUser> query, SortRequest sort) =>
         sort.SortBy switch
         {
             "displayName" => sort.Direction == SortDirection.Desc

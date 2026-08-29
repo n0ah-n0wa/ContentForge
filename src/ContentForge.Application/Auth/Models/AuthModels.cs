@@ -11,7 +11,7 @@ public sealed record LoginRequest(string Email, string Password);
 /// <summary>
 /// Request to invalidate the current authentication session.
 /// </summary>
-public sealed record LogoutRequest(UserId UserId, string? RefreshToken = null);
+public sealed record LogoutRequest(Guid UserId, string? RefreshToken = null);
 
 /// <summary>
 /// Request to obtain a new access token using a refresh token.
