@@ -15,6 +15,9 @@ export const viewerPermissions = [
 export const adminPermissions = [
   ...viewerPermissions,
   'user.read',
+  'user.create',
+  'user.update',
+  'user.disable',
   'audit.read',
   'content.create',
   'content.update',
@@ -27,4 +30,7 @@ export const adminPermissions = [
   'contentType.create',
   'contentType.update',
   'contentType.delete',
+  'media.upload',
+  'media.update',
+  'media.delete',
 ];

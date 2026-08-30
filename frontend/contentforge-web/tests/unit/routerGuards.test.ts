@@ -64,6 +64,22 @@ describe('router guards', () => {
     expect(router.currentRoute.value.name).toBe('access-denied');
   });
 
+  it('blocks roles route when permissions are missing', async () => {
+    seedAuthenticatedSession(viewerPermissions);
+
+    await router.push('/roles');
+
+    expect(router.currentRoute.value.name).toBe('access-denied');
+  });
+
+  it('blocks audit route when permissions are missing', async () => {
+    seedAuthenticatedSession(viewerPermissions);
+
+    await router.push('/audit');
+
+    expect(router.currentRoute.value.name).toBe('access-denied');
+  });
+
   it('allows protected routes when permissions are present', async () => {
     seedAuthenticatedSession(adminPermissions);
 

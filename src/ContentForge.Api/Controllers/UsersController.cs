@@ -102,4 +102,17 @@ public sealed class UsersController : ControllerBase
         var result = await handler.HandleAsync(new DisableUserCommand(id), cancellationToken);
         return Ok(result);
     }
+
+    [HttpPost("{id:guid}/enable")]
+    [Authorize(Policy = AuthorizationPolicies.UserUpdate)]
+    [ProducesResponseType(typeof(UserDto), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<ActionResult<UserDto>> Enable(
+        Guid id,
+        [FromServices] EnableUserCommandHandler handler,
+        CancellationToken cancellationToken)
+    {
+        var result = await handler.HandleAsync(new EnableUserCommand(id), cancellationToken);
+        return Ok(result);
+    }
 }

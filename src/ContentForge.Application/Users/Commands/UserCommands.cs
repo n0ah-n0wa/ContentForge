@@ -215,3 +215,55 @@ public sealed class DisableUserCommandHandler
         return UserMapper.ToDto(user);
     }
 }
+
+public sealed record EnableUserCommand(Guid UserId);
+
+public sealed class EnableUserCommandHandler
+{
+    private readonly IUserRepository _repository;
+    private readonly IUnitOfWork _unitOfWork;
+    private readonly ICurrentUserService _currentUser;
+    private readonly IDateTimeProvider _clock;
+    private readonly IAuditService _auditService;
+
+    public EnableUserCommandHandler(
+        IUserRepository repository,
+        IUnitOfWork unitOfWork,
+        ICurrentUserService currentUser,
+        IDateTimeProvider clock,
+        IAuditService auditService)
+    {
+        _repository = repository;
+        _unitOfWork = unitOfWork;
+        _currentUser = currentUser;
+        _clock = clock;
+        _auditService = auditService;
+    }
+
+    public async Task<UserDto> HandleAsync(EnableUserCommand command, CancellationToken cancellationToken)
+    {
+        var (actorId, role) = ApplicationGuard.RequireAuthenticatedUser(_currentUser);
+        ApplicationGuard.EnsurePermission(role, Permissions.UserUpdate);
+
+        var user = await _repository.GetByIdAsync(UserId.From(command.UserId), cancellationToken)
+            ?? throw new NotFoundApplicationException("User", command.UserId);
+
+        if (user.IsActive)
+        {
+            return UserMapper.ToDto(user);
+        }
+
+        user = user.Enable(_clock.UtcNow);
+        await _repository.UpdateAsync(user, cancellationToken);
+        await _unitOfWork.SaveChangesAsync(cancellationToken);
+
+        await _auditService.RecordAsync(
+            AuditAction.UserEnabled,
+            "User",
+            user.Id.Value.ToString(),
+            actorId,
+            cancellationToken: cancellationToken);
+
+        return UserMapper.ToDto(user);
+    }
+}

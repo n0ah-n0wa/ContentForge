@@ -1,7 +1,8 @@
 <script setup lang="ts">
 import { useRouter } from 'vue-router';
 import AppButton from '@/components/common/AppButton.vue';
-import { AUDIT_ACTION_LABELS, type DashboardRecentActivityItem } from '@/types/dashboard';
+import { getAuditActionLabel, type AuditAction } from '@/types/audit';
+import type { DashboardRecentActivityItem } from '@/types/dashboard';
 
 defineProps<{
   items: DashboardRecentActivityItem[];
@@ -11,7 +12,7 @@ defineProps<{
 const router = useRouter();
 
 function actionLabel(action: number): string {
-  return AUDIT_ACTION_LABELS[action] ?? `Action ${action}`;
+  return getAuditActionLabel(action as AuditAction);
 }
 </script>
 

@@ -25,6 +25,7 @@ public enum AuditAction
     ContentTypeUpdated,
     MediaUploaded,
     MediaDeleted,
+    UserEnabled,
 }
 
 /// <summary>

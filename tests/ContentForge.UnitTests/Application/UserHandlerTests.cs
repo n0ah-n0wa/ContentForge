@@ -63,4 +63,35 @@ public sealed class UserHandlerTests
         result.IsActive.Should().BeFalse();
         await repository.Received(1).UpdateAsync(Arg.Is<ContentForge.Application.Users.Models.UserAccount>(account => !account.IsActive), Arg.Any<CancellationToken>());
     }
+
+    [Fact]
+    public async Task EnableUserCommandHandler_DisabledUser_EnablesAccount()
+    {
+        var userId = ApplicationTestData.AuthorUserId;
+        var user = new ContentForge.Application.Users.Models.UserAccount(
+            userId,
+            "author@example.com",
+            "Author",
+            "hashed-password",
+            false,
+            RoleName.Author,
+            ApplicationTestData.Timestamp,
+            ApplicationTestData.Timestamp,
+            null);
+
+        var repository = Substitute.For<IUserRepository>();
+        repository.GetByIdAsync(userId, Arg.Any<CancellationToken>()).Returns(user);
+
+        var handler = new EnableUserCommandHandler(
+            repository,
+            RepositorySubstituteExtensions.CreateUnitOfWork(),
+            ApplicationTestData.CreateCurrentUser(ApplicationTestData.EditorUserId, ApplicationTestData.AdministratorRole),
+            ApplicationTestData.CreateClock(),
+            RepositorySubstituteExtensions.CreateAuditService());
+
+        var result = await handler.HandleAsync(new EnableUserCommand(userId.Value), CancellationToken.None);
+
+        result.IsActive.Should().BeTrue();
+        await repository.Received(1).UpdateAsync(Arg.Is<ContentForge.Application.Users.Models.UserAccount>(account => account.IsActive), Arg.Any<CancellationToken>());
+    }
 }

@@ -4,6 +4,7 @@ import { FieldType, type ContentTypeField } from '@/types/contentTypes';
 import type { ContentFieldValue } from '@/types/contentEntries';
 import { sanitizeRichText, richTextToPlainText } from '@/utils/richTextSanitizer';
 import { listContentEntries } from '@/api/content';
+import MediaFieldSelector from '@/components/media/MediaFieldSelector.vue';
 
 const model = defineModel<ContentFieldValue>({ required: true });
 
@@ -63,6 +64,20 @@ const jsonValue = computed({
 });
 
 const multiSelectValue = computed({
+  get: () => (Array.isArray(model.value) ? model.value.map(String) : []),
+  set: (values: string[]) => {
+    model.value = values;
+  },
+});
+
+const mediaValue = computed({
+  get: () => (typeof model.value === 'string' ? model.value : ''),
+  set: (value: string) => {
+    model.value = value;
+  },
+});
+
+const mediaMultipleValue = computed({
   get: () => (Array.isArray(model.value) ? model.value.map(String) : []),
   set: (values: string[]) => {
     model.value = values;
@@ -247,25 +262,18 @@ watch(
         @blur="emit('blur')"
       />
 
-      <input
+      <MediaFieldSelector
         v-else-if="field.fieldType === FieldType.Media"
-        v-model="stringValue"
-        type="text"
-        placeholder="Media asset ID"
+        v-model="mediaValue"
         :disabled="disabled"
-        @blur="emit('blur')"
       />
 
-      <div v-else-if="field.fieldType === FieldType.MediaMultiple" class="entry-field__collection">
-        <textarea
-          :value="multiSelectValue.join('\n')"
-          rows="4"
-          placeholder="One media asset ID per line"
-          :disabled="disabled"
-          @input="multiSelectValue = ($event.target as HTMLTextAreaElement).value.split('\n').map((item) => item.trim()).filter(Boolean)"
-          @blur="emit('blur')"
-        />
-      </div>
+      <MediaFieldSelector
+        v-else-if="field.fieldType === FieldType.MediaMultiple"
+        v-model="mediaMultipleValue"
+        multiple
+        :disabled="disabled"
+      />
 
       <select
         v-else-if="field.fieldType === FieldType.Select"

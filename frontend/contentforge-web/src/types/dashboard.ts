@@ -40,24 +40,3 @@ export const DASHBOARD_STAT_CARDS = [
   { key: 'publishedCount', label: 'Published', status: ContentStatus.Published },
   { key: 'archivedCount', label: 'Archived', status: ContentStatus.Archived },
 ] as const;
-
-export const AUDIT_ACTION_LABELS: Record<number, string> = {
-  0: 'User created',
-  1: 'User disabled',
-  2: 'User role changed',
-  3: 'Login succeeded',
-  4: 'Login failed',
-  5: 'Content created',
-  6: 'Content updated',
-  7: 'Content submitted for review',
-  8: 'Content withdrawn from review',
-  9: 'Content published',
-  10: 'Content unpublished',
-  11: 'Content archived',
-  12: 'Content restored',
-  13: 'Content deleted',
-  14: 'Content type created',
-  15: 'Content type updated',
-  16: 'Media uploaded',
-  17: 'Media deleted',
-};

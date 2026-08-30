@@ -81,6 +81,7 @@ public static class DependencyInjection
         services.AddScoped<CreateUserCommandHandler>();
         services.AddScoped<UpdateUserCommandHandler>();
         services.AddScoped<DisableUserCommandHandler>();
+        services.AddScoped<EnableUserCommandHandler>();
         services.AddScoped<GetUserQueryHandler>();
         services.AddScoped<ListUsersQueryHandler>();
         services.AddScoped<ListRolesQueryHandler>();

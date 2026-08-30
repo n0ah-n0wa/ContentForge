@@ -85,19 +85,37 @@ const router = createRouter({
         {
           path: 'media',
           name: 'media',
-          component: () => import('@/views/placeholders/SectionPlaceholderView.vue'),
-          meta: { title: 'Media' },
+          component: () => import('@/views/media/MediaLibraryView.vue'),
+          meta: { title: 'Media', permissions: ['media.read'] },
         },
         {
           path: 'users',
           name: 'users',
-          component: () => import('@/views/placeholders/SectionPlaceholderView.vue'),
+          component: () => import('@/views/users/UserListView.vue'),
           meta: { title: 'Users', permissions: [...ROUTE_PERMISSIONS.users] },
+        },
+        {
+          path: 'users/new',
+          name: 'user-create',
+          component: () => import('@/views/users/UserCreateView.vue'),
+          meta: { title: 'Create user', permissions: ['user.create'] },
+        },
+        {
+          path: 'users/:id',
+          name: 'user-edit',
+          component: () => import('@/views/users/UserEditView.vue'),
+          meta: { title: 'Manage user', permissions: [...ROUTE_PERMISSIONS.users] },
+        },
+        {
+          path: 'roles',
+          name: 'roles',
+          component: () => import('@/views/roles/RoleListView.vue'),
+          meta: { title: 'Roles', permissions: [...ROUTE_PERMISSIONS.roles] },
         },
         {
           path: 'audit',
           name: 'audit',
-          component: () => import('@/views/placeholders/SectionPlaceholderView.vue'),
+          component: () => import('@/views/audit/AuditLogView.vue'),
           meta: { title: 'Audit Log', permissions: [...ROUTE_PERMISSIONS.audit] },
         },
         {

@@ -23,6 +23,10 @@ export function setRefreshHandler(handler: RefreshHandler): void {
   refreshHandler = handler;
 }
 
+export function getAccessToken(): string | null {
+  return accessTokenProvider();
+}
+
 export async function apiRequest<TResponse>(
   path: string,
   options: ApiRequestOptions = {},

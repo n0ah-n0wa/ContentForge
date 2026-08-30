@@ -91,4 +91,24 @@ describe('LoginView', () => {
 
     expect(wrapper.text()).toContain('Your session expired');
   });
+
+  it('rejects sign-in for disabled users with a generic auth error', async () => {
+    vi.mocked(authApi.login).mockRejectedValue(
+      Object.assign(new Error('Invalid email or password.'), { status: 401 }),
+    );
+
+    const wrapper = mount(LoginView, {
+      global: {
+        plugins: [router],
+      },
+    });
+
+    await wrapper.find('input[name="email"]').setValue('disabled@contentforge.test');
+    await wrapper.find('input[name="password"]').setValue('SecurePassword123!');
+    await wrapper.find('form').trigger('submit.prevent');
+    await flushPromises();
+
+    expect(wrapper.text()).toContain('Sign in failed');
+    expect(useAuthStore().isAuthenticated).toBe(false);
+  });
 });
