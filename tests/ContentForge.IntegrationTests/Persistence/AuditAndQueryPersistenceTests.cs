@@ -25,7 +25,8 @@ public sealed class AuditPersistenceTests(PostgreSqlPersistenceFixture fixture)
             userId: PersistenceTestConstants.ActorId,
             metadata: """{"slug":"audit-entry"}""",
             ipAddress: "127.0.0.1",
-            userAgent: "integration-test");
+            userAgent: "integration-test",
+            correlationId: "persistence-correlation");
 
         await scope.UnitOfWork.SaveChangesAsync();
 
@@ -39,6 +40,34 @@ public sealed class AuditPersistenceTests(PostgreSqlPersistenceFixture fixture)
         logs.Items.Should().HaveCount(1);
         logs.Items[0].Metadata.Should().Contain("audit-entry");
         logs.Items[0].IpAddress.Should().Be("127.0.0.1");
+        logs.Items[0].CorrelationId.Should().Be("persistence-correlation");
+    }
+
+    [Fact]
+    public async Task AuditLogs_CannotBeModifiedOrDeleted()
+    {
+        await using var scope = CreatePersistenceScope();
+
+        await scope.AuditService.RecordAsync(
+            AuditAction.ContentUpdated,
+            entityType: "ContentEntry",
+            entityId: "immutable-entry",
+            userId: PersistenceTestConstants.ActorId);
+
+        var entity = scope.DbContext.AuditLogs.Single();
+        entity.Metadata = "tampered";
+
+        var modify = () => scope.DbContext.SaveChangesAsync();
+        await modify.Should().ThrowAsync<InvalidOperationException>()
+            .WithMessage("*immutable*");
+
+        scope.DbContext.ChangeTracker.Clear();
+        var reloaded = scope.DbContext.AuditLogs.Single();
+        scope.DbContext.AuditLogs.Remove(reloaded);
+
+        var delete = () => scope.DbContext.SaveChangesAsync();
+        await delete.Should().ThrowAsync<InvalidOperationException>()
+            .WithMessage("*immutable*");
     }
 
     [Fact]

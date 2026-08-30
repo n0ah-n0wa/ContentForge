@@ -32,9 +32,10 @@ public sealed class AuthFailureTests
             "User",
             "user@example.com",
             null,
+            Arg.Any<string?>(),
             null,
             null,
-            null,
+            Arg.Any<string?>(),
             Arg.Any<CancellationToken>());
     }
 }

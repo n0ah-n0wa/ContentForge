@@ -69,11 +69,13 @@ public sealed class LoginCommandHandler
         }
         catch (AuthenticationFailedException)
         {
+            // Store the attempted account identity for security investigation; never store the password.
             await _auditService.RecordAsync(
                 AuditAction.LoginFailed,
                 entityType: "User",
                 entityId: command.Request.Email.Trim().ToLowerInvariant(),
                 userId: null,
+                metadata: AuditMetadataSanitizer.Build(("outcome", "failed")),
                 ipAddress: command.IpAddress,
                 userAgent: command.UserAgent,
                 cancellationToken: cancellationToken);

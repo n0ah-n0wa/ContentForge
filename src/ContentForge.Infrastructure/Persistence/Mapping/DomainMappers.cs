@@ -319,7 +319,8 @@ internal static class AuditLogMapper
             entity.EntityId,
             entity.Metadata,
             entity.IpAddress,
-            entity.UserAgent);
+            entity.UserAgent,
+            entity.CorrelationId);
 
     internal static AuditLogEntity ToEntity(AuditLogEntry domain) => new()
     {
@@ -332,6 +333,7 @@ internal static class AuditLogMapper
         Metadata = domain.Metadata,
         IpAddress = domain.IpAddress,
         UserAgent = domain.UserAgent,
+        CorrelationId = domain.CorrelationId,
     };
 }
 

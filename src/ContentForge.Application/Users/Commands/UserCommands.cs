@@ -150,7 +150,9 @@ public sealed class UpdateUserCommandHandler
                 "User",
                 user.Id.Value.ToString(),
                 actorId,
-                metadata: $"role={user.Role}",
+                metadata: AuditMetadataSanitizer.Build(
+                    ("previousRole", previousRole.ToString()),
+                    ("newRole", user.Role.ToString())),
                 cancellationToken: cancellationToken);
         }
 

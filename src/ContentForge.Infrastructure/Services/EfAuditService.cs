@@ -6,7 +6,9 @@ using ContentForge.Domain.Common;
 using ContentForge.Infrastructure.Persistence;
 using ContentForge.Infrastructure.Persistence.Mapping;
 
-internal sealed class EfAuditService(AppDbContext dbContext) : IAuditService
+internal sealed class EfAuditService(
+    AppDbContext dbContext,
+    IAuditRequestContext requestContext) : IAuditService
 {
     public Task RecordAsync(
         AuditAction action,
@@ -16,6 +18,7 @@ internal sealed class EfAuditService(AppDbContext dbContext) : IAuditService
         string? metadata = null,
         string? ipAddress = null,
         string? userAgent = null,
+        string? correlationId = null,
         CancellationToken cancellationToken = default)
     {
         var entry = AuditLogEntry.Create(
@@ -24,8 +27,9 @@ internal sealed class EfAuditService(AppDbContext dbContext) : IAuditService
             entityId,
             userId,
             metadata,
-            ipAddress,
-            userAgent);
+            ipAddress ?? requestContext.IpAddress,
+            userAgent ?? requestContext.UserAgent,
+            correlationId ?? requestContext.CorrelationId);
 
         dbContext.AuditLogs.Add(AuditLogMapper.ToEntity(entry));
         return dbContext.SaveChangesAsync(cancellationToken);

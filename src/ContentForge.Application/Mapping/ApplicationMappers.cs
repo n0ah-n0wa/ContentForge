@@ -131,7 +131,8 @@ internal static class AuditMapper
             entry.EntityId,
             entry.Metadata,
             entry.IpAddress,
-            entry.UserAgent);
+            entry.UserAgent,
+            entry.CorrelationId);
 }
 
 internal static class UserMapper

@@ -16,5 +16,6 @@ public interface IAuditService
         string? metadata = null,
         string? ipAddress = null,
         string? userAgent = null,
+        string? correlationId = null,
         CancellationToken cancellationToken = default);
 }

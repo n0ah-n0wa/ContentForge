@@ -41,7 +41,8 @@ public sealed class AuditLogEntry
         string entityId,
         string? metadata,
         string? ipAddress,
-        string? userAgent)
+        string? userAgent,
+        string? correlationId)
     {
         Id = id;
         Timestamp = timestamp;
@@ -52,6 +53,7 @@ public sealed class AuditLogEntry
         Metadata = metadata;
         IpAddress = ipAddress;
         UserAgent = userAgent;
+        CorrelationId = correlationId;
     }
 
     public AuditLogId Id { get; }
@@ -72,6 +74,8 @@ public sealed class AuditLogEntry
 
     public string? UserAgent { get; }
 
+    public string? CorrelationId { get; }
+
     public static AuditLogEntry Create(
         AuditAction action,
         string entityType,
@@ -80,6 +84,7 @@ public sealed class AuditLogEntry
         string? metadata = null,
         string? ipAddress = null,
         string? userAgent = null,
+        string? correlationId = null,
         DateTimeOffset? timestamp = null)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(entityType);
@@ -92,9 +97,10 @@ public sealed class AuditLogEntry
             action,
             entityType.Trim(),
             entityId.Trim(),
-            metadata,
-            ipAddress,
-            userAgent);
+            AuditMetadataSanitizer.Sanitize(metadata),
+            NormalizeOptional(ipAddress, maxLength: 64),
+            NormalizeOptional(userAgent, maxLength: 512),
+            NormalizeOptional(correlationId, maxLength: 128));
     }
 
     internal static AuditLogEntry Restore(
@@ -106,6 +112,18 @@ public sealed class AuditLogEntry
         string entityId,
         string? metadata,
         string? ipAddress,
-        string? userAgent) =>
-        new(id, timestamp, userId, action, entityType, entityId, metadata, ipAddress, userAgent);
+        string? userAgent,
+        string? correlationId) =>
+        new(id, timestamp, userId, action, entityType, entityId, metadata, ipAddress, userAgent, correlationId);
+
+    private static string? NormalizeOptional(string? value, int maxLength)
+    {
+        if (string.IsNullOrWhiteSpace(value))
+        {
+            return null;
+        }
+
+        var trimmed = value.Trim();
+        return trimmed.Length <= maxLength ? trimmed : trimmed[..maxLength];
+    }
 }

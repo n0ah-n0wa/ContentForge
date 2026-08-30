@@ -52,11 +52,27 @@ public sealed class AuditLogEntryTests
             "ContentEntry",
             Guid.NewGuid().ToString(),
             DomainTestData.User1,
-            metadata: "{\"slug\":\"hello-world\"}");
+            metadata: "{\"slug\":\"hello-world\"}",
+            correlationId: "corr-123");
 
         entry.Action.Should().Be(AuditAction.ContentPublished);
         entry.EntityType.Should().Be("ContentEntry");
         entry.Metadata.Should().Contain("hello-world");
+        entry.CorrelationId.Should().Be("corr-123");
+    }
+
+    [Fact]
+    public void Create_RedactsSensitiveMetadataValues()
+    {
+        var entry = AuditLogEntry.Create(
+            AuditAction.UserCreated,
+            "User",
+            Guid.NewGuid().ToString(),
+            metadata: """{"password":"Secret123!","role":"Author"}""");
+
+        entry.Metadata.Should().Contain("[REDACTED]");
+        entry.Metadata.Should().Contain("Author");
+        entry.Metadata.Should().NotContain("Secret123!");
     }
 }
 

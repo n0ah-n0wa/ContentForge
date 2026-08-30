@@ -19,4 +19,6 @@ public sealed class AuditLogEntity
     public string? IpAddress { get; set; }
 
     public string? UserAgent { get; set; }
+
+    public string? CorrelationId { get; set; }
 }

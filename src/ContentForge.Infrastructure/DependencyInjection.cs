@@ -50,6 +50,7 @@ public static class DependencyInjection
         services.AddApplicationPortStubs();
         services.AddFileStorage(configuration, environment);
         services.AddScoped<IUnitOfWork, EfUnitOfWork>();
+        services.AddScoped<IAuditRequestContext, HttpAuditRequestContext>();
         services.AddScoped<IAuditService, EfAuditService>();
         services.AddScoped<IContentSearchService, EfContentSearchService>();
         services.AddScoped<IContentTypeRepository, EfContentTypeRepository>();

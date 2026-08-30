@@ -33,9 +33,13 @@ internal sealed class AuditLogEntityConfiguration : IEntityTypeConfiguration<Aud
         builder.Property(log => log.UserAgent)
             .HasMaxLength(512);
 
+        builder.Property(log => log.CorrelationId)
+            .HasMaxLength(128);
+
         builder.HasIndex(log => log.Timestamp);
         builder.HasIndex(log => log.UserId);
         builder.HasIndex(log => log.Action);
+        builder.HasIndex(log => log.CorrelationId);
         builder.HasIndex(log => new { log.EntityType, log.EntityId });
     }
 }

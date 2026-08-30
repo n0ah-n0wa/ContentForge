@@ -19,13 +19,13 @@ public sealed class AppDbContext : IdentityUserContext<
 
     public override async Task<int> SaveChangesAsync(CancellationToken cancellationToken = default)
     {
-        EnforceVersionImmutability();
+        EnforceImmutabilityGuards();
         return await base.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
     }
 
     public override int SaveChanges()
     {
-        EnforceVersionImmutability();
+        EnforceImmutabilityGuards();
         return base.SaveChanges();
     }
 
@@ -77,6 +77,12 @@ public sealed class AppDbContext : IdentityUserContext<
             .HasFilter(DatabaseIndexFilters.SoftDelete(Database.IsNpgsql()));
     }
 
+    private void EnforceImmutabilityGuards()
+    {
+        EnforceVersionImmutability();
+        EnforceAuditLogImmutability();
+    }
+
     private void EnforceVersionImmutability()
     {
         var deletedEntryIds = ChangeTracker.Entries<ContentEntryEntity>()
@@ -90,6 +96,17 @@ public sealed class AppDbContext : IdentityUserContext<
                 || (entry.State == EntityState.Deleted && !deletedEntryIds.Contains(entry.Entity.ContentEntryId)))
             {
                 throw new InvalidOperationException("Content versions are append-only and cannot be modified or deleted.");
+            }
+        }
+    }
+
+    private void EnforceAuditLogImmutability()
+    {
+        foreach (var entry in ChangeTracker.Entries<AuditLogEntity>())
+        {
+            if (entry.State is EntityState.Modified or EntityState.Deleted)
+            {
+                throw new InvalidOperationException("Audit log entries are immutable and cannot be modified or deleted.");
             }
         }
     }

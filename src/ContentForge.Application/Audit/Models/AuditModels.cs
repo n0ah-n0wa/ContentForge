@@ -14,4 +14,5 @@ public sealed record AuditLogEntryDto(
     string EntityId,
     string? Metadata,
     string? IpAddress,
-    string? UserAgent);
+    string? UserAgent,
+    string? CorrelationId);

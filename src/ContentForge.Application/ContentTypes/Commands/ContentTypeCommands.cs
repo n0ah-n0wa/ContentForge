@@ -249,6 +249,7 @@ public sealed class AddContentTypeFieldCommandHandler
     private readonly IUnitOfWork _unitOfWork;
     private readonly ICurrentUserService _currentUser;
     private readonly IDateTimeProvider _clock;
+    private readonly IAuditService _auditService;
     private readonly IValidator<AddContentTypeFieldCommand> _validator;
 
     public AddContentTypeFieldCommandHandler(
@@ -256,12 +257,14 @@ public sealed class AddContentTypeFieldCommandHandler
         IUnitOfWork unitOfWork,
         ICurrentUserService currentUser,
         IDateTimeProvider clock,
+        IAuditService auditService,
         IValidator<AddContentTypeFieldCommand> validator)
     {
         _repository = repository;
         _unitOfWork = unitOfWork;
         _currentUser = currentUser;
         _clock = clock;
+        _auditService = auditService;
         _validator = validator;
     }
 
@@ -302,6 +305,17 @@ public sealed class AddContentTypeFieldCommandHandler
 
         await _repository.UpdateAsync(contentType, cancellationToken);
         await _unitOfWork.SaveChangesAsync(cancellationToken);
+
+        await _auditService.RecordAsync(
+            AuditAction.ContentTypeUpdated,
+            "ContentType",
+            contentType.Id.Value.ToString(),
+            userId,
+            metadata: AuditMetadataSanitizer.Build(
+                ("change", "fieldAdded"),
+                ("fieldName", field.Name.Value)),
+            cancellationToken: cancellationToken);
+
         return ContentTypeMapper.ToDto(contentType);
     }
 }
@@ -393,6 +407,7 @@ public sealed class UpdateContentTypeFieldCommandHandler
     private readonly IUnitOfWork _unitOfWork;
     private readonly ICurrentUserService _currentUser;
     private readonly IDateTimeProvider _clock;
+    private readonly IAuditService _auditService;
     private readonly IValidator<UpdateContentTypeFieldCommand> _validator;
 
     public UpdateContentTypeFieldCommandHandler(
@@ -400,12 +415,14 @@ public sealed class UpdateContentTypeFieldCommandHandler
         IUnitOfWork unitOfWork,
         ICurrentUserService currentUser,
         IDateTimeProvider clock,
+        IAuditService auditService,
         IValidator<UpdateContentTypeFieldCommand> validator)
     {
         _repository = repository;
         _unitOfWork = unitOfWork;
         _currentUser = currentUser;
         _clock = clock;
+        _auditService = auditService;
         _validator = validator;
     }
 
@@ -447,6 +464,17 @@ public sealed class UpdateContentTypeFieldCommandHandler
 
         await _repository.UpdateAsync(contentType, cancellationToken);
         await _unitOfWork.SaveChangesAsync(cancellationToken);
+
+        await _auditService.RecordAsync(
+            AuditAction.ContentTypeUpdated,
+            "ContentType",
+            contentType.Id.Value.ToString(),
+            userId,
+            metadata: AuditMetadataSanitizer.Build(
+                ("change", "fieldUpdated"),
+                ("fieldName", fieldName.Value)),
+            cancellationToken: cancellationToken);
+
         return ContentTypeMapper.ToDto(contentType);
     }
 }
@@ -471,6 +499,7 @@ public sealed class RemoveContentTypeFieldCommandHandler
     private readonly IUnitOfWork _unitOfWork;
     private readonly ICurrentUserService _currentUser;
     private readonly IDateTimeProvider _clock;
+    private readonly IAuditService _auditService;
     private readonly IValidator<RemoveContentTypeFieldCommand> _validator;
 
     public RemoveContentTypeFieldCommandHandler(
@@ -478,12 +507,14 @@ public sealed class RemoveContentTypeFieldCommandHandler
         IUnitOfWork unitOfWork,
         ICurrentUserService currentUser,
         IDateTimeProvider clock,
+        IAuditService auditService,
         IValidator<RemoveContentTypeFieldCommand> validator)
     {
         _repository = repository;
         _unitOfWork = unitOfWork;
         _currentUser = currentUser;
         _clock = clock;
+        _auditService = auditService;
         _validator = validator;
     }
 
@@ -503,6 +534,17 @@ public sealed class RemoveContentTypeFieldCommandHandler
 
         await _repository.UpdateAsync(contentType, cancellationToken);
         await _unitOfWork.SaveChangesAsync(cancellationToken);
+
+        await _auditService.RecordAsync(
+            AuditAction.ContentTypeUpdated,
+            "ContentType",
+            contentType.Id.Value.ToString(),
+            userId,
+            metadata: AuditMetadataSanitizer.Build(
+                ("change", "fieldRemoved"),
+                ("fieldName", fieldName.Value)),
+            cancellationToken: cancellationToken);
+
         return ContentTypeMapper.ToDto(contentType);
     }
 }
@@ -529,6 +571,7 @@ public sealed class RenameContentTypeFieldCommandHandler
     private readonly IUnitOfWork _unitOfWork;
     private readonly ICurrentUserService _currentUser;
     private readonly IDateTimeProvider _clock;
+    private readonly IAuditService _auditService;
     private readonly IValidator<RenameContentTypeFieldCommand> _validator;
 
     public RenameContentTypeFieldCommandHandler(
@@ -536,12 +579,14 @@ public sealed class RenameContentTypeFieldCommandHandler
         IUnitOfWork unitOfWork,
         ICurrentUserService currentUser,
         IDateTimeProvider clock,
+        IAuditService auditService,
         IValidator<RenameContentTypeFieldCommand> validator)
     {
         _repository = repository;
         _unitOfWork = unitOfWork;
         _currentUser = currentUser;
         _clock = clock;
+        _auditService = auditService;
         _validator = validator;
     }
 
@@ -562,6 +607,18 @@ public sealed class RenameContentTypeFieldCommandHandler
 
         await _repository.UpdateAsync(contentType, cancellationToken);
         await _unitOfWork.SaveChangesAsync(cancellationToken);
+
+        await _auditService.RecordAsync(
+            AuditAction.ContentTypeUpdated,
+            "ContentType",
+            contentType.Id.Value.ToString(),
+            userId,
+            metadata: AuditMetadataSanitizer.Build(
+                ("change", "fieldRenamed"),
+                ("previousFieldName", currentName.Value),
+                ("fieldName", newName.Value)),
+            cancellationToken: cancellationToken);
+
         return ContentTypeMapper.ToDto(contentType);
     }
 }

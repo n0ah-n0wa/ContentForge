@@ -65,9 +65,10 @@ public sealed class AuthCommandTests
             "User",
             userId.Value.ToString(),
             userId,
+            Arg.Any<string?>(),
             null,
             null,
-            null,
+            Arg.Any<string?>(),
             Arg.Any<CancellationToken>());
     }
 

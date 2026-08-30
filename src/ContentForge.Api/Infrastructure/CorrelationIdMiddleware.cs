@@ -3,7 +3,10 @@ namespace ContentForge.Api.Infrastructure;
 /// <summary>
 /// Ensures every request has a correlation identifier for logging and error responses.
 /// </summary>
-internal sealed class CorrelationIdMiddleware(RequestDelegate next)
+internal sealed class CorrelationIdMiddleware(
+    RequestDelegate next,
+    ILogger<CorrelationIdMiddleware> logger,
+    IHostEnvironment environment)
 {
     internal const string HeaderName = "X-Correlation-ID";
     internal const string ItemKey = "CorrelationId";
@@ -21,6 +24,14 @@ internal sealed class CorrelationIdMiddleware(RequestDelegate next)
         {
             context.Response.Headers[HeaderName] = correlationId;
             return Task.CompletedTask;
+        });
+
+        using var scope = logger.BeginScope(new Dictionary<string, object?>(StringComparer.Ordinal)
+        {
+            ["service"] = ObservabilityConstants.ServiceName,
+            ["environment"] = environment.EnvironmentName,
+            ["traceId"] = context.TraceIdentifier,
+            ["correlationId"] = correlationId,
         });
 
         await next(context).ConfigureAwait(false);
