@@ -86,6 +86,21 @@ internal sealed class EfContentEntryRepository(AppDbContext dbContext) : IConten
             query = query.WhereSlugContains(dbContext, pattern);
         }
 
+        if (!string.IsNullOrWhiteSpace(criteria.ExactSlug))
+        {
+            query = query.Where(entry => entry.Slug == criteria.ExactSlug);
+        }
+
+        if (criteria.PublishedFrom is { } publishedFrom)
+        {
+            query = query.Where(entry => entry.PublishedAt != null && entry.PublishedAt >= publishedFrom);
+        }
+
+        if (criteria.PublishedTo is { } publishedTo)
+        {
+            query = query.Where(entry => entry.PublishedAt != null && entry.PublishedAt <= publishedTo);
+        }
+
         query = ApplySort(query, criteria.Sort);
 
         var page = await query.ToPaginatedResultAsync(criteria.Pagination, cancellationToken).ConfigureAwait(false);
@@ -114,6 +129,23 @@ internal sealed class EfContentEntryRepository(AppDbContext dbContext) : IConten
 
         ContentEntryMapper.UpdateEntity(entity, entry);
         await MarkNewVersionsAsAddedAsync(entity, cancellationToken);
+    }
+
+    public async Task DeleteAllByContentTypeIdAsync(
+        ContentTypeId contentTypeId,
+        CancellationToken cancellationToken = default)
+    {
+        var entries = await dbContext.ContentEntries
+            .Where(entry => entry.ContentTypeId == contentTypeId.Value)
+            .ToListAsync(cancellationToken)
+            .ConfigureAwait(false);
+
+        if (entries.Count == 0)
+        {
+            return;
+        }
+
+        dbContext.ContentEntries.RemoveRange(entries);
     }
 
     private async Task MarkNewVersionsAsAddedAsync(

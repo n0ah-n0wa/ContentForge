@@ -39,7 +39,7 @@ public sealed class AuthCommandTests
     {
         var authenticationService = Substitute.For<IAuthenticationService>();
         var auditService = RepositorySubstituteExtensions.CreateAuditService();
-        var handler = new LoginCommandHandler(authenticationService, auditService);
+        var handler = new LoginCommandHandler(authenticationService, auditService, new LoginCommandValidator());
 
         var userId = ApplicationTestData.EditorUserId;
         authenticationService.LoginAsync(Arg.Any<LoginRequest>(), null, null, Arg.Any<CancellationToken>())
@@ -72,17 +72,21 @@ public sealed class AuthCommandTests
     }
 
     [Fact]
-    public async Task LogoutCommandHandler_DifferentUser_ThrowsForbidden()
+    public async Task LogoutCommandHandler_UsesCurrentUserIdentity()
     {
         var authenticationService = Substitute.For<IAuthenticationService>();
         var currentUser = ApplicationTestData.CreateCurrentUser(ApplicationTestData.EditorUserId, ApplicationTestData.EditorRole);
         var handler = new LogoutCommandHandler(authenticationService, currentUser);
 
-        var action = () => handler.HandleAsync(
-            new LogoutCommand { Request = new LogoutRequest(ApplicationTestData.AuthorUserId.Value) },
+        await handler.HandleAsync(
+            new LogoutCommand { RefreshToken = "refresh-token" },
             CancellationToken.None);
 
-        await action.Should().ThrowAsync<ForbiddenApplicationException>();
+        await authenticationService.Received(1).LogoutAsync(
+            Arg.Is<LogoutRequest>(request =>
+                request.UserId == ApplicationTestData.EditorUserId.Value
+                && request.RefreshToken == "refresh-token"),
+            Arg.Any<CancellationToken>());
     }
 }
 

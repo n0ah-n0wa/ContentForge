@@ -22,4 +22,6 @@ public interface IContentEntryRepository
     Task AddAsync(ContentEntry entry, CancellationToken cancellationToken = default);
 
     Task UpdateAsync(ContentEntry entry, CancellationToken cancellationToken = default);
+
+    Task DeleteAllByContentTypeIdAsync(ContentTypeId contentTypeId, CancellationToken cancellationToken = default);
 }

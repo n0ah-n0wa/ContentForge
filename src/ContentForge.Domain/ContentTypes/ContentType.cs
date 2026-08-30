@@ -217,6 +217,37 @@ public sealed class ContentType
         Touch(updatedBy, updatedAt);
     }
 
+    public void UpdateField(
+        FieldName fieldName,
+        string displayName,
+        int sortOrder,
+        FieldConfiguration newConfiguration,
+        bool confirmedDestructiveChange,
+        UserId updatedBy,
+        DateTimeOffset updatedAt)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(displayName);
+
+        var index = _fields.FindIndex(field => field.Name == fieldName);
+        if (index < 0)
+        {
+            throw new DomainValidationException(nameof(fieldName), $"Field '{fieldName}' was not found.");
+        }
+
+        var existing = _fields[index];
+        ContentTypeSchemaEvolution.EnsureValidationChangeAllowed(existing, newConfiguration, confirmedDestructiveChange);
+
+        _fields[index] = ContentTypeField.Restore(
+            existing.Id,
+            existing.Name,
+            existing.FieldType,
+            displayName.Trim(),
+            sortOrder,
+            newConfiguration);
+
+        Touch(updatedBy, updatedAt);
+    }
+
     public static void EnsureCanDelete(bool hasDependentEntries, bool confirmedSafeDeletion)
     {
         if (hasDependentEntries && !confirmedSafeDeletion)

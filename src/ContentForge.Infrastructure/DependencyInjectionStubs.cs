@@ -2,13 +2,24 @@ namespace ContentForge.Infrastructure;
 
 using ContentForge.Application.Abstractions;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Hosting;
 
 internal static class DependencyInjectionStubs
 {
-    internal static IServiceCollection AddApplicationPortStubs(this IServiceCollection services)
+    internal static IServiceCollection AddApplicationPortStubs(
+        this IServiceCollection services,
+        IHostEnvironment? environment = null)
     {
         services.AddSingleton<IDateTimeProvider, SystemDateTimeProvider>();
-        services.AddScoped<IFileStorage, NotImplementedFileStorage>();
+
+        if (environment?.IsEnvironment("Testing") == true || environment?.IsDevelopment() == true)
+        {
+            services.AddSingleton<IFileStorage, InMemoryFileStorage>();
+        }
+        else
+        {
+            services.AddScoped<IFileStorage, NotImplementedFileStorage>();
+        }
 
         return services;
     }

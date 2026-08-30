@@ -51,6 +51,7 @@ public sealed record ContentFieldChangeDto(string FieldName, object? OldValue, o
 
 /// <summary>
 /// Public-facing published content representation.
+/// Exposes only the published snapshot — no draft data, audit metadata, user identifiers, or persistence identifiers.
 /// </summary>
 public sealed record PublicContentDto(
     string ContentTypeSlug,

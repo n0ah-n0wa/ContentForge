@@ -29,8 +29,9 @@ public sealed class GetContentEntryQueryHandler
         var (userId, role) = ApplicationGuard.RequireAuthenticatedUser(_currentUser);
         ApplicationGuard.EnsurePermission(role, Permissions.ContentRead);
 
-        var entry = await _repository.GetByIdAsync(ContentEntryId.From(query.ContentEntryId), cancellationToken)
-            ?? throw new NotFoundApplicationException("ContentEntry", query.ContentEntryId);
+        var entry = ApplicationGuard.RequireVisibleContentEntry(
+            await _repository.GetByIdAsync(ContentEntryId.From(query.ContentEntryId), cancellationToken),
+            query.ContentEntryId);
 
         ApplicationGuard.EnsureCanReadContent(role, userId, entry.CreatedBy);
 
@@ -55,6 +56,7 @@ public sealed class ListContentEntriesQueryHandler
     {
         var (userId, role) = ApplicationGuard.RequireAuthenticatedUser(_currentUser);
         ApplicationGuard.EnsurePermission(role, Permissions.ContentRead);
+        ApplicationGuard.EnsureCanIncludeDeleted(role, Permissions.ContentDelete, query.Criteria.IncludeDeleted);
 
         query.Criteria.Sort.EnsureAllowed(ContentEntryListCriteria.AllowedSortFields, "content entries");
         ValidateFilters(query.Criteria);
@@ -121,8 +123,9 @@ public sealed class ListContentVersionsQueryHandler
         var (userId, role) = ApplicationGuard.RequireAuthenticatedUser(_currentUser);
         ApplicationGuard.EnsurePermission(role, Permissions.ContentVersionRead);
 
-        var entry = await _repository.GetByIdAsync(ContentEntryId.From(query.ContentEntryId), cancellationToken)
-            ?? throw new NotFoundApplicationException("ContentEntry", query.ContentEntryId);
+        var entry = ApplicationGuard.RequireVisibleContentEntry(
+            await _repository.GetByIdAsync(ContentEntryId.From(query.ContentEntryId), cancellationToken),
+            query.ContentEntryId);
 
         ApplicationGuard.EnsureCanReadContent(role, userId, entry.CreatedBy);
 
@@ -148,8 +151,9 @@ public sealed class GetContentVersionQueryHandler
         var (userId, role) = ApplicationGuard.RequireAuthenticatedUser(_currentUser);
         ApplicationGuard.EnsurePermission(role, Permissions.ContentVersionRead);
 
-        var entry = await _repository.GetByIdAsync(ContentEntryId.From(query.ContentEntryId), cancellationToken)
-            ?? throw new NotFoundApplicationException("ContentEntry", query.ContentEntryId);
+        var entry = ApplicationGuard.RequireVisibleContentEntry(
+            await _repository.GetByIdAsync(ContentEntryId.From(query.ContentEntryId), cancellationToken),
+            query.ContentEntryId);
 
         ApplicationGuard.EnsureCanReadContent(role, userId, entry.CreatedBy);
 
@@ -178,8 +182,9 @@ public sealed class CompareContentVersionsQueryHandler
         var (userId, role) = ApplicationGuard.RequireAuthenticatedUser(_currentUser);
         ApplicationGuard.EnsurePermission(role, Permissions.ContentVersionRead);
 
-        var entry = await _repository.GetByIdAsync(ContentEntryId.From(query.ContentEntryId), cancellationToken)
-            ?? throw new NotFoundApplicationException("ContentEntry", query.ContentEntryId);
+        var entry = ApplicationGuard.RequireVisibleContentEntry(
+            await _repository.GetByIdAsync(ContentEntryId.From(query.ContentEntryId), cancellationToken),
+            query.ContentEntryId);
 
         ApplicationGuard.EnsureCanReadContent(role, userId, entry.CreatedBy);
 

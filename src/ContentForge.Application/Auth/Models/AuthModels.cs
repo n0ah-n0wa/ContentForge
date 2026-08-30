@@ -10,8 +10,14 @@ public sealed record LoginRequest(string Email, string Password);
 
 /// <summary>
 /// Request to invalidate the current authentication session.
+/// User identity is taken from the authenticated principal — callers must not supply a target user id.
 /// </summary>
 public sealed record LogoutRequest(Guid UserId, string? RefreshToken = null);
+
+/// <summary>
+/// HTTP body for logout. Only a refresh token may be supplied; the session owner is the caller.
+/// </summary>
+public sealed record LogoutApiRequest(string? RefreshToken = null);
 
 /// <summary>
 /// Request to obtain a new access token using a refresh token.
@@ -29,7 +35,19 @@ public sealed record AuthenticationResult(
     string AccessToken,
     DateTimeOffset AccessTokenExpiresAt,
     string? RefreshToken = null,
-    DateTimeOffset? RefreshTokenExpiresAt = null);
+    DateTimeOffset? RefreshTokenExpiresAt = null)
+{
+    public LoginResultDto ToLoginResultDto() =>
+        new(
+            UserId.Value,
+            Email,
+            DisplayName,
+            Role,
+            AccessToken,
+            AccessTokenExpiresAt,
+            RefreshToken,
+            RefreshTokenExpiresAt);
+}
 
 /// <summary>
 /// Authenticated user context returned to callers after login.

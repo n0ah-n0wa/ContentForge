@@ -46,7 +46,11 @@ public static class DependencyInjection
         services.AddScoped<CreateContentTypeCommandHandler>();
         services.AddScoped<UpdateContentTypeCommandHandler>();
         services.AddScoped<DeleteContentTypeCommandHandler>();
+        services.AddScoped<DeactivateContentTypeCommandHandler>();
         services.AddScoped<AddContentTypeFieldCommandHandler>();
+        services.AddScoped<UpdateContentTypeFieldCommandHandler>();
+        services.AddScoped<RemoveContentTypeFieldCommandHandler>();
+        services.AddScoped<RenameContentTypeFieldCommandHandler>();
         services.AddScoped<GetContentTypeQueryHandler>();
         services.AddScoped<ListContentTypesQueryHandler>();
 

@@ -36,23 +36,28 @@ public sealed class RestoreContentVersionCommandHandler
     private readonly ICurrentUserService _currentUser;
     private readonly IDateTimeProvider _clock;
     private readonly IAuditService _auditService;
+    private readonly IValidator<RestoreContentVersionCommand> _validator;
 
     public RestoreContentVersionCommandHandler(
         IContentEntryRepository repository,
         IUnitOfWork unitOfWork,
         ICurrentUserService currentUser,
         IDateTimeProvider clock,
-        IAuditService auditService)
+        IAuditService auditService,
+        IValidator<RestoreContentVersionCommand> validator)
     {
         _repository = repository;
         _unitOfWork = unitOfWork;
         _currentUser = currentUser;
         _clock = clock;
         _auditService = auditService;
+        _validator = validator;
     }
 
     public async Task<ContentEntryDto> HandleAsync(RestoreContentVersionCommand command, CancellationToken cancellationToken)
     {
+        await CommandValidator.EnsureValidAsync(_validator, command, cancellationToken);
+
         var (userId, role) = ApplicationGuard.RequireAuthenticatedUser(_currentUser);
         ApplicationGuard.EnsurePermission(role, Permissions.ContentVersionRestore);
 

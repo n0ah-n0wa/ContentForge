@@ -6,6 +6,7 @@ using ContentForge.Application.Auth.Models;
 using ContentForge.Application.Common.Exceptions;
 using ContentForge.Domain.Audit;
 using FluentAssertions;
+using FluentValidation;
 using NSubstitute;
 
 public sealed class AuthFailureTests
@@ -15,7 +16,7 @@ public sealed class AuthFailureTests
     {
         var authenticationService = Substitute.For<IAuthenticationService>();
         var auditService = RepositorySubstituteExtensions.CreateAuditService();
-        var handler = new LoginCommandHandler(authenticationService, auditService);
+        var handler = new LoginCommandHandler(authenticationService, auditService, new LoginCommandValidator());
 
         authenticationService.LoginAsync(Arg.Any<LoginRequest>(), null, null, Arg.Any<CancellationToken>())
             .Returns<Task<AuthenticationResult>>(_ => throw new AuthenticationFailedException());

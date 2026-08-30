@@ -4,6 +4,7 @@ using ContentForge.Application.Common.Concurrency;
 using ContentForge.Application.Common.Exceptions;
 using ContentForge.Domain.Authorization;
 using ContentForge.Domain.Common;
+using ContentForge.Domain.Content;
 
 /// <summary>
 /// Centralized authorization and domain exception translation for application services.
@@ -24,6 +25,14 @@ public static class ApplicationGuard
         var userId = currentUser.UserId ?? throw new UnauthorizedApplicationException();
         var role = currentUser.Role ?? throw new UnauthorizedApplicationException();
         return (userId, role);
+    }
+
+    public static void EnsureCanIncludeDeleted(RoleDefinition role, PermissionName deletePermission, bool includeDeleted)
+    {
+        if (includeDeleted)
+        {
+            EnsurePermission(role, deletePermission);
+        }
     }
 
     public static void EnsurePermission(RoleDefinition role, PermissionName permission)
@@ -58,6 +67,16 @@ public static class ApplicationGuard
         }
     }
 
+    public static ContentEntry RequireVisibleContentEntry(ContentEntry? entry, Guid contentEntryId)
+    {
+        if (entry is null || entry.IsDeleted)
+        {
+            throw new NotFoundApplicationException("ContentEntry", contentEntryId);
+        }
+
+        return entry;
+    }
+
     public static Slug CreateSlug(string value) =>
         TranslateDomainException(() => Slug.Create(value));
 
@@ -82,6 +101,10 @@ public static class ApplicationGuard
         {
             throw new ApplicationValidationException(exception.Field ?? string.Empty, exception.Message);
         }
+        catch (InvalidOperationDomainException exception)
+        {
+            throw new ApplicationValidationException(string.Empty, exception.Message);
+        }
     }
 
     public static T TranslateDomainException<T>(Func<T> action)
@@ -98,6 +121,10 @@ public static class ApplicationGuard
         catch (DomainValidationException exception)
         {
             throw new ApplicationValidationException(exception.Field ?? string.Empty, exception.Message);
+        }
+        catch (InvalidOperationDomainException exception)
+        {
+            throw new ApplicationValidationException(string.Empty, exception.Message);
         }
     }
 }

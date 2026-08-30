@@ -35,7 +35,7 @@ public sealed class SecurityAuthRegressionTests : IAsyncLifetime
     }
 
     [Fact]
-    public async Task CreateUser_WithWeakPassword_Returns400()
+    public async Task CreateUser_WithWeakPassword_Returns422()
     {
         var adminToken = await LoginAsync(AuthTestConstants.AdminEmail, AuthTestConstants.AdminPassword);
 
@@ -53,7 +53,7 @@ public sealed class SecurityAuthRegressionTests : IAsyncLifetime
 
         var response = await _client.SendAsync(request);
 
-        response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
+        response.StatusCode.Should().Be(HttpStatusCode.UnprocessableEntity);
     }
 
     [Fact]
@@ -83,7 +83,7 @@ public sealed class SecurityAuthRegressionTests : IAsyncLifetime
 
         using var logoutRequest = new HttpRequestMessage(HttpMethod.Post, "/api/v1/auth/logout")
         {
-            Content = JsonContent.Create(new LogoutRequest(login.UserId, login.RefreshToken)),
+            Content = JsonContent.Create(new LogoutApiRequest(login.RefreshToken)),
         };
         logoutRequest.Headers.Authorization = new AuthenticationHeaderValue("Bearer", login.AccessToken);
         var logoutResponse = await _client.SendAsync(logoutRequest);
@@ -106,7 +106,7 @@ public sealed class SecurityAuthRegressionTests : IAsyncLifetime
             "/api/v1/auth/refresh",
             new RefreshTokenRequest(originalRefresh));
         rotated.StatusCode.Should().Be(HttpStatusCode.OK);
-        var rotatedPayload = await rotated.Content.ReadFromJsonAsync<AuthenticationResult>();
+        var rotatedPayload = await rotated.Content.ReadFromJsonAsync<LoginResultDto>();
         rotatedPayload!.RefreshToken.Should().NotBeNullOrWhiteSpace();
 
         var reuse = await _client.PostAsJsonAsync(

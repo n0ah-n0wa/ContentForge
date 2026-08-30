@@ -9,11 +9,14 @@ using ContentForge.Application.Content.Models;
 using ContentForge.Application.Content.Queries;
 using ContentForge.Application.Mapping;
 using ContentForge.Domain.Content;
+using ContentForge.Domain.ContentTypes;
 
 public sealed record ListPublicContentQuery(PublicContentListCriteria Criteria);
 
 public sealed class ListPublicContentQueryHandler
 {
+    private static readonly IReadOnlySet<string> _emptyFilterSet = new HashSet<string>(StringComparer.Ordinal);
+
     private readonly IContentTypeRepository _contentTypeRepository;
     private readonly IContentEntryRepository _contentEntryRepository;
 
@@ -25,25 +28,39 @@ public sealed class ListPublicContentQueryHandler
         _contentEntryRepository = contentEntryRepository;
     }
 
-    public async Task<PaginatedResult<PublicContentDto>> HandleAsync(ListPublicContentQuery query, CancellationToken cancellationToken)
+    public async Task<PaginatedResult<PublicContentDto>> HandleAsync(
+        ListPublicContentQuery query,
+        CancellationToken cancellationToken)
     {
         query.Criteria.Sort.EnsureAllowed(PublicContentListCriteria.AllowedSortFields, "public content");
-        FilterValidator.EnsureAllowed(query.Criteria.Filters, PublicContentListCriteria.AllowedFilterFields, "public content");
+        FilterValidator.EnsureAllowed(
+            query.Criteria.UnsupportedFilters ?? new Dictionary<string, string?>(StringComparer.Ordinal),
+            _emptyFilterSet,
+            "public content");
 
-        var contentType = await _contentTypeRepository.GetBySlugAsync(
-                ApplicationGuard.CreateSlug(query.Criteria.ContentTypeSlug),
-                cancellationToken)
-            ?? throw new NotFoundApplicationException("ContentType", query.Criteria.ContentTypeSlug);
+        var contentType = await PublicContentVisibility.RequireActiveContentTypeAsync(
+            _contentTypeRepository,
+            query.Criteria.ContentTypeSlug,
+            cancellationToken);
+
+        var exactSlug = string.IsNullOrWhiteSpace(query.Criteria.Slug)
+            ? null
+            : ApplicationGuard.CreateSlug(query.Criteria.Slug).Value;
 
         var listCriteria = new ContentEntryListCriteria(
             query.Criteria.Pagination,
             query.Criteria.Sort,
             contentType.Id,
             ContentStatus.Published,
-            IncludeDeleted: false);
+            IncludeDeleted: false,
+            Search: query.Criteria.Search,
+            PublishedFrom: query.Criteria.PublishedFrom,
+            PublishedTo: query.Criteria.PublishedTo,
+            ExactSlug: exactSlug);
 
         var result = await _contentEntryRepository.ListAsync(listCriteria, cancellationToken);
         var items = result.Items
+            .Where(PublicContentVisibility.IsPubliclyVisible)
             .Select(entry => ContentEntryMapper.ToPublicDto(contentType.Slug.Value, entry))
             .ToList();
 
@@ -68,10 +85,10 @@ public sealed class GetPublicContentBySlugQueryHandler
 
     public async Task<PublicContentDto> HandleAsync(GetPublicContentBySlugQuery query, CancellationToken cancellationToken)
     {
-        var contentType = await _contentTypeRepository.GetBySlugAsync(
-                ApplicationGuard.CreateSlug(query.ContentTypeSlug),
-                cancellationToken)
-            ?? throw new NotFoundApplicationException("ContentType", query.ContentTypeSlug);
+        var contentType = await PublicContentVisibility.RequireActiveContentTypeAsync(
+            _contentTypeRepository,
+            query.ContentTypeSlug,
+            cancellationToken);
 
         var entry = await _contentEntryRepository.GetBySlugAsync(
                 contentType.Id,
@@ -79,11 +96,37 @@ public sealed class GetPublicContentBySlugQueryHandler
                 cancellationToken)
             ?? throw new NotFoundApplicationException("ContentEntry", query.Slug);
 
-        if (!entry.HasPublishedRepresentation || entry.Status != ContentStatus.Published)
+        if (!PublicContentVisibility.IsPubliclyVisible(entry))
         {
             throw new NotFoundApplicationException("ContentEntry", query.Slug);
         }
 
         return ContentEntryMapper.ToPublicDto(contentType.Slug.Value, entry);
+    }
+}
+
+internal static class PublicContentVisibility
+{
+    internal static bool IsPubliclyVisible(ContentEntry entry) =>
+        !entry.IsDeleted
+        && entry.Status == ContentStatus.Published
+        && entry.HasPublishedRepresentation;
+
+    internal static async Task<ContentType> RequireActiveContentTypeAsync(
+        IContentTypeRepository contentTypeRepository,
+        string contentTypeSlug,
+        CancellationToken cancellationToken)
+    {
+        var contentType = await contentTypeRepository.GetBySlugAsync(
+                ApplicationGuard.CreateSlug(contentTypeSlug),
+                cancellationToken)
+            ?? throw new NotFoundApplicationException("ContentType", contentTypeSlug);
+
+        if (!contentType.IsActive)
+        {
+            throw new NotFoundApplicationException("ContentType", contentTypeSlug);
+        }
+
+        return contentType;
     }
 }

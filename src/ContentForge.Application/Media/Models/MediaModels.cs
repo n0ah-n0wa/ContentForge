@@ -9,7 +9,6 @@ public sealed record MediaAssetDto(
     string OriginalFileName,
     string ContentType,
     long Size,
-    string StorageKey,
     string? Url,
     int? Width,
     int? Height,

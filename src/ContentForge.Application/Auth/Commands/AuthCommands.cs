@@ -32,15 +32,22 @@ public sealed class LoginCommandHandler
 {
     private readonly IAuthenticationService _authenticationService;
     private readonly IAuditService _auditService;
+    private readonly IValidator<LoginCommand> _validator;
 
-    public LoginCommandHandler(IAuthenticationService authenticationService, IAuditService auditService)
+    public LoginCommandHandler(
+        IAuthenticationService authenticationService,
+        IAuditService auditService,
+        IValidator<LoginCommand> validator)
     {
         _authenticationService = authenticationService;
         _auditService = auditService;
+        _validator = validator;
     }
 
     public async Task<LoginResultDto> HandleAsync(LoginCommand command, CancellationToken cancellationToken)
     {
+        await CommandValidator.EnsureValidAsync(_validator, command, cancellationToken);
+
         try
         {
             var result = await _authenticationService.LoginAsync(
@@ -58,15 +65,7 @@ public sealed class LoginCommandHandler
                 userAgent: command.UserAgent,
                 cancellationToken: cancellationToken);
 
-            return new LoginResultDto(
-                result.UserId.Value,
-                result.Email,
-                result.DisplayName,
-                result.Role,
-                result.AccessToken,
-                result.AccessTokenExpiresAt,
-                result.RefreshToken,
-                result.RefreshTokenExpiresAt);
+            return result.ToLoginResultDto();
         }
         catch (AuthenticationFailedException)
         {
@@ -89,7 +88,7 @@ public sealed class LoginCommandHandler
 /// </summary>
 public sealed class LogoutCommand
 {
-    public required LogoutRequest Request { get; init; }
+    public string? RefreshToken { get; init; }
 }
 
 public sealed class LogoutCommandHandler
@@ -107,13 +106,8 @@ public sealed class LogoutCommandHandler
     {
         var (userId, _) = ApplicationGuard.RequireAuthenticatedUser(_currentUser);
 
-        if (command.Request.UserId != userId.Value)
-        {
-            throw new Common.Exceptions.ForbiddenApplicationException("Users may only terminate their own session.");
-        }
-
         await _authenticationService.LogoutAsync(
-            new LogoutRequest(userId.Value, command.Request.RefreshToken),
+            new LogoutRequest(userId.Value, command.RefreshToken),
             cancellationToken);
     }
 }
@@ -137,12 +131,20 @@ public sealed class RefreshTokenCommandValidator : AbstractValidator<RefreshToke
 public sealed class RefreshTokenCommandHandler
 {
     private readonly IAuthenticationService _authenticationService;
+    private readonly IValidator<RefreshTokenCommand> _validator;
 
-    public RefreshTokenCommandHandler(IAuthenticationService authenticationService)
+    public RefreshTokenCommandHandler(
+        IAuthenticationService authenticationService,
+        IValidator<RefreshTokenCommand> validator)
     {
         _authenticationService = authenticationService;
+        _validator = validator;
     }
 
-    public Task<AuthenticationResult> HandleAsync(RefreshTokenCommand command, CancellationToken cancellationToken) =>
-        _authenticationService.RefreshTokenAsync(command.Request, cancellationToken);
+    public async Task<LoginResultDto> HandleAsync(RefreshTokenCommand command, CancellationToken cancellationToken)
+    {
+        await CommandValidator.EnsureValidAsync(_validator, command, cancellationToken);
+        var result = await _authenticationService.RefreshTokenAsync(command.Request, cancellationToken);
+        return result.ToLoginResultDto();
+    }
 }

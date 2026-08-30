@@ -15,7 +15,10 @@ public sealed record ContentEntryListCriteria(
     ContentStatus? Status = null,
     UserId? AuthorId = null,
     string? Search = null,
-    bool IncludeDeleted = false)
+    bool IncludeDeleted = false,
+    DateTimeOffset? PublishedFrom = null,
+    DateTimeOffset? PublishedTo = null,
+    string? ExactSlug = null)
 {
     public static IReadOnlySet<string> AllowedSortFields { get; } = new HashSet<string>(StringComparer.Ordinal)
     {
@@ -75,7 +78,11 @@ public sealed record PublicContentListCriteria(
     PaginationRequest Pagination,
     SortRequest Sort,
     string ContentTypeSlug,
-    IReadOnlyDictionary<string, string?> Filters)
+    string? Slug = null,
+    string? Search = null,
+    DateTimeOffset? PublishedFrom = null,
+    DateTimeOffset? PublishedTo = null,
+    IReadOnlyDictionary<string, string?>? UnsupportedFilters = null)
 {
     public static IReadOnlySet<string> AllowedSortFields { get; } = new HashSet<string>(StringComparer.Ordinal)
     {
@@ -86,5 +93,8 @@ public sealed record PublicContentListCriteria(
     public static IReadOnlySet<string> AllowedFilterFields { get; } = new HashSet<string>(StringComparer.Ordinal)
     {
         "slug",
+        "search",
+        "publishedFrom",
+        "publishedTo",
     };
 }

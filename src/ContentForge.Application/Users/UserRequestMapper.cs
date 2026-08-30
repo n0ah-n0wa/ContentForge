@@ -20,4 +20,14 @@ public static class UserRequestMapper
             request.Password,
             role);
     }
+
+    public static UpdateUserCommand ToCommand(Guid userId, UpdateUserApiRequest request)
+    {
+        if (!Enum.TryParse<RoleName>(request.Role, ignoreCase: true, out var role))
+        {
+            throw new ApplicationValidationException(nameof(request.Role), "Role is invalid.");
+        }
+
+        return new UpdateUserCommand(userId, request.DisplayName, role);
+    }
 }

@@ -135,9 +135,10 @@ public sealed class AuthIntegrationTests : IAsyncLifetime
             new RefreshTokenRequest(login.RefreshToken!));
 
         response.StatusCode.Should().Be(HttpStatusCode.OK);
-        var payload = await response.Content.ReadFromJsonAsync<AuthenticationResult>();
+        var payload = await response.Content.ReadFromJsonAsync<LoginResultDto>();
         payload!.AccessToken.Should().NotBeNullOrWhiteSpace();
         payload.RefreshToken.Should().NotBeNullOrWhiteSpace();
+        payload.UserId.Should().NotBe(Guid.Empty);
     }
 
     [Fact]

@@ -63,6 +63,9 @@ public sealed class ContentTypeField
         FieldConfiguration configuration) =>
         new(id, name, fieldType, displayName, sortOrder, configuration);
 
+    public static void EnsureConfigurationValid(FieldType fieldType, FieldConfiguration configuration) =>
+        ValidateFieldTypeConfiguration(fieldType, configuration);
+
     private static void ValidateFieldTypeConfiguration(FieldType fieldType, FieldConfiguration configuration)
     {
         switch (fieldType)

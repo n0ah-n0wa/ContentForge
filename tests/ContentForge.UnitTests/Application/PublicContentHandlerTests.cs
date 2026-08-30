@@ -61,6 +61,48 @@ public sealed class PublicContentHandlerTests
     }
 
     [Fact]
+    public async Task GetPublicContentBySlugQueryHandler_InReviewEntry_ThrowsNotFound()
+    {
+        var contentType = DomainTestData.CreateArticleType();
+        var entry = DomainTestData.CreateDraftEntry(contentType);
+        entry.SubmitForReview(DomainTestData.User1, entry.ConcurrencyToken, DomainTestData.Timestamp);
+
+        var contentTypeRepository = Substitute.For<IContentTypeRepository>();
+        contentTypeRepository.GetBySlugAsync(contentType.Slug, Arg.Any<CancellationToken>()).Returns(contentType);
+
+        var entryRepository = Substitute.For<IContentEntryRepository>();
+        entryRepository.GetBySlugAsync(contentType.Id, entry.Slug, Arg.Any<CancellationToken>()).Returns(entry);
+
+        var handler = new GetPublicContentBySlugQueryHandler(contentTypeRepository, entryRepository);
+
+        var action = () => handler.HandleAsync(
+            new GetPublicContentBySlugQuery("article", "hello-world"),
+            CancellationToken.None);
+
+        await action.Should().ThrowAsync<NotFoundApplicationException>();
+    }
+
+    [Fact]
+    public async Task GetPublicContentBySlugQueryHandler_InactiveContentType_ThrowsNotFound()
+    {
+        var contentType = DomainTestData.CreateArticleType();
+        contentType.Deactivate(DomainTestData.User1, DomainTestData.Timestamp);
+
+        var contentTypeRepository = Substitute.For<IContentTypeRepository>();
+        contentTypeRepository.GetBySlugAsync(contentType.Slug, Arg.Any<CancellationToken>()).Returns(contentType);
+
+        var handler = new GetPublicContentBySlugQueryHandler(
+            contentTypeRepository,
+            Substitute.For<IContentEntryRepository>());
+
+        var action = () => handler.HandleAsync(
+            new GetPublicContentBySlugQuery("article", "hello-world"),
+            CancellationToken.None);
+
+        await action.Should().ThrowAsync<NotFoundApplicationException>();
+    }
+
+    [Fact]
     public async Task ListPublicContentQueryHandler_UnsupportedFilter_ThrowsUnsupportedQueryParameterException()
     {
         var handler = new ListPublicContentQueryHandler(
@@ -73,7 +115,7 @@ public sealed class PublicContentHandlerTests
                     new PaginationRequest(),
                     SortRequest.Default("publishedAt"),
                     "article",
-                    new Dictionary<string, string?> { ["unsupported"] = "value" })),
+                    UnsupportedFilters: new Dictionary<string, string?> { ["status"] = "draft" })),
             CancellationToken.None);
 
         await action.Should().ThrowAsync<ContentForge.Application.Common.Filtering.UnsupportedQueryParameterException>();

@@ -94,7 +94,8 @@ internal static class ContentEntryMapper
             contentTypeSlug,
             entry.PublishedSnapshot.Slug.Value,
             entry.PublishedSnapshot.Data.Values.ToDictionary(static pair => pair.Key, static pair => pair.Value),
-            entry.PublishedAt ?? entry.UpdatedAt);
+            entry.PublishedAt
+                ?? throw new InvalidOperationException("Published content must have a published timestamp."));
     }
 }
 
@@ -107,7 +108,6 @@ internal static class MediaMapper
             asset.OriginalFileName,
             asset.ContentType,
             asset.Size,
-            asset.StorageKey.Value,
             asset.Url,
             asset.Width,
             asset.Height,

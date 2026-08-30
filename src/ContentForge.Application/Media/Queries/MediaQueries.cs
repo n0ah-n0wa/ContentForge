@@ -31,6 +31,11 @@ public sealed class GetMediaQueryHandler
         var asset = await _repository.GetByIdAsync(MediaId.From(query.MediaId), cancellationToken)
             ?? throw new NotFoundApplicationException("MediaAsset", query.MediaId);
 
+        if (asset.IsDeleted && !AuthorizationRules.IsAllowed(role, Permissions.MediaDelete))
+        {
+            throw new NotFoundApplicationException("MediaAsset", query.MediaId);
+        }
+
         return MediaMapper.ToDto(asset);
     }
 }
@@ -52,6 +57,7 @@ public sealed class ListMediaQueryHandler
     {
         var (_, role) = ApplicationGuard.RequireAuthenticatedUser(_currentUser);
         ApplicationGuard.EnsurePermission(role, Permissions.MediaRead);
+        ApplicationGuard.EnsureCanIncludeDeleted(role, Permissions.MediaDelete, query.Criteria.IncludeDeleted);
 
         query.Criteria.Sort.EnsureAllowed(MediaListCriteria.AllowedSortFields, "media");
         ValidateFilters(query.Criteria);

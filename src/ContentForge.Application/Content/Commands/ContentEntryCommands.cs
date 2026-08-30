@@ -6,6 +6,7 @@ using ContentForge.Application.Common;
 using ContentForge.Application.Common.Concurrency;
 using ContentForge.Application.Common.Exceptions;
 using ContentForge.Application.Content.Models;
+using ContentForge.Application.Common.Serialization;
 using ContentForge.Application.Mapping;
 using ContentForge.Domain.Audit;
 using ContentForge.Domain.Authorization;
@@ -36,6 +37,7 @@ public sealed class CreateContentEntryCommandHandler
     private readonly ICurrentUserService _currentUser;
     private readonly IDateTimeProvider _clock;
     private readonly IAuditService _auditService;
+    private readonly IValidator<CreateContentEntryCommand> _validator;
 
     public CreateContentEntryCommandHandler(
         IContentTypeRepository contentTypeRepository,
@@ -43,7 +45,8 @@ public sealed class CreateContentEntryCommandHandler
         IUnitOfWork unitOfWork,
         ICurrentUserService currentUser,
         IDateTimeProvider clock,
-        IAuditService auditService)
+        IAuditService auditService,
+        IValidator<CreateContentEntryCommand> validator)
     {
         _contentTypeRepository = contentTypeRepository;
         _contentEntryRepository = contentEntryRepository;
@@ -51,10 +54,13 @@ public sealed class CreateContentEntryCommandHandler
         _currentUser = currentUser;
         _clock = clock;
         _auditService = auditService;
+        _validator = validator;
     }
 
     public async Task<ContentEntryDto> HandleAsync(CreateContentEntryCommand command, CancellationToken cancellationToken)
     {
+        await CommandValidator.EnsureValidAsync(_validator, command, cancellationToken);
+
         var (userId, role) = ApplicationGuard.RequireAuthenticatedUser(_currentUser);
         ApplicationGuard.EnsurePermission(role, Permissions.ContentCreate);
 
@@ -68,7 +74,7 @@ public sealed class CreateContentEntryCommandHandler
             throw new ApplicationValidationException(nameof(command.Slug), "An entry with this slug already exists for the content type.");
         }
 
-        var data = ContentData.FromDictionary(command.Data);
+        var data = ContentData.FromDictionary(JsonPayloadNormalizer.NormalizeDictionary(command.Data));
         ApplicationGuard.TranslateDomainException(() => ContentDataValidator.Validate(contentType, data));
 
         var entry = ContentEntry.Create(contentTypeId, slug, userId, data, _clock.UtcNow);
@@ -113,6 +119,7 @@ public sealed class UpdateContentEntryCommandHandler
     private readonly ICurrentUserService _currentUser;
     private readonly IDateTimeProvider _clock;
     private readonly IAuditService _auditService;
+    private readonly IValidator<UpdateContentEntryCommand> _validator;
 
     public UpdateContentEntryCommandHandler(
         IContentTypeRepository contentTypeRepository,
@@ -120,7 +127,8 @@ public sealed class UpdateContentEntryCommandHandler
         IUnitOfWork unitOfWork,
         ICurrentUserService currentUser,
         IDateTimeProvider clock,
-        IAuditService auditService)
+        IAuditService auditService,
+        IValidator<UpdateContentEntryCommand> validator)
     {
         _contentTypeRepository = contentTypeRepository;
         _contentEntryRepository = contentEntryRepository;
@@ -128,10 +136,13 @@ public sealed class UpdateContentEntryCommandHandler
         _currentUser = currentUser;
         _clock = clock;
         _auditService = auditService;
+        _validator = validator;
     }
 
     public async Task<ContentEntryDto> HandleAsync(UpdateContentEntryCommand command, CancellationToken cancellationToken)
     {
+        await CommandValidator.EnsureValidAsync(_validator, command, cancellationToken);
+
         var (userId, role) = ApplicationGuard.RequireAuthenticatedUser(_currentUser);
         ApplicationGuard.EnsurePermission(role, Permissions.ContentUpdate);
 
@@ -153,7 +164,7 @@ public sealed class UpdateContentEntryCommandHandler
         ApplicationGuard.TranslateDomainException(() =>
             entry.UpdateDraft(
                 contentType,
-                ContentData.FromDictionary(command.Data),
+                ContentData.FromDictionary(JsonPayloadNormalizer.NormalizeDictionary(command.Data)),
                 slug,
                 userId,
                 ApplicationGuard.ToDomainToken(command.Concurrency),
@@ -192,23 +203,28 @@ public sealed class DeleteContentEntryCommandHandler
     private readonly ICurrentUserService _currentUser;
     private readonly IDateTimeProvider _clock;
     private readonly IAuditService _auditService;
+    private readonly IValidator<DeleteContentEntryCommand> _validator;
 
     public DeleteContentEntryCommandHandler(
         IContentEntryRepository repository,
         IUnitOfWork unitOfWork,
         ICurrentUserService currentUser,
         IDateTimeProvider clock,
-        IAuditService auditService)
+        IAuditService auditService,
+        IValidator<DeleteContentEntryCommand> validator)
     {
         _repository = repository;
         _unitOfWork = unitOfWork;
         _currentUser = currentUser;
         _clock = clock;
         _auditService = auditService;
+        _validator = validator;
     }
 
     public async Task HandleAsync(DeleteContentEntryCommand command, CancellationToken cancellationToken)
     {
+        await CommandValidator.EnsureValidAsync(_validator, command, cancellationToken);
+
         var (userId, role) = ApplicationGuard.RequireAuthenticatedUser(_currentUser);
         ApplicationGuard.EnsurePermission(role, Permissions.ContentDelete);
 

@@ -14,6 +14,7 @@ using ContentForge.Domain.Content;
 using ContentForge.Domain.ContentTypes;
 using ContentForge.UnitTests.Domain;
 using FluentAssertions;
+using FluentValidation;
 using NSubstitute;
 
 public sealed class ContentTypeHandlerTests
@@ -30,7 +31,8 @@ public sealed class ContentTypeHandlerTests
             RepositorySubstituteExtensions.CreateUnitOfWork(),
             ApplicationTestData.CreateCurrentUser(ApplicationTestData.EditorUserId, ApplicationTestData.AdministratorRole),
             ApplicationTestData.CreateClock(),
-            RepositorySubstituteExtensions.CreateAuditService());
+            RepositorySubstituteExtensions.CreateAuditService(),
+            new CreateContentTypeCommandValidator());
 
         var result = await handler.HandleAsync(
             new CreateContentTypeCommand("Page", "Page", "page", "Static pages"),
@@ -53,7 +55,8 @@ public sealed class ContentTypeHandlerTests
             RepositorySubstituteExtensions.CreateUnitOfWork(),
             ApplicationTestData.CreateCurrentUser(ApplicationTestData.EditorUserId, ApplicationTestData.AdministratorRole),
             ApplicationTestData.CreateClock(),
-            RepositorySubstituteExtensions.CreateAuditService());
+            RepositorySubstituteExtensions.CreateAuditService(),
+            new CreateContentTypeCommandValidator());
 
         var action = () => handler.HandleAsync(
             new CreateContentTypeCommand("Page", "Page", "page", null),
@@ -81,7 +84,8 @@ public sealed class ContentEntryHandlerTests
             RepositorySubstituteExtensions.CreateUnitOfWork(),
             ApplicationTestData.CreateCurrentUser(ApplicationTestData.AuthorUserId, ApplicationTestData.AuthorRole),
             ApplicationTestData.CreateClock(),
-            RepositorySubstituteExtensions.CreateAuditService());
+            RepositorySubstituteExtensions.CreateAuditService(),
+            new CreateContentEntryCommandValidator());
 
         var result = await handler.HandleAsync(
             new CreateContentEntryCommand(contentType.Id.Value, "hello-world", DomainTestData.CreateValidArticleData().Values.ToDictionary()),
@@ -110,7 +114,8 @@ public sealed class ContentEntryHandlerTests
             RepositorySubstituteExtensions.CreateUnitOfWork(),
             ApplicationTestData.CreateCurrentUser(ApplicationTestData.OtherAuthorUserId, ApplicationTestData.AuthorRole),
             ApplicationTestData.CreateClock(),
-            RepositorySubstituteExtensions.CreateAuditService());
+            RepositorySubstituteExtensions.CreateAuditService(),
+            new UpdateContentEntryCommandValidator());
 
         var action = () => handler.HandleAsync(
             new UpdateContentEntryCommand(
@@ -143,7 +148,8 @@ public sealed class ContentEntryHandlerTests
             RepositorySubstituteExtensions.CreateUnitOfWork(),
             ApplicationTestData.CreateCurrentUser(ApplicationTestData.EditorUserId, ApplicationTestData.EditorRole),
             ApplicationTestData.CreateClock(),
-            RepositorySubstituteExtensions.CreateAuditService());
+            RepositorySubstituteExtensions.CreateAuditService(),
+            new PublishContentCommandValidator());
 
         var result = await handler.HandleAsync(
             new PublishContentCommand(entry.Id.Value, "Published first version", new ConcurrencyRequest(entry.ConcurrencyToken.Value)),
@@ -187,7 +193,8 @@ public sealed class ContentEntryHandlerTests
             RepositorySubstituteExtensions.CreateUnitOfWork(),
             ApplicationTestData.CreateCurrentUser(ApplicationTestData.EditorUserId, ApplicationTestData.EditorRole),
             ApplicationTestData.CreateClock(),
-            RepositorySubstituteExtensions.CreateAuditService());
+            RepositorySubstituteExtensions.CreateAuditService(),
+            new RestoreContentVersionCommandValidator());
 
         var result = await handler.HandleAsync(
             new RestoreContentVersionCommand(

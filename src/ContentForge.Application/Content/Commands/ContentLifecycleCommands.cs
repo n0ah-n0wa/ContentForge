@@ -136,6 +136,7 @@ public sealed class PublishContentCommandHandler
     private readonly ICurrentUserService _currentUser;
     private readonly IDateTimeProvider _clock;
     private readonly IAuditService _auditService;
+    private readonly IValidator<PublishContentCommand> _validator;
 
     public PublishContentCommandHandler(
         IContentTypeRepository contentTypeRepository,
@@ -143,7 +144,8 @@ public sealed class PublishContentCommandHandler
         IUnitOfWork unitOfWork,
         ICurrentUserService currentUser,
         IDateTimeProvider clock,
-        IAuditService auditService)
+        IAuditService auditService,
+        IValidator<PublishContentCommand> validator)
     {
         _contentTypeRepository = contentTypeRepository;
         _contentEntryRepository = contentEntryRepository;
@@ -151,10 +153,13 @@ public sealed class PublishContentCommandHandler
         _currentUser = currentUser;
         _clock = clock;
         _auditService = auditService;
+        _validator = validator;
     }
 
     public async Task<ContentEntryDto> HandleAsync(PublishContentCommand command, CancellationToken cancellationToken)
     {
+        await CommandValidator.EnsureValidAsync(_validator, command, cancellationToken);
+
         var (userId, role) = ApplicationGuard.RequireAuthenticatedUser(_currentUser);
         ApplicationGuard.EnsurePermission(role, Permissions.ContentPublish);
 

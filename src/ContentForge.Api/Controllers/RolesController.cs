@@ -1,5 +1,6 @@
 namespace ContentForge.Api.Controllers;
 
+using ContentForge.Api.Infrastructure;
 using ContentForge.Application.Authorization;
 using ContentForge.Application.Users.Models;
 using ContentForge.Application.Users.Queries;
@@ -7,8 +8,9 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
 [ApiController]
-[Route("api/v1/roles")]
+[Route($"{ApiConstants.VersionPrefix}/roles")]
 [Authorize]
+[Produces("application/json")]
 public sealed class RolesController : ControllerBase
 {
     [HttpGet]

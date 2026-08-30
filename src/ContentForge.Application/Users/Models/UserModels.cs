@@ -50,3 +50,10 @@ public sealed record UserDto(
 /// Role definition returned by administrative queries.
 /// </summary>
 public sealed record RoleDto(RoleName Name, IReadOnlyList<string> Permissions);
+
+/// <summary>
+/// Request body for updating a user account.
+/// </summary>
+public sealed record UpdateUserApiRequest(
+    string DisplayName,
+    string Role);
