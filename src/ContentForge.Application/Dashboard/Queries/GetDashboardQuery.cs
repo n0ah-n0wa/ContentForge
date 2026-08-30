@@ -10,8 +10,8 @@ public sealed record GetDashboardQuery;
 
 public sealed class GetDashboardQueryHandler
 {
-    private const int RecentContentLimit = 5;
-    private const int RecentActivityLimit = 10;
+    private const int _recentContentLimit = 5;
+    private const int _recentActivityLimit = 10;
 
     private readonly IDashboardReadService _dashboardReadService;
     private readonly ICurrentUserService _currentUser;
@@ -39,14 +39,14 @@ public sealed class GetDashboardQueryHandler
             statistics = await _dashboardReadService.GetContentStatisticsAsync(authorFilter, cancellationToken);
             recentContent = await _dashboardReadService.GetRecentContentAsync(
                 authorFilter,
-                RecentContentLimit,
+                _recentContentLimit,
                 cancellationToken);
         }
 
         if (canReadAudit)
         {
             recentActivity = await _dashboardReadService.GetRecentActivityAsync(
-                RecentActivityLimit,
+                _recentActivityLimit,
                 cancellationToken);
         }
 
