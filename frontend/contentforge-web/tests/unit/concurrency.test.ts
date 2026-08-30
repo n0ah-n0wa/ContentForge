@@ -19,6 +19,8 @@ describe('concurrency conflict contract', () => {
 
   it('rejects unstructured errors', () => {
     expect(isConcurrencyConflict({ status: 409, title: 'Conflict' })).toBe(false);
-    expect(isConcurrencyConflict({ status: 422, expectedVersion: 1, actualVersion: 2, updatedAt: '' })).toBe(false);
+    expect(
+      isConcurrencyConflict({ status: 422, expectedVersion: 1, actualVersion: 2, updatedAt: '' }),
+    ).toBe(false);
   });
 });
