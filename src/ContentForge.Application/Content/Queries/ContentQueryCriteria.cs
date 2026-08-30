@@ -18,7 +18,8 @@ public sealed record ContentEntryListCriteria(
     bool IncludeDeleted = false,
     DateTimeOffset? PublishedFrom = null,
     DateTimeOffset? PublishedTo = null,
-    string? ExactSlug = null)
+    string? ExactSlug = null,
+    bool PublishedRepresentationOnly = false)
 {
     public static IReadOnlySet<string> AllowedSortFields { get; } = new HashSet<string>(StringComparer.Ordinal)
     {

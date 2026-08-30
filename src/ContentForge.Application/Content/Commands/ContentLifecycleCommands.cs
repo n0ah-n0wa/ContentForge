@@ -15,38 +15,58 @@ using FluentValidation;
 
 public sealed record SubmitContentForReviewCommand(Guid ContentEntryId, ConcurrencyRequest Concurrency);
 
+public sealed class SubmitContentForReviewCommandValidator : AbstractValidator<SubmitContentForReviewCommand>
+{
+    public SubmitContentForReviewCommandValidator()
+    {
+        RuleFor(command => command.ContentEntryId).NotEmpty();
+        RuleFor(command => command.Concurrency.Version).GreaterThan((uint)0);
+    }
+}
+
 public sealed class SubmitContentForReviewCommandHandler
 {
+    private readonly IContentTypeRepository _contentTypeRepository;
     private readonly IContentEntryRepository _repository;
     private readonly IUnitOfWork _unitOfWork;
     private readonly ICurrentUserService _currentUser;
     private readonly IDateTimeProvider _clock;
     private readonly IAuditService _auditService;
+    private readonly IValidator<SubmitContentForReviewCommand> _validator;
 
     public SubmitContentForReviewCommandHandler(
+        IContentTypeRepository contentTypeRepository,
         IContentEntryRepository repository,
         IUnitOfWork unitOfWork,
         ICurrentUserService currentUser,
         IDateTimeProvider clock,
-        IAuditService auditService)
+        IAuditService auditService,
+        IValidator<SubmitContentForReviewCommand> validator)
     {
+        _contentTypeRepository = contentTypeRepository;
         _repository = repository;
         _unitOfWork = unitOfWork;
         _currentUser = currentUser;
         _clock = clock;
         _auditService = auditService;
+        _validator = validator;
     }
 
     public async Task<ContentEntryDto> HandleAsync(SubmitContentForReviewCommand command, CancellationToken cancellationToken)
     {
+        await CommandValidator.EnsureValidAsync(_validator, command, cancellationToken);
+
         var (userId, role) = ApplicationGuard.RequireAuthenticatedUser(_currentUser);
         ApplicationGuard.EnsurePermission(role, Permissions.ContentReview);
 
         var entry = await LoadEntryAsync(command.ContentEntryId, cancellationToken);
         ApplicationGuard.EnsureCanModifyContent(role, userId, entry.CreatedBy);
 
+        var contentType = await _contentTypeRepository.GetByIdAsync(entry.ContentTypeId, cancellationToken)
+            ?? throw new NotFoundApplicationException("ContentType", entry.ContentTypeId.Value);
+
         ApplicationGuard.TranslateDomainException(() =>
-            entry.SubmitForReview(userId, ApplicationGuard.ToDomainToken(command.Concurrency), _clock.UtcNow));
+            entry.SubmitForReview(contentType, userId, ApplicationGuard.ToDomainToken(command.Concurrency), _clock.UtcNow));
 
         await PersistAsync(entry, userId, AuditAction.ContentSubmittedForReview, cancellationToken);
         return ContentEntryMapper.ToDto(entry);
@@ -56,15 +76,27 @@ public sealed class SubmitContentForReviewCommandHandler
         await _repository.GetByIdAsync(ContentEntryId.From(contentEntryId), cancellationToken)
         ?? throw new NotFoundApplicationException("ContentEntry", contentEntryId);
 
-    private async Task PersistAsync(ContentEntry entry, UserId userId, AuditAction action, CancellationToken cancellationToken)
-    {
-        await _repository.UpdateAsync(entry, cancellationToken);
-        await _unitOfWork.SaveChangesAsync(cancellationToken);
-        await _auditService.RecordAsync(action, "ContentEntry", entry.Id.Value.ToString(), userId, cancellationToken: cancellationToken);
-    }
+    private Task PersistAsync(ContentEntry entry, UserId userId, AuditAction action, CancellationToken cancellationToken) =>
+        ContentMutationPersistence.PersistAsync(
+            _repository,
+            _unitOfWork,
+            _auditService,
+            entry,
+            action,
+            userId,
+            cancellationToken);
 }
 
 public sealed record WithdrawContentFromReviewCommand(Guid ContentEntryId, ConcurrencyRequest Concurrency);
+
+public sealed class WithdrawContentFromReviewCommandValidator : AbstractValidator<WithdrawContentFromReviewCommand>
+{
+    public WithdrawContentFromReviewCommandValidator()
+    {
+        RuleFor(command => command.ContentEntryId).NotEmpty();
+        RuleFor(command => command.Concurrency.Version).GreaterThan((uint)0);
+    }
+}
 
 public sealed class WithdrawContentFromReviewCommandHandler
 {
@@ -73,23 +105,28 @@ public sealed class WithdrawContentFromReviewCommandHandler
     private readonly ICurrentUserService _currentUser;
     private readonly IDateTimeProvider _clock;
     private readonly IAuditService _auditService;
+    private readonly IValidator<WithdrawContentFromReviewCommand> _validator;
 
     public WithdrawContentFromReviewCommandHandler(
         IContentEntryRepository repository,
         IUnitOfWork unitOfWork,
         ICurrentUserService currentUser,
         IDateTimeProvider clock,
-        IAuditService auditService)
+        IAuditService auditService,
+        IValidator<WithdrawContentFromReviewCommand> validator)
     {
         _repository = repository;
         _unitOfWork = unitOfWork;
         _currentUser = currentUser;
         _clock = clock;
         _auditService = auditService;
+        _validator = validator;
     }
 
     public async Task<ContentEntryDto> HandleAsync(WithdrawContentFromReviewCommand command, CancellationToken cancellationToken)
     {
+        await CommandValidator.EnsureValidAsync(_validator, command, cancellationToken);
+
         var (userId, role) = ApplicationGuard.RequireAuthenticatedUser(_currentUser);
         ApplicationGuard.EnsurePermission(role, Permissions.ContentReview);
 
@@ -100,15 +137,14 @@ public sealed class WithdrawContentFromReviewCommandHandler
         ApplicationGuard.TranslateDomainException(() =>
             entry.WithdrawFromReview(userId, ApplicationGuard.ToDomainToken(command.Concurrency), _clock.UtcNow));
 
-        await _repository.UpdateAsync(entry, cancellationToken);
-        await _unitOfWork.SaveChangesAsync(cancellationToken);
-
-        await _auditService.RecordAsync(
+        await ContentMutationPersistence.PersistAsync(
+            _repository,
+            _unitOfWork,
+            _auditService,
+            entry,
             AuditAction.ContentWithdrawnFromReview,
-            "ContentEntry",
-            entry.Id.Value.ToString(),
             userId,
-            cancellationToken: cancellationToken);
+            cancellationToken);
 
         return ContentEntryMapper.ToDto(entry);
     }
@@ -125,6 +161,7 @@ public sealed class PublishContentCommandValidator : AbstractValidator<PublishCo
     {
         RuleFor(command => command.ContentEntryId).NotEmpty();
         RuleFor(command => command.ChangeSummary).NotEmpty();
+        RuleFor(command => command.Concurrency.Version).GreaterThan((uint)0);
     }
 }
 
@@ -172,15 +209,14 @@ public sealed class PublishContentCommandHandler
         ApplicationGuard.TranslateDomainException(() =>
             entry.Publish(contentType, userId, ApplicationGuard.ToDomainToken(command.Concurrency), command.ChangeSummary, _clock.UtcNow));
 
-        await _contentEntryRepository.UpdateAsync(entry, cancellationToken);
-        await _unitOfWork.SaveChangesAsync(cancellationToken);
-
-        await _auditService.RecordAsync(
+        await ContentMutationPersistence.PersistAsync(
+            _contentEntryRepository,
+            _unitOfWork,
+            _auditService,
+            entry,
             AuditAction.ContentPublished,
-            "ContentEntry",
-            entry.Id.Value.ToString(),
             userId,
-            cancellationToken: cancellationToken);
+            cancellationToken);
 
         return ContentEntryMapper.ToDto(entry);
     }
@@ -191,6 +227,16 @@ public sealed record UnpublishContentCommand(
     string ChangeSummary,
     ConcurrencyRequest Concurrency);
 
+public sealed class UnpublishContentCommandValidator : AbstractValidator<UnpublishContentCommand>
+{
+    public UnpublishContentCommandValidator()
+    {
+        RuleFor(command => command.ContentEntryId).NotEmpty();
+        RuleFor(command => command.ChangeSummary).NotEmpty();
+        RuleFor(command => command.Concurrency.Version).GreaterThan((uint)0);
+    }
+}
+
 public sealed class UnpublishContentCommandHandler
 {
     private readonly IContentEntryRepository _repository;
@@ -198,23 +244,28 @@ public sealed class UnpublishContentCommandHandler
     private readonly ICurrentUserService _currentUser;
     private readonly IDateTimeProvider _clock;
     private readonly IAuditService _auditService;
+    private readonly IValidator<UnpublishContentCommand> _validator;
 
     public UnpublishContentCommandHandler(
         IContentEntryRepository repository,
         IUnitOfWork unitOfWork,
         ICurrentUserService currentUser,
         IDateTimeProvider clock,
-        IAuditService auditService)
+        IAuditService auditService,
+        IValidator<UnpublishContentCommand> validator)
     {
         _repository = repository;
         _unitOfWork = unitOfWork;
         _currentUser = currentUser;
         _clock = clock;
         _auditService = auditService;
+        _validator = validator;
     }
 
     public async Task<ContentEntryDto> HandleAsync(UnpublishContentCommand command, CancellationToken cancellationToken)
     {
+        await CommandValidator.EnsureValidAsync(_validator, command, cancellationToken);
+
         var (userId, role) = ApplicationGuard.RequireAuthenticatedUser(_currentUser);
         ApplicationGuard.EnsurePermission(role, Permissions.ContentPublish);
 
@@ -224,15 +275,14 @@ public sealed class UnpublishContentCommandHandler
         ApplicationGuard.TranslateDomainException(() =>
             entry.Unpublish(userId, ApplicationGuard.ToDomainToken(command.Concurrency), command.ChangeSummary, _clock.UtcNow));
 
-        await _repository.UpdateAsync(entry, cancellationToken);
-        await _unitOfWork.SaveChangesAsync(cancellationToken);
-
-        await _auditService.RecordAsync(
+        await ContentMutationPersistence.PersistAsync(
+            _repository,
+            _unitOfWork,
+            _auditService,
+            entry,
             AuditAction.ContentUnpublished,
-            "ContentEntry",
-            entry.Id.Value.ToString(),
             userId,
-            cancellationToken: cancellationToken);
+            cancellationToken);
 
         return ContentEntryMapper.ToDto(entry);
     }
@@ -243,6 +293,16 @@ public sealed record ArchiveContentCommand(
     string ChangeSummary,
     ConcurrencyRequest Concurrency);
 
+public sealed class ArchiveContentCommandValidator : AbstractValidator<ArchiveContentCommand>
+{
+    public ArchiveContentCommandValidator()
+    {
+        RuleFor(command => command.ContentEntryId).NotEmpty();
+        RuleFor(command => command.ChangeSummary).NotEmpty();
+        RuleFor(command => command.Concurrency.Version).GreaterThan((uint)0);
+    }
+}
+
 public sealed class ArchiveContentCommandHandler
 {
     private readonly IContentEntryRepository _repository;
@@ -250,23 +310,28 @@ public sealed class ArchiveContentCommandHandler
     private readonly ICurrentUserService _currentUser;
     private readonly IDateTimeProvider _clock;
     private readonly IAuditService _auditService;
+    private readonly IValidator<ArchiveContentCommand> _validator;
 
     public ArchiveContentCommandHandler(
         IContentEntryRepository repository,
         IUnitOfWork unitOfWork,
         ICurrentUserService currentUser,
         IDateTimeProvider clock,
-        IAuditService auditService)
+        IAuditService auditService,
+        IValidator<ArchiveContentCommand> validator)
     {
         _repository = repository;
         _unitOfWork = unitOfWork;
         _currentUser = currentUser;
         _clock = clock;
         _auditService = auditService;
+        _validator = validator;
     }
 
     public async Task<ContentEntryDto> HandleAsync(ArchiveContentCommand command, CancellationToken cancellationToken)
     {
+        await CommandValidator.EnsureValidAsync(_validator, command, cancellationToken);
+
         var (userId, role) = ApplicationGuard.RequireAuthenticatedUser(_currentUser);
         ApplicationGuard.EnsurePermission(role, Permissions.ContentArchive);
 
@@ -276,15 +341,14 @@ public sealed class ArchiveContentCommandHandler
         ApplicationGuard.TranslateDomainException(() =>
             entry.Archive(userId, ApplicationGuard.ToDomainToken(command.Concurrency), command.ChangeSummary, _clock.UtcNow));
 
-        await _repository.UpdateAsync(entry, cancellationToken);
-        await _unitOfWork.SaveChangesAsync(cancellationToken);
-
-        await _auditService.RecordAsync(
+        await ContentMutationPersistence.PersistAsync(
+            _repository,
+            _unitOfWork,
+            _auditService,
+            entry,
             AuditAction.ContentArchived,
-            "ContentEntry",
-            entry.Id.Value.ToString(),
             userId,
-            cancellationToken: cancellationToken);
+            cancellationToken);
 
         return ContentEntryMapper.ToDto(entry);
     }
@@ -295,6 +359,16 @@ public sealed record RestoreArchivedContentCommand(
     string ChangeSummary,
     ConcurrencyRequest Concurrency);
 
+public sealed class RestoreArchivedContentCommandValidator : AbstractValidator<RestoreArchivedContentCommand>
+{
+    public RestoreArchivedContentCommandValidator()
+    {
+        RuleFor(command => command.ContentEntryId).NotEmpty();
+        RuleFor(command => command.ChangeSummary).NotEmpty();
+        RuleFor(command => command.Concurrency.Version).GreaterThan((uint)0);
+    }
+}
+
 public sealed class RestoreArchivedContentCommandHandler
 {
     private readonly IContentEntryRepository _repository;
@@ -302,23 +376,28 @@ public sealed class RestoreArchivedContentCommandHandler
     private readonly ICurrentUserService _currentUser;
     private readonly IDateTimeProvider _clock;
     private readonly IAuditService _auditService;
+    private readonly IValidator<RestoreArchivedContentCommand> _validator;
 
     public RestoreArchivedContentCommandHandler(
         IContentEntryRepository repository,
         IUnitOfWork unitOfWork,
         ICurrentUserService currentUser,
         IDateTimeProvider clock,
-        IAuditService auditService)
+        IAuditService auditService,
+        IValidator<RestoreArchivedContentCommand> validator)
     {
         _repository = repository;
         _unitOfWork = unitOfWork;
         _currentUser = currentUser;
         _clock = clock;
         _auditService = auditService;
+        _validator = validator;
     }
 
     public async Task<ContentEntryDto> HandleAsync(RestoreArchivedContentCommand command, CancellationToken cancellationToken)
     {
+        await CommandValidator.EnsureValidAsync(_validator, command, cancellationToken);
+
         var (userId, role) = ApplicationGuard.RequireAuthenticatedUser(_currentUser);
         ApplicationGuard.EnsurePermission(role, Permissions.ContentRestore);
 
@@ -328,15 +407,14 @@ public sealed class RestoreArchivedContentCommandHandler
         ApplicationGuard.TranslateDomainException(() =>
             entry.RestoreFromArchive(userId, ApplicationGuard.ToDomainToken(command.Concurrency), command.ChangeSummary, _clock.UtcNow));
 
-        await _repository.UpdateAsync(entry, cancellationToken);
-        await _unitOfWork.SaveChangesAsync(cancellationToken);
-
-        await _auditService.RecordAsync(
+        await ContentMutationPersistence.PersistAsync(
+            _repository,
+            _unitOfWork,
+            _auditService,
+            entry,
             AuditAction.ContentRestored,
-            "ContentEntry",
-            entry.Id.Value.ToString(),
             userId,
-            cancellationToken: cancellationToken);
+            cancellationToken);
 
         return ContentEntryMapper.ToDto(entry);
     }

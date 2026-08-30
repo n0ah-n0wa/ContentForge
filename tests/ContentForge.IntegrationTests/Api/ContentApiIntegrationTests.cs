@@ -505,6 +505,10 @@ public sealed class ContentApiIntegrationTests : IAsyncLifetime
             });
 
         response.StatusCode.Should().Be(HttpStatusCode.Conflict);
+        var problem = await response.Content.ReadFromJsonAsync<JsonElement>();
+        problem.GetProperty("status").GetInt32().Should().Be(StatusCodes.Status409Conflict);
+        problem.GetProperty("expectedVersion").GetUInt32().Should().Be(created.ConcurrencyToken + 10);
+        problem.GetProperty("actualVersion").GetUInt32().Should().Be(created.ConcurrencyToken);
     }
 
     [Fact]
@@ -520,6 +524,10 @@ public sealed class ContentApiIntegrationTests : IAsyncLifetime
             new { concurrencyToken = created.ConcurrencyToken + 10 });
 
         response.StatusCode.Should().Be(HttpStatusCode.Conflict);
+        var problem = await response.Content.ReadFromJsonAsync<JsonElement>();
+        problem.GetProperty("status").GetInt32().Should().Be(StatusCodes.Status409Conflict);
+        problem.GetProperty("expectedVersion").GetUInt32().Should().Be(created.ConcurrencyToken + 10);
+        problem.GetProperty("actualVersion").GetUInt32().Should().Be(created.ConcurrencyToken);
     }
 
     [Fact]

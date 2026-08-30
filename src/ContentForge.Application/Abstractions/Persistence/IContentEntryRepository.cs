@@ -15,6 +15,8 @@ public interface IContentEntryRepository
 
     Task<ContentEntry?> GetBySlugAsync(ContentTypeId contentTypeId, Slug slug, CancellationToken cancellationToken = default);
 
+    Task<ContentEntry?> GetPublishedBySlugAsync(ContentTypeId contentTypeId, Slug slug, CancellationToken cancellationToken = default);
+
     Task<bool> ExistsBySlugAsync(ContentTypeId contentTypeId, Slug slug, CancellationToken cancellationToken = default);
 
     Task<PaginatedResult<ContentEntry>> ListAsync(ContentEntryListCriteria criteria, CancellationToken cancellationToken = default);

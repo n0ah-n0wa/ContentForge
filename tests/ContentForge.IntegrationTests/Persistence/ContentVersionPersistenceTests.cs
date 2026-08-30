@@ -38,10 +38,10 @@ public sealed class ContentVersionPersistenceTests(PostgreSqlPersistenceFixture 
         await scope.UnitOfWork.SaveChangesAsync();
 
         var reloaded = await scope.ContentEntries.GetByIdAsync(entry.Id);
-        reloaded!.Versions.Should().HaveCount(1);
-        reloaded.CurrentVersion.Value.Should().Be(1);
-        reloaded.Versions[0].ChangeSummary.Should().Be("Initial draft revision");
-        reloaded.Versions[0].Snapshot.Data.GetValue("title").Should().Be("Updated title");
+        reloaded!.Versions.Should().HaveCount(2);
+        reloaded.CurrentVersion.Value.Should().Be(2);
+        reloaded.Versions[1].ChangeSummary.Should().Be("Initial draft revision");
+        reloaded.Versions[1].Snapshot.Data.GetValue("title").Should().Be("Updated title");
     }
 
     [Fact]
@@ -84,7 +84,7 @@ public sealed class ContentVersionPersistenceTests(PostgreSqlPersistenceFixture 
         await scope.UnitOfWork.SaveChangesAsync();
 
         var reloaded = await scope.ContentEntries.GetByIdAsync(entry.Id);
-        reloaded!.Versions.Should().HaveCount(2);
+        reloaded!.Versions.Should().HaveCount(3);
         reloaded.Versions.Single(version => version.Id == originalVersionId).ChangeSummary.Should().Be("Version 1");
         reloaded.Versions.Should().OnlyContain(version => version.ContentEntryId == entry.Id);
     }
@@ -115,9 +115,30 @@ public sealed class ContentVersionPersistenceTests(PostgreSqlPersistenceFixture 
         await scope.ContentEntries.UpdateAsync(loaded);
         await scope.UnitOfWork.SaveChangesAsync();
 
-        var version = await scope.DbContext.ContentVersions.SingleAsync();
+        var version = await scope.DbContext.ContentVersions.SingleAsync(item => item.ChangeSummary == "Version 1");
         version.ChangeSummary = "Tampered summary";
         scope.DbContext.Entry(version).Property(v => v.ChangeSummary).IsModified = true;
+
+        var action = async () => await scope.UnitOfWork.SaveChangesAsync();
+        await action.Should().ThrowAsync<InvalidOperationException>()
+            .WithMessage("*append-only*");
+    }
+
+    [Fact]
+    public async Task ContentVersion_StandaloneDeleteIsRejectedByDbContext()
+    {
+        await using var scope = CreatePersistenceScope();
+
+        var contentType = PersistenceTestDataFactory.CreateArticleContentType();
+        await scope.ContentTypes.AddAsync(contentType);
+        await scope.UnitOfWork.SaveChangesAsync();
+
+        var entry = PersistenceTestDataFactory.CreateDraftEntry(contentType.Id);
+        await scope.ContentEntries.AddAsync(entry);
+        await scope.UnitOfWork.SaveChangesAsync();
+
+        var version = await scope.DbContext.ContentVersions.FirstAsync();
+        scope.DbContext.ContentVersions.Remove(version);
 
         var action = async () => await scope.UnitOfWork.SaveChangesAsync();
         await action.Should().ThrowAsync<InvalidOperationException>()

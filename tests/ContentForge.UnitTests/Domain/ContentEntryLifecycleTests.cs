@@ -11,7 +11,7 @@ public sealed class ContentEntryLifecycleTests
     {
         var contentType = DomainTestData.CreateArticleType();
         var entry = DomainTestData.CreateDraftEntry(contentType);
-        entry.SubmitForReview(DomainTestData.User1, entry.ConcurrencyToken, DomainTestData.Timestamp);
+        entry.SubmitForReview(contentType, DomainTestData.User1, entry.ConcurrencyToken, DomainTestData.Timestamp);
 
         entry.WithdrawFromReview(DomainTestData.User1, entry.ConcurrencyToken, DomainTestData.Timestamp.AddMinutes(1));
 
@@ -60,6 +60,7 @@ public sealed class ContentEntryLifecycleTests
             "Foreign version");
 
         var action = () => entry.RestoreVersion(
+            contentType,
             foreignVersion,
             DomainTestData.User1,
             entry.ConcurrencyToken,
@@ -74,7 +75,7 @@ public sealed class ContentEntryLifecycleTests
     {
         var contentType = DomainTestData.CreateArticleType();
         var entry = DomainTestData.CreateDraftEntry(contentType);
-        entry.SubmitForReview(DomainTestData.User1, entry.ConcurrencyToken, DomainTestData.Timestamp);
+        entry.SubmitForReview(contentType, DomainTestData.User1, entry.ConcurrencyToken, DomainTestData.Timestamp);
         entry.Publish(contentType, DomainTestData.User1, entry.ConcurrencyToken, "Publish", DomainTestData.Timestamp.AddMinutes(1));
 
         var publishedTitle = entry.PublishedSnapshot!.Data.GetValue("title");
@@ -90,6 +91,48 @@ public sealed class ContentEntryLifecycleTests
 
         entry.PublishedSnapshot!.Data.GetValue("title").Should().Be(publishedTitle);
         entry.DraftData.GetValue("title").Should().Be("Draft-only title");
+        entry.HasPublishedRepresentation.Should().BeTrue();
+    }
+
+    [Fact]
+    public void Archive_FromPublished_ClearsPublicRepresentationAndKeepsVersions()
+    {
+        var contentType = DomainTestData.CreateArticleType();
+        var entry = DomainTestData.CreateDraftEntry(contentType);
+        entry.SubmitForReview(contentType, DomainTestData.User1, entry.ConcurrencyToken, DomainTestData.Timestamp);
+        entry.Publish(contentType, DomainTestData.User1, entry.ConcurrencyToken, "Publish", DomainTestData.Timestamp.AddMinutes(1));
+        var versionCount = entry.Versions.Count;
+
+        entry.Archive(
+            DomainTestData.User1,
+            entry.ConcurrencyToken,
+            "Archive",
+            DomainTestData.Timestamp.AddMinutes(2));
+
+        entry.Status.Should().Be(ContentStatus.Archived);
+        entry.HasPublishedRepresentation.Should().BeFalse();
+        entry.PublishedSnapshot.Should().BeNull();
+        entry.PublishedAt.Should().BeNull();
+        entry.PublishedBy.Should().BeNull();
+        entry.Versions.Should().HaveCount(versionCount + 1);
+    }
+
+    [Fact]
+    public void Publish_WhenContentTypeIsInactive_Throws()
+    {
+        var contentType = DomainTestData.CreateArticleType();
+        var entry = DomainTestData.CreateDraftEntry(contentType);
+        entry.SubmitForReview(contentType, DomainTestData.User1, entry.ConcurrencyToken, DomainTestData.Timestamp);
+        contentType.Deactivate(DomainTestData.User1, DomainTestData.Timestamp.AddMinutes(1));
+
+        var action = () => entry.Publish(
+            contentType,
+            DomainTestData.User1,
+            entry.ConcurrencyToken,
+            "Publish",
+            DomainTestData.Timestamp.AddMinutes(2));
+
+        action.Should().Throw<InvalidOperationDomainException>();
     }
 }
 

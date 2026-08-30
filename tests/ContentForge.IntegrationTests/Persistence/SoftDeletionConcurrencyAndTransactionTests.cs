@@ -22,7 +22,7 @@ public sealed class SoftDeletionPersistenceTests(PostgreSqlPersistenceFixture fi
         await scope.UnitOfWork.SaveChangesAsync();
 
         var loaded = await scope.ContentEntries.GetByIdAsync(entry.Id);
-        loaded!.SoftDelete(PersistenceTestConstants.ActorId, PersistenceTestConstants.BaseTimestamp.AddMinutes(1));
+        loaded!.SoftDelete(PersistenceTestConstants.ActorId, loaded.ConcurrencyToken, PersistenceTestConstants.BaseTimestamp.AddMinutes(1));
         await scope.ContentEntries.UpdateAsync(loaded);
         await scope.UnitOfWork.SaveChangesAsync();
 
@@ -51,7 +51,7 @@ public sealed class SoftDeletionPersistenceTests(PostgreSqlPersistenceFixture fi
         await scope.UnitOfWork.SaveChangesAsync();
 
         var loaded = await scope.ContentEntries.GetByIdAsync(deletedEntry.Id);
-        loaded!.SoftDelete(PersistenceTestConstants.ActorId, PersistenceTestConstants.BaseTimestamp.AddMinutes(1));
+        loaded!.SoftDelete(PersistenceTestConstants.ActorId, loaded.ConcurrencyToken, PersistenceTestConstants.BaseTimestamp.AddMinutes(1));
         await scope.ContentEntries.UpdateAsync(loaded);
         await scope.UnitOfWork.SaveChangesAsync();
 
@@ -141,6 +141,76 @@ public sealed class ConcurrencyPersistenceTests(PostgreSqlPersistenceFixture fix
         await using var verifyScope = CreatePersistenceScope();
         var persisted = (await verifyScope.ContentEntries.GetByIdAsync(entryId))!;
         persisted.DraftData.GetValue("title").Should().Be("Client A update");
+        persisted.ConcurrencyToken.Value.Should().Be(originalToken.Value + 1);
+    }
+
+    [Fact]
+    public async Task ContentEntry_StaleInMemoryAggregate_DoesNotOverwriteCommittedUpdate()
+    {
+        var contentType = PersistenceTestDataFactory.CreateArticleContentType();
+        ContentEntryId entryId;
+        ConcurrencyToken originalToken;
+
+        await using (var seedScope = CreatePersistenceScope())
+        {
+            await seedScope.ContentTypes.AddAsync(contentType);
+            await seedScope.UnitOfWork.SaveChangesAsync();
+
+            var entry = PersistenceTestDataFactory.CreateDraftEntry(contentType.Id, slug: "lost-update-guard");
+            await seedScope.ContentEntries.AddAsync(entry);
+            await seedScope.UnitOfWork.SaveChangesAsync();
+            entryId = entry.Id;
+            originalToken = entry.ConcurrencyToken;
+        }
+
+        ContentEntry staleClient;
+        await using (var loadScope = CreatePersistenceScope())
+        {
+            staleClient = (await loadScope.ContentEntries.GetByIdAsync(entryId))!;
+        }
+
+        await using (var freshScope = CreatePersistenceScope())
+        {
+            var type = (await freshScope.ContentTypes.GetByIdAsync(contentType.Id))!;
+            var fresh = (await freshScope.ContentEntries.GetByIdAsync(entryId))!;
+            fresh.UpdateDraft(
+                type,
+                fresh.DraftData.WithValue("title", "Committed title"),
+                fresh.Slug,
+                PersistenceTestConstants.ActorId,
+                originalToken,
+                "First writer",
+                PersistenceTestConstants.BaseTimestamp.AddMinutes(1));
+            await freshScope.ContentEntries.UpdateAsync(fresh);
+            await freshScope.UnitOfWork.SaveChangesAsync();
+        }
+
+        await using (var staleScope = CreatePersistenceScope())
+        {
+            var type = (await staleScope.ContentTypes.GetByIdAsync(contentType.Id))!;
+            staleClient.UpdateDraft(
+                type,
+                staleClient.DraftData.WithValue("title", "Stale overwrite"),
+                staleClient.Slug,
+                PersistenceTestConstants.ActorId,
+                originalToken,
+                "Second writer",
+                PersistenceTestConstants.BaseTimestamp.AddMinutes(2));
+
+            var action = async () =>
+            {
+                await staleScope.ContentEntries.UpdateAsync(staleClient);
+                await staleScope.UnitOfWork.SaveChangesAsync();
+            };
+
+            await action.Should().ThrowAsync<ConcurrencyConflictException>()
+                .Where(exception => exception.ExpectedVersion == originalToken.Value
+                    && exception.ActualVersion == originalToken.Value + 1);
+        }
+
+        await using var verifyScope = CreatePersistenceScope();
+        var persisted = (await verifyScope.ContentEntries.GetByIdAsync(entryId))!;
+        persisted.DraftData.GetValue("title").Should().Be("Committed title");
         persisted.ConcurrencyToken.Value.Should().Be(originalToken.Value + 1);
     }
 

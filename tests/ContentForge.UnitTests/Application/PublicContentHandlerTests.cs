@@ -23,7 +23,7 @@ public sealed class PublicContentHandlerTests
         contentTypeRepository.GetBySlugAsync(contentType.Slug, Arg.Any<CancellationToken>()).Returns(contentType);
 
         var entryRepository = Substitute.For<IContentEntryRepository>();
-        entryRepository.GetBySlugAsync(contentType.Id, entry.Slug, Arg.Any<CancellationToken>()).Returns(entry);
+        entryRepository.GetPublishedBySlugAsync(contentType.Id, entry.Slug, Arg.Any<CancellationToken>()).Returns(entry);
 
         var handler = new GetPublicContentBySlugQueryHandler(contentTypeRepository, entryRepository);
 
@@ -39,14 +39,14 @@ public sealed class PublicContentHandlerTests
     {
         var contentType = DomainTestData.CreateArticleType();
         var entry = DomainTestData.CreateDraftEntry(contentType);
-        entry.SubmitForReview(DomainTestData.User1, entry.ConcurrencyToken, DomainTestData.Timestamp);
+        entry.SubmitForReview(contentType, DomainTestData.User1, entry.ConcurrencyToken, DomainTestData.Timestamp);
         entry.Publish(contentType, DomainTestData.User1, entry.ConcurrencyToken, "publish", DomainTestData.Timestamp);
 
         var contentTypeRepository = Substitute.For<IContentTypeRepository>();
         contentTypeRepository.GetBySlugAsync(contentType.Slug, Arg.Any<CancellationToken>()).Returns(contentType);
 
         var entryRepository = Substitute.For<IContentEntryRepository>();
-        entryRepository.GetBySlugAsync(contentType.Id, entry.Slug, Arg.Any<CancellationToken>()).Returns(entry);
+        entryRepository.GetPublishedBySlugAsync(contentType.Id, entry.Slug, Arg.Any<CancellationToken>()).Returns(entry);
 
         var handler = new GetPublicContentBySlugQueryHandler(contentTypeRepository, entryRepository);
 
@@ -65,13 +65,13 @@ public sealed class PublicContentHandlerTests
     {
         var contentType = DomainTestData.CreateArticleType();
         var entry = DomainTestData.CreateDraftEntry(contentType);
-        entry.SubmitForReview(DomainTestData.User1, entry.ConcurrencyToken, DomainTestData.Timestamp);
+        entry.SubmitForReview(contentType, DomainTestData.User1, entry.ConcurrencyToken, DomainTestData.Timestamp);
 
         var contentTypeRepository = Substitute.For<IContentTypeRepository>();
         contentTypeRepository.GetBySlugAsync(contentType.Slug, Arg.Any<CancellationToken>()).Returns(contentType);
 
         var entryRepository = Substitute.For<IContentEntryRepository>();
-        entryRepository.GetBySlugAsync(contentType.Id, entry.Slug, Arg.Any<CancellationToken>()).Returns(entry);
+        entryRepository.GetPublishedBySlugAsync(contentType.Id, entry.Slug, Arg.Any<CancellationToken>()).Returns(entry);
 
         var handler = new GetPublicContentBySlugQueryHandler(contentTypeRepository, entryRepository);
 

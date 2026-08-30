@@ -25,7 +25,7 @@ public static class ContentVersionComparer
             var oldValue = left.Data.GetValue(fieldName);
             var newValue = right.Data.GetValue(fieldName);
 
-            if (!Equals(oldValue, newValue))
+            if (!ValuesEqual(oldValue, newValue))
             {
                 changes.Add(new ContentFieldChange(fieldName, oldValue, newValue));
             }
@@ -46,4 +46,40 @@ public static class ContentVersionComparer
 
     public static IReadOnlyList<ContentFieldChange> Compare(ContentVersion left, ContentVersion right) =>
         Compare(left.Snapshot, right.Snapshot);
+
+    private static bool ValuesEqual(object? left, object? right)
+    {
+        if (Equals(left, right))
+        {
+            return true;
+        }
+
+        if (left is IReadOnlyDictionary<string, object?> leftMap && right is IReadOnlyDictionary<string, object?> rightMap)
+        {
+            if (leftMap.Count != rightMap.Count)
+            {
+                return false;
+            }
+
+            foreach (var (key, value) in leftMap)
+            {
+                if (!rightMap.TryGetValue(key, out var otherValue) || !ValuesEqual(value, otherValue))
+                {
+                    return false;
+                }
+            }
+
+            return true;
+        }
+
+        if (left is string || right is string || left is not System.Collections.IEnumerable leftItems || right is not System.Collections.IEnumerable rightItems)
+        {
+            return false;
+        }
+
+        var leftList = leftItems.Cast<object?>().ToList();
+        var rightList = rightItems.Cast<object?>().ToList();
+        return leftList.Count == rightList.Count
+            && leftList.Zip(rightList, ValuesEqual).All(static equal => equal);
+    }
 }

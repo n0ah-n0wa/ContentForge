@@ -85,7 +85,7 @@ public sealed class ContentEntry
         var timestamp = createdAt ?? DateTimeOffset.UtcNow;
         var data = initialData ?? ContentData.Empty;
 
-        return new ContentEntry(
+        var entry = new ContentEntry(
             Common.ContentEntryId.New(),
             contentTypeId,
             slug,
@@ -101,6 +101,9 @@ public sealed class ContentEntry
             publishedAt: null,
             publishedBy: null,
             isDeleted: false);
+
+        entry.RecordVersion(createdBy, "Created", timestamp);
+        return entry;
     }
 
     public static ContentEntry Restore(
@@ -155,14 +158,8 @@ public sealed class ContentEntry
     {
         EnsureNotDeleted();
         EnsureConcurrency(expectedConcurrency);
-        ArgumentNullException.ThrowIfNull(contentType);
         ArgumentException.ThrowIfNullOrWhiteSpace(changeSummary);
-
-        if (contentType.Id != ContentTypeId)
-        {
-            throw new Common.DomainValidationException(nameof(contentType), "Content type does not match this entry.");
-        }
-
+        EnsureContentTypeMatches(contentType);
         ContentDataValidator.Validate(contentType, draftData);
 
         DraftData = draftData;
@@ -180,19 +177,27 @@ public sealed class ContentEntry
         return RecordVersion(updatedBy, changeSummary, updatedAt);
     }
 
-    public void SubmitForReview(Common.UserId actorId, Common.ConcurrencyToken expectedConcurrency, DateTimeOffset timestamp)
+    public ContentVersion SubmitForReview(
+        ContentTypes.ContentType contentType,
+        Common.UserId actorId,
+        Common.ConcurrencyToken expectedConcurrency,
+        DateTimeOffset timestamp)
     {
         EnsureNotDeleted();
         EnsureConcurrency(expectedConcurrency);
+        EnsureContentTypeMatches(contentType);
+        EnsureContentTypeActive(contentType);
         ContentLifecycle.EnsureTransition(Status, ContentStatus.InReview);
+        ContentDataValidator.Validate(contentType, DraftData);
 
         Status = ContentStatus.InReview;
         UpdatedBy = actorId;
         UpdatedAt = timestamp;
         ConcurrencyToken = ConcurrencyToken.Next();
+        return RecordVersion(actorId, "Submitted for review", timestamp);
     }
 
-    public void WithdrawFromReview(
+    public ContentVersion WithdrawFromReview(
         Common.UserId actorId,
         Common.ConcurrencyToken expectedConcurrency,
         DateTimeOffset timestamp)
@@ -205,6 +210,7 @@ public sealed class ContentEntry
         UpdatedBy = actorId;
         UpdatedAt = timestamp;
         ConcurrencyToken = ConcurrencyToken.Next();
+        return RecordVersion(actorId, "Withdrawn from review", timestamp);
     }
 
     public ContentVersion Publish(
@@ -219,11 +225,8 @@ public sealed class ContentEntry
         ArgumentNullException.ThrowIfNull(contentType);
         ArgumentException.ThrowIfNullOrWhiteSpace(changeSummary);
 
-        if (contentType.Id != ContentTypeId)
-        {
-            throw new Common.DomainValidationException(nameof(contentType), "Content type does not match this entry.");
-        }
-
+        EnsureContentTypeMatches(contentType);
+        EnsureContentTypeActive(contentType);
         ContentLifecycle.EnsureTransition(Status, ContentStatus.Published);
         ContentDataValidator.Validate(contentType, DraftData);
 
@@ -251,9 +254,7 @@ public sealed class ContentEntry
         ContentLifecycle.EnsureTransition(Status, ContentStatus.Unpublished);
 
         Status = ContentStatus.Unpublished;
-        PublishedSnapshot = null;
-        PublishedAt = null;
-        PublishedBy = null;
+        ClearPublishedRepresentation();
         UpdatedBy = actorId;
         UpdatedAt = timestamp;
         ConcurrencyToken = ConcurrencyToken.Next();
@@ -277,7 +278,7 @@ public sealed class ContentEntry
         ContentLifecycle.EnsureTransition(Status, ContentStatus.Archived);
 
         Status = ContentStatus.Archived;
-        PublishedSnapshot = null;
+        ClearPublishedRepresentation();
         UpdatedBy = actorId;
         UpdatedAt = timestamp;
         ConcurrencyToken = ConcurrencyToken.Next();
@@ -306,6 +307,7 @@ public sealed class ContentEntry
     }
 
     public ContentVersion RestoreVersion(
+        ContentTypes.ContentType contentType,
         ContentVersion sourceVersion,
         Common.UserId actorId,
         Common.ConcurrencyToken expectedConcurrency,
@@ -314,8 +316,9 @@ public sealed class ContentEntry
     {
         EnsureNotDeleted();
         EnsureConcurrency(expectedConcurrency);
-        ArgumentNullException.ThrowIfNull(sourceVersion);
         ArgumentException.ThrowIfNullOrWhiteSpace(changeSummary);
+        EnsureContentTypeMatches(contentType);
+        ArgumentNullException.ThrowIfNull(sourceVersion);
 
         if (sourceVersion.ContentEntryId != Id)
         {
@@ -329,9 +332,17 @@ public sealed class ContentEntry
                 "Version must belong to the entry version history.");
         }
 
-        DraftData = sourceVersion.Snapshot.Data.Clone();
+        var restoredData = sourceVersion.Snapshot.Data.Clone();
+        ContentDataValidator.Validate(contentType, restoredData);
+
+        if (Status != ContentStatus.Draft)
+        {
+            ContentLifecycle.EnsureTransition(Status, ContentStatus.Draft);
+            Status = ContentStatus.Draft;
+        }
+
+        DraftData = restoredData;
         Slug = sourceVersion.Snapshot.Slug;
-        Status = ContentStatus.Draft;
         UpdatedBy = actorId;
         UpdatedAt = timestamp;
         ConcurrencyToken = ConcurrencyToken.Next();
@@ -339,12 +350,10 @@ public sealed class ContentEntry
         return RecordVersion(actorId, $"Restored from version {sourceVersion.VersionNumber.Value}: {changeSummary}", timestamp);
     }
 
-    public void SoftDelete(Common.UserId actorId, DateTimeOffset timestamp)
+    public void SoftDelete(Common.UserId actorId, Common.ConcurrencyToken expectedConcurrency, DateTimeOffset timestamp)
     {
-        if (IsDeleted)
-        {
-            return;
-        }
+        EnsureNotDeleted();
+        EnsureConcurrency(expectedConcurrency);
 
         IsDeleted = true;
         UpdatedBy = actorId;
@@ -432,9 +441,39 @@ public sealed class ContentEntry
             throw new Common.InvalidOperationDomainException("Published content entries must have a published snapshot.");
         }
 
-        if (PublishedSnapshot is not null && Status == ContentStatus.Published && PublishedAt is null)
+        if (PublishedSnapshot is not null && (PublishedAt is null || PublishedBy is null))
         {
             throw new Common.InvalidOperationDomainException("Published content entries must record publication metadata.");
+        }
+
+        if (PublishedSnapshot is null && (PublishedAt is not null || PublishedBy is not null))
+        {
+            throw new Common.InvalidOperationDomainException("Unpublished content must not retain publication metadata.");
+        }
+    }
+
+    private void ClearPublishedRepresentation()
+    {
+        PublishedSnapshot = null;
+        PublishedAt = null;
+        PublishedBy = null;
+    }
+
+    private void EnsureContentTypeMatches(ContentTypes.ContentType contentType)
+    {
+        ArgumentNullException.ThrowIfNull(contentType);
+
+        if (contentType.Id != ContentTypeId)
+        {
+            throw new Common.DomainValidationException(nameof(contentType), "Content type does not match this entry.");
+        }
+    }
+
+    private static void EnsureContentTypeActive(ContentTypes.ContentType contentType)
+    {
+        if (!contentType.IsActive)
+        {
+            throw new Common.InvalidOperationDomainException("Content cannot be submitted or published against an inactive content type.");
         }
     }
 }

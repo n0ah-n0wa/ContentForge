@@ -1,5 +1,6 @@
 namespace ContentForge.Application.Content.Queries;
 
+using ContentForge.Application.Abstractions;
 using ContentForge.Application.Abstractions.Persistence;
 using ContentForge.Application.Common;
 using ContentForge.Application.Common.Exceptions;
@@ -10,6 +11,7 @@ using ContentForge.Application.Mapping;
 using ContentForge.Domain.Authorization;
 using ContentForge.Domain.Common;
 using ContentForge.Domain.Content;
+using FluentValidation;
 
 public sealed record GetContentEntryQuery(Guid ContentEntryId);
 
@@ -129,7 +131,10 @@ public sealed class ListContentVersionsQueryHandler
 
         ApplicationGuard.EnsureCanReadContent(role, userId, entry.CreatedBy);
 
-        return entry.Versions.Select(ContentEntryMapper.ToVersionDto).ToList();
+        return entry.Versions
+            .OrderBy(version => version.VersionNumber.Value)
+            .Select(ContentEntryMapper.ToVersionDto)
+            .ToList();
     }
 }
 
@@ -157,7 +162,7 @@ public sealed class GetContentVersionQueryHandler
 
         ApplicationGuard.EnsureCanReadContent(role, userId, entry.CreatedBy);
 
-        var version = entry.GetVersion(VersionNumber.From(query.VersionNumber))
+        var version = ApplicationGuard.TranslateDomainException(() => entry.GetVersion(VersionNumber.From(query.VersionNumber)))
             ?? throw new NotFoundApplicationException("ContentVersion", query.VersionNumber);
 
         return ContentEntryMapper.ToVersionDto(version);
@@ -166,19 +171,36 @@ public sealed class GetContentVersionQueryHandler
 
 public sealed record CompareContentVersionsQuery(Guid ContentEntryId, int LeftVersionNumber, int RightVersionNumber);
 
+public sealed class CompareContentVersionsQueryValidator : AbstractValidator<CompareContentVersionsQuery>
+{
+    public CompareContentVersionsQueryValidator()
+    {
+        RuleFor(query => query.ContentEntryId).NotEmpty();
+        RuleFor(query => query.LeftVersionNumber).GreaterThan(0);
+        RuleFor(query => query.RightVersionNumber).GreaterThan(0);
+    }
+}
+
 public sealed class CompareContentVersionsQueryHandler
 {
     private readonly IContentEntryRepository _repository;
     private readonly ICurrentUserService _currentUser;
+    private readonly IValidator<CompareContentVersionsQuery> _validator;
 
-    public CompareContentVersionsQueryHandler(IContentEntryRepository repository, ICurrentUserService currentUser)
+    public CompareContentVersionsQueryHandler(
+        IContentEntryRepository repository,
+        ICurrentUserService currentUser,
+        IValidator<CompareContentVersionsQuery> validator)
     {
         _repository = repository;
         _currentUser = currentUser;
+        _validator = validator;
     }
 
     public async Task<ContentVersionComparisonDto> HandleAsync(CompareContentVersionsQuery query, CancellationToken cancellationToken)
     {
+        await CommandValidator.EnsureValidAsync(_validator, query, cancellationToken);
+
         var (userId, role) = ApplicationGuard.RequireAuthenticatedUser(_currentUser);
         ApplicationGuard.EnsurePermission(role, Permissions.ContentVersionRead);
 
@@ -188,9 +210,9 @@ public sealed class CompareContentVersionsQueryHandler
 
         ApplicationGuard.EnsureCanReadContent(role, userId, entry.CreatedBy);
 
-        var left = entry.GetVersion(VersionNumber.From(query.LeftVersionNumber))
+        var left = ApplicationGuard.TranslateDomainException(() => entry.GetVersion(VersionNumber.From(query.LeftVersionNumber)))
             ?? throw new NotFoundApplicationException("ContentVersion", query.LeftVersionNumber);
-        var right = entry.GetVersion(VersionNumber.From(query.RightVersionNumber))
+        var right = ApplicationGuard.TranslateDomainException(() => entry.GetVersion(VersionNumber.From(query.RightVersionNumber)))
             ?? throw new NotFoundApplicationException("ContentVersion", query.RightVersionNumber);
 
         var changes = ContentVersionComparer.Compare(left, right)

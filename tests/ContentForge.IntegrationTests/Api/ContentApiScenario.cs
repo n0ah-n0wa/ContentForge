@@ -122,6 +122,46 @@ internal sealed class ContentApiScenario
         return await PublishAsync(editorToken, submitted.Id, submitted.ConcurrencyToken);
     }
 
+    internal async Task<ContentEntryDto> UnpublishAsync(
+        string token,
+        Guid entryId,
+        uint concurrencyToken,
+        string changeSummary = "Unpublished")
+    {
+        var response = await SendAsync(
+            HttpMethod.Post,
+            $"/api/v1/content/{entryId}/unpublish",
+            token,
+            new { changeSummary, concurrencyToken });
+
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+        return (await response.Content.ReadFromJsonAsync<ContentEntryDto>())!;
+    }
+
+    internal async Task<ContentEntryDto> ArchiveAsync(
+        string token,
+        Guid entryId,
+        uint concurrencyToken,
+        string changeSummary = "Archived")
+    {
+        var response = await SendAsync(
+            HttpMethod.Post,
+            $"/api/v1/content/{entryId}/archive",
+            token,
+            new { changeSummary, concurrencyToken });
+
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+        return (await response.Content.ReadFromJsonAsync<ContentEntryDto>())!;
+    }
+
+    internal Task AddFieldAsync(
+        string adminToken,
+        Guid contentTypeId,
+        string name,
+        FieldType fieldType,
+        bool required) =>
+        AddFieldInternalAsync(adminToken, contentTypeId, name, fieldType, required);
+
     private async Task<ContentTypeDto> CreateContentTypeAsync(string adminToken, string suffix)
     {
         using var request = ApiTestHelper.CreateAuthenticatedRequest(
@@ -141,7 +181,7 @@ internal sealed class ContentApiScenario
         return (await response.Content.ReadFromJsonAsync<ContentTypeDto>())!;
     }
 
-    private async Task AddFieldAsync(
+    private async Task AddFieldInternalAsync(
         string adminToken,
         Guid contentTypeId,
         string name,

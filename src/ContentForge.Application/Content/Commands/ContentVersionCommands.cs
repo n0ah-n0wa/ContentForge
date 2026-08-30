@@ -26,11 +26,13 @@ public sealed class RestoreContentVersionCommandValidator : AbstractValidator<Re
         RuleFor(command => command.ContentEntryId).NotEmpty();
         RuleFor(command => command.VersionNumber).GreaterThan(0);
         RuleFor(command => command.ChangeSummary).NotEmpty();
+        RuleFor(command => command.Concurrency.Version).GreaterThan((uint)0);
     }
 }
 
 public sealed class RestoreContentVersionCommandHandler
 {
+    private readonly IContentTypeRepository _contentTypeRepository;
     private readonly IContentEntryRepository _repository;
     private readonly IUnitOfWork _unitOfWork;
     private readonly ICurrentUserService _currentUser;
@@ -39,6 +41,7 @@ public sealed class RestoreContentVersionCommandHandler
     private readonly IValidator<RestoreContentVersionCommand> _validator;
 
     public RestoreContentVersionCommandHandler(
+        IContentTypeRepository contentTypeRepository,
         IContentEntryRepository repository,
         IUnitOfWork unitOfWork,
         ICurrentUserService currentUser,
@@ -46,6 +49,7 @@ public sealed class RestoreContentVersionCommandHandler
         IAuditService auditService,
         IValidator<RestoreContentVersionCommand> validator)
     {
+        _contentTypeRepository = contentTypeRepository;
         _repository = repository;
         _unitOfWork = unitOfWork;
         _currentUser = currentUser;
@@ -66,27 +70,31 @@ public sealed class RestoreContentVersionCommandHandler
 
         ApplicationGuard.EnsureCanModifyContent(role, userId, entry.CreatedBy);
 
-        var sourceVersion = entry.GetVersion(VersionNumber.From(command.VersionNumber))
+        var contentType = await _contentTypeRepository.GetByIdAsync(entry.ContentTypeId, cancellationToken)
+            ?? throw new NotFoundApplicationException("ContentType", entry.ContentTypeId.Value);
+
+        var sourceVersion = ApplicationGuard.TranslateDomainException(() =>
+                entry.GetVersion(VersionNumber.From(command.VersionNumber)))
             ?? throw new NotFoundApplicationException("ContentVersion", command.VersionNumber);
 
         ApplicationGuard.TranslateDomainException(() =>
             entry.RestoreVersion(
+                contentType,
                 sourceVersion,
                 userId,
                 ApplicationGuard.ToDomainToken(command.Concurrency),
                 command.ChangeSummary,
                 _clock.UtcNow));
 
-        await _repository.UpdateAsync(entry, cancellationToken);
-        await _unitOfWork.SaveChangesAsync(cancellationToken);
-
-        await _auditService.RecordAsync(
+        await ContentMutationPersistence.PersistAsync(
+            _repository,
+            _unitOfWork,
+            _auditService,
+            entry,
             AuditAction.ContentRestored,
-            "ContentEntry",
-            entry.Id.Value.ToString(),
             userId,
-            metadata: $"restored-from-version={command.VersionNumber}",
-            cancellationToken: cancellationToken);
+            cancellationToken,
+            metadata: $"restored-from-version={command.VersionNumber}");
 
         return ContentEntryMapper.ToDto(entry);
     }

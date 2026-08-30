@@ -28,6 +28,6 @@ internal sealed class EfAuditService(AppDbContext dbContext) : IAuditService
             userAgent);
 
         dbContext.AuditLogs.Add(AuditLogMapper.ToEntity(entry));
-        return Task.CompletedTask;
+        return dbContext.SaveChangesAsync(cancellationToken);
     }
 }

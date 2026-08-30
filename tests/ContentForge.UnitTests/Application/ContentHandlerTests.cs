@@ -134,7 +134,7 @@ public sealed class ContentEntryHandlerTests
     {
         var contentType = DomainTestData.CreateArticleType();
         var entry = DomainTestData.CreateDraftEntry(contentType);
-        entry.SubmitForReview(ApplicationTestData.AuthorUserId, entry.ConcurrencyToken, ApplicationTestData.Timestamp);
+        entry.SubmitForReview(contentType, ApplicationTestData.AuthorUserId, entry.ConcurrencyToken, ApplicationTestData.Timestamp);
 
         var contentTypeRepository = Substitute.For<IContentTypeRepository>();
         contentTypeRepository.GetByIdAsync(entry.ContentTypeId, Arg.Any<CancellationToken>()).Returns(contentType);
@@ -183,12 +183,16 @@ public sealed class ContentEntryHandlerTests
             "second version",
             ApplicationTestData.Timestamp);
 
-        var versionToRestore = entry.Versions.Single(version => version.VersionNumber.Value == 1);
+        var versionToRestore = entry.Versions.Single(version => version.ChangeSummary == "first version");
+
+        var contentTypeRepository = Substitute.For<IContentTypeRepository>();
+        contentTypeRepository.GetByIdAsync(entry.ContentTypeId, Arg.Any<CancellationToken>()).Returns(contentType);
 
         var entryRepository = Substitute.For<IContentEntryRepository>();
         entryRepository.GetByIdAsync(entry.Id, Arg.Any<CancellationToken>()).Returns(entry);
 
         var handler = new RestoreContentVersionCommandHandler(
+            contentTypeRepository,
             entryRepository,
             RepositorySubstituteExtensions.CreateUnitOfWork(),
             ApplicationTestData.CreateCurrentUser(ApplicationTestData.EditorUserId, ApplicationTestData.EditorRole),

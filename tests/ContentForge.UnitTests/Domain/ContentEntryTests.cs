@@ -12,7 +12,7 @@ public sealed class ContentEntryTests
     {
         var contentType = DomainTestData.CreateArticleType();
         var entry = DomainTestData.CreateDraftEntry(contentType);
-        entry.SubmitForReview(DomainTestData.User1, entry.ConcurrencyToken, DomainTestData.Timestamp);
+        entry.SubmitForReview(contentType, DomainTestData.User1, entry.ConcurrencyToken, DomainTestData.Timestamp);
 
         var version = entry.Publish(
             contentType,
@@ -25,8 +25,9 @@ public sealed class ContentEntryTests
         entry.HasPublishedRepresentation.Should().BeTrue();
         entry.PublishedSnapshot.Should().NotBeNull();
         entry.PublishedAt.Should().NotBeNull();
-        entry.Versions.Should().ContainSingle();
-        version.VersionNumber.Should().Be(new VersionNumber(1));
+        entry.PublishedBy.Should().Be(DomainTestData.User1);
+        entry.Versions.Should().HaveCount(3);
+        version.VersionNumber.Should().Be(new VersionNumber(3));
     }
 
     [Fact]
@@ -75,7 +76,7 @@ public sealed class ContentEntryTests
         var entry = DomainTestData.CreateDraftEntry(contentType);
         var staleToken = entry.ConcurrencyToken;
 
-        entry.SubmitForReview(DomainTestData.User1, staleToken, DomainTestData.Timestamp);
+        entry.SubmitForReview(contentType, DomainTestData.User1, staleToken, DomainTestData.Timestamp);
 
         var action = () => entry.UpdateDraft(
             contentType,
@@ -106,6 +107,8 @@ public sealed class ContentEntryTests
         entry.Status.Should().Be(ContentStatus.Draft);
         entry.PublishedSnapshot.Should().BeNull();
         entry.PublishedAt.Should().BeNull();
+        entry.PublishedBy.Should().BeNull();
+        entry.HasPublishedRepresentation.Should().BeFalse();
         entry.Versions.Should().HaveCount(versionCount + 1);
     }
 
@@ -133,6 +136,7 @@ public sealed class ContentEntryTests
             DomainTestData.Timestamp.AddMinutes(1));
 
         var restoreVersion = entry.RestoreVersion(
+            contentType,
             firstVersion,
             DomainTestData.User1,
             entry.ConcurrencyToken,
@@ -142,7 +146,43 @@ public sealed class ContentEntryTests
         firstVersion.Snapshot.Data.GetValue("title").Should().Be("Hello World");
         entry.DraftData.GetValue("title").Should().Be("Hello World");
         restoreVersion.VersionNumber.Value.Should().BeGreaterThan(firstVersion.VersionNumber.Value);
-        entry.Versions.Should().HaveCount(3);
+        entry.Versions.Should().HaveCount(4);
+    }
+
+    [Fact]
+    public void Create_RecordsInitialVersionWithCompleteSnapshot()
+    {
+        var contentType = DomainTestData.CreateArticleType();
+        var entry = DomainTestData.CreateDraftEntry(contentType);
+
+        entry.Versions.Should().ContainSingle();
+        entry.CurrentVersion.Should().Be(VersionNumber.Initial);
+        var version = entry.Versions[0];
+        version.VersionNumber.Should().Be(VersionNumber.Initial);
+        version.Snapshot.Slug.Should().Be(entry.Slug);
+        version.Snapshot.Status.Should().Be(ContentStatus.Draft);
+        version.Snapshot.Data.GetValue("title").Should().Be("Hello World");
+        version.ChangeSummary.Should().Be("Created");
+    }
+
+    [Fact]
+    public void Mutations_RecordSequentialVersionNumbers()
+    {
+        var contentType = DomainTestData.CreateArticleType();
+        var entry = DomainTestData.CreateDraftEntry(contentType);
+
+        entry.UpdateDraft(
+            contentType,
+            DomainTestData.CreateValidArticleData().WithValue("title", "Second"),
+            entry.Slug,
+            DomainTestData.User1,
+            entry.ConcurrencyToken,
+            "Edit",
+            DomainTestData.Timestamp.AddMinutes(1));
+        entry.SubmitForReview(contentType, DomainTestData.User1, entry.ConcurrencyToken, DomainTestData.Timestamp.AddMinutes(2));
+        entry.Publish(contentType, DomainTestData.User1, entry.ConcurrencyToken, "Publish", DomainTestData.Timestamp.AddMinutes(3));
+
+        entry.Versions.Select(version => version.VersionNumber.Value).Should().Equal(1, 2, 3, 4);
     }
 
     [Fact]
@@ -151,9 +191,9 @@ public sealed class ContentEntryTests
         var contentType = DomainTestData.CreateArticleType();
         var entry = DomainTestData.CreateDraftEntry(contentType);
 
-        entry.SoftDelete(DomainTestData.User1, DomainTestData.Timestamp);
+        entry.SoftDelete(DomainTestData.User1, entry.ConcurrencyToken, DomainTestData.Timestamp);
 
-        var action = () => entry.SubmitForReview(DomainTestData.User1, entry.ConcurrencyToken, DomainTestData.Timestamp);
+        var action = () => entry.SubmitForReview(contentType, DomainTestData.User1, entry.ConcurrencyToken, DomainTestData.Timestamp);
 
         action.Should().Throw<InvalidOperationDomainException>();
     }
@@ -161,7 +201,7 @@ public sealed class ContentEntryTests
     private static ContentEntry PublishEntry(ContentType contentType)
     {
         var entry = DomainTestData.CreateDraftEntry(contentType);
-        entry.SubmitForReview(DomainTestData.User1, entry.ConcurrencyToken, DomainTestData.Timestamp);
+        entry.SubmitForReview(contentType, DomainTestData.User1, entry.ConcurrencyToken, DomainTestData.Timestamp);
         entry.Publish(contentType, DomainTestData.User1, entry.ConcurrencyToken, "Publish", DomainTestData.Timestamp.AddMinutes(1));
         return entry;
     }

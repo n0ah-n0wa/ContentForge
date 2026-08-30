@@ -7,13 +7,18 @@ public sealed class ContentLifecycleTests
 {
     [Theory]
     [InlineData(ContentStatus.Draft, ContentStatus.InReview, true)]
+    [InlineData(ContentStatus.InReview, ContentStatus.Draft, true)]
     [InlineData(ContentStatus.InReview, ContentStatus.Published, true)]
+    [InlineData(ContentStatus.Published, ContentStatus.Draft, true)]
     [InlineData(ContentStatus.Published, ContentStatus.Archived, true)]
     [InlineData(ContentStatus.Published, ContentStatus.Unpublished, true)]
     [InlineData(ContentStatus.Unpublished, ContentStatus.Draft, true)]
     [InlineData(ContentStatus.Archived, ContentStatus.Draft, true)]
     [InlineData(ContentStatus.Draft, ContentStatus.Published, false)]
+    [InlineData(ContentStatus.Draft, ContentStatus.Archived, false)]
+    [InlineData(ContentStatus.InReview, ContentStatus.Archived, false)]
     [InlineData(ContentStatus.Archived, ContentStatus.Published, false)]
+    [InlineData(ContentStatus.Archived, ContentStatus.InReview, false)]
     public void CanTransition_MatchesSpecification(ContentStatus current, ContentStatus target, bool expected)
     {
         ContentLifecycle.CanTransition(current, target).Should().Be(expected);

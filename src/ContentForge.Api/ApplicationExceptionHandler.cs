@@ -46,6 +46,21 @@ internal sealed class ApplicationExceptionHandler : IExceptionHandler
         ApplicationException applicationException,
         CancellationToken cancellationToken)
     {
+        if (applicationException is ConcurrencyConflictApplicationException concurrencyException)
+        {
+            var conflictProblem = ProblemDetailsFactory.Create(
+                httpContext,
+                StatusCodes.Status409Conflict,
+                "Conflict",
+                concurrencyException.Message,
+                ApiConstants.ErrorTypes.Conflict);
+            conflictProblem.Extensions["expectedVersion"] = concurrencyException.Conflict.ExpectedVersion;
+            conflictProblem.Extensions["actualVersion"] = concurrencyException.Conflict.ActualVersion;
+            conflictProblem.Extensions["updatedAt"] = concurrencyException.Conflict.UpdatedAt.ToString("O");
+            await ProblemDetailsFactory.WriteAsync(httpContext, conflictProblem, cancellationToken).ConfigureAwait(false);
+            return;
+        }
+
         if (applicationException is ApplicationValidationException validationException)
         {
             httpContext.Response.StatusCode = StatusCodes.Status422UnprocessableEntity;
@@ -80,11 +95,6 @@ internal sealed class ApplicationExceptionHandler : IExceptionHandler
                 "Not Found",
                 applicationException.Message,
                 ApiConstants.ErrorTypes.NotFound),
-            ConcurrencyConflictApplicationException => (
-                StatusCodes.Status409Conflict,
-                "Conflict",
-                applicationException.Message,
-                ApiConstants.ErrorTypes.Conflict),
             UnsupportedQueryParameterException => (
                 StatusCodes.Status400BadRequest,
                 "Bad Request",

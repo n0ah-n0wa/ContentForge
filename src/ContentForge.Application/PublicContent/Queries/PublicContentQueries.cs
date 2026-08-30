@@ -51,12 +51,13 @@ public sealed class ListPublicContentQueryHandler
             query.Criteria.Pagination,
             query.Criteria.Sort,
             contentType.Id,
-            ContentStatus.Published,
+            Status: null,
             IncludeDeleted: false,
             Search: query.Criteria.Search,
             PublishedFrom: query.Criteria.PublishedFrom,
             PublishedTo: query.Criteria.PublishedTo,
-            ExactSlug: exactSlug);
+            ExactSlug: exactSlug,
+            PublishedRepresentationOnly: true);
 
         var result = await _contentEntryRepository.ListAsync(listCriteria, cancellationToken);
         var items = result.Items
@@ -90,7 +91,7 @@ public sealed class GetPublicContentBySlugQueryHandler
             query.ContentTypeSlug,
             cancellationToken);
 
-        var entry = await _contentEntryRepository.GetBySlugAsync(
+        var entry = await _contentEntryRepository.GetPublishedBySlugAsync(
                 contentType.Id,
                 ApplicationGuard.CreateSlug(query.Slug),
                 cancellationToken)
@@ -108,9 +109,7 @@ public sealed class GetPublicContentBySlugQueryHandler
 internal static class PublicContentVisibility
 {
     internal static bool IsPubliclyVisible(ContentEntry entry) =>
-        !entry.IsDeleted
-        && entry.Status == ContentStatus.Published
-        && entry.HasPublishedRepresentation;
+        !entry.IsDeleted && entry.HasPublishedRepresentation;
 
     internal static async Task<ContentType> RequireActiveContentTypeAsync(
         IContentTypeRepository contentTypeRepository,

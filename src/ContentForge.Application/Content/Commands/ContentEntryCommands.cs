@@ -171,15 +171,14 @@ public sealed class UpdateContentEntryCommandHandler
                 command.ChangeSummary,
                 _clock.UtcNow));
 
-        await _contentEntryRepository.UpdateAsync(entry, cancellationToken);
-        await _unitOfWork.SaveChangesAsync(cancellationToken);
-
-        await _auditService.RecordAsync(
+        await ContentMutationPersistence.PersistAsync(
+            _contentEntryRepository,
+            _unitOfWork,
+            _auditService,
+            entry,
             AuditAction.ContentUpdated,
-            "ContentEntry",
-            entry.Id.Value.ToString(),
             userId,
-            cancellationToken: cancellationToken);
+            cancellationToken);
 
         return ContentEntryMapper.ToDto(entry);
     }
@@ -233,25 +232,16 @@ public sealed class DeleteContentEntryCommandHandler
 
         ApplicationGuard.EnsureCanModifyContent(role, userId, entry.CreatedBy);
 
-        if (entry.ConcurrencyToken != ApplicationGuard.ToDomainToken(command.Concurrency))
-        {
-            throw new ConcurrencyConflictApplicationException(
-                new Common.Concurrency.ConcurrencyConflictResult(
-                    ApplicationGuard.ToDomainToken(command.Concurrency).Value,
-                    entry.ConcurrencyToken.Value,
-                    entry.UpdatedAt));
-        }
+        ApplicationGuard.TranslateDomainException(() =>
+            entry.SoftDelete(userId, ApplicationGuard.ToDomainToken(command.Concurrency), _clock.UtcNow));
 
-        entry.SoftDelete(userId, _clock.UtcNow);
-
-        await _repository.UpdateAsync(entry, cancellationToken);
-        await _unitOfWork.SaveChangesAsync(cancellationToken);
-
-        await _auditService.RecordAsync(
+        await ContentMutationPersistence.PersistAsync(
+            _repository,
+            _unitOfWork,
+            _auditService,
+            entry,
             AuditAction.ContentDeleted,
-            "ContentEntry",
-            entry.Id.Value.ToString(),
             userId,
-            cancellationToken: cancellationToken);
+            cancellationToken);
     }
 }

@@ -30,7 +30,28 @@ public sealed class ContentData : IEquatable<ContentData>
         return new ContentData(copy);
     }
 
-    public ContentData Clone() => FromDictionary(_values);
+    public ContentData Clone() =>
+    FromDictionary(_values.ToDictionary(static pair => pair.Key, static pair => CloneValue(pair.Value), StringComparer.Ordinal));
+
+    private static object? CloneValue(object? value)
+    {
+        switch (value)
+        {
+            case null:
+                return null;
+            case string:
+                return value;
+            case IReadOnlyDictionary<string, object?> dictionary:
+                return dictionary.ToDictionary(
+                    static pair => pair.Key,
+                    static pair => CloneValue(pair.Value),
+                    StringComparer.Ordinal);
+            case System.Collections.IEnumerable sequence:
+                return sequence.Cast<object?>().Select(CloneValue).ToList();
+            default:
+                return value;
+        }
+    }
 
     public object? GetValue(string fieldName) =>
         _values.TryGetValue(fieldName, out var value) ? value : null;

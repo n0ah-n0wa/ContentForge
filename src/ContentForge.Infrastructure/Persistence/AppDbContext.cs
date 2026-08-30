@@ -79,9 +79,15 @@ public sealed class AppDbContext : IdentityUserContext<
 
     private void EnforceVersionImmutability()
     {
+        var deletedEntryIds = ChangeTracker.Entries<ContentEntryEntity>()
+            .Where(entry => entry.State == EntityState.Deleted)
+            .Select(entry => entry.Entity.Id)
+            .ToHashSet();
+
         foreach (var entry in ChangeTracker.Entries<ContentVersionEntity>())
         {
-            if (entry.State is EntityState.Modified or EntityState.Deleted)
+            if (entry.State == EntityState.Modified
+                || (entry.State == EntityState.Deleted && !deletedEntryIds.Contains(entry.Entity.ContentEntryId)))
             {
                 throw new InvalidOperationException("Content versions are append-only and cannot be modified or deleted.");
             }

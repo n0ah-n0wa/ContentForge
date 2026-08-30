@@ -76,4 +76,22 @@ public sealed class ContentVersionComparerTests
         changes.Should().Contain(change => change.FieldName == "title");
         changes.Should().Contain(change => change.FieldName == "_status");
     }
+
+    [Fact]
+    public void Compare_DetectsCollectionChanges()
+    {
+        var left = new ContentSnapshot(
+            Slug.Create("slug"),
+            ContentData.FromDictionary(new Dictionary<string, object?> { ["tags"] = new List<object?> { "a", "b" } }),
+            ContentStatus.Draft);
+
+        var right = new ContentSnapshot(
+            Slug.Create("slug"),
+            ContentData.FromDictionary(new Dictionary<string, object?> { ["tags"] = new List<object?> { "a", "c" } }),
+            ContentStatus.Draft);
+
+        var changes = ContentVersionComparer.Compare(left, right);
+
+        changes.Should().ContainSingle(change => change.FieldName == "tags");
+    }
 }

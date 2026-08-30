@@ -66,6 +66,14 @@ public sealed class ConcurrencyTokenTests
     }
 
     [Fact]
+    public void Previous_ReturnsPriorValue()
+    {
+        var token = ConcurrencyToken.Initial.Next();
+
+        token.Previous().Should().Be(ConcurrencyToken.Initial);
+    }
+
+    [Fact]
     public void Create_RejectsZero()
     {
         var action = () => new ConcurrencyToken(0);

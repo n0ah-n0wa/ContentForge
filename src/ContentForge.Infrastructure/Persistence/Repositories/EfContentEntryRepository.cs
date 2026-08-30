@@ -41,6 +41,33 @@ internal sealed class EfContentEntryRepository(AppDbContext dbContext) : IConten
         return entity is null ? null : ContentEntryMapper.ToDomain(entity);
     }
 
+    public async Task<ContentEntry?> GetPublishedBySlugAsync(
+        ContentTypeId contentTypeId,
+        Slug slug,
+        CancellationToken cancellationToken = default)
+    {
+        var slugValue = slug.Value;
+        var snapshotMarker = $"\"slug\":\"{slugValue}\"";
+
+        var matches = await dbContext.ContentEntries
+            .AsNoTracking()
+            .Include(entry => entry.Versions)
+            .Where(entry =>
+                entry.ContentTypeId == contentTypeId.Value
+                && !entry.IsDeleted
+                && entry.PublishedSnapshotJson != null
+                && entry.PublishedAt != null
+                && (entry.Slug == slugValue || entry.PublishedSnapshotJson.Contains(snapshotMarker)))
+            .ToListAsync(cancellationToken)
+            .ConfigureAwait(false);
+
+        return matches
+            .Select(ContentEntryMapper.ToDomain)
+            .SingleOrDefault(entry =>
+                entry.HasPublishedRepresentation
+                && entry.PublishedSnapshot!.Slug.Value == slugValue);
+    }
+
     public Task<bool> ExistsBySlugAsync(
         ContentTypeId contentTypeId,
         Slug slug,
@@ -75,6 +102,11 @@ internal sealed class EfContentEntryRepository(AppDbContext dbContext) : IConten
             query = query.Where(entry => entry.Status == statusValue);
         }
 
+        if (criteria.PublishedRepresentationOnly)
+        {
+            query = query.Where(entry => entry.PublishedSnapshotJson != null && entry.PublishedAt != null);
+        }
+
         if (criteria.AuthorId is { } authorId)
         {
             query = query.Where(entry => entry.CreatedBy == authorId.Value);
@@ -88,7 +120,18 @@ internal sealed class EfContentEntryRepository(AppDbContext dbContext) : IConten
 
         if (!string.IsNullOrWhiteSpace(criteria.ExactSlug))
         {
-            query = query.Where(entry => entry.Slug == criteria.ExactSlug);
+            var exactSlug = criteria.ExactSlug;
+            if (criteria.PublishedRepresentationOnly)
+            {
+                var snapshotMarker = $"\"slug\":\"{exactSlug}\"";
+                query = query.Where(entry =>
+                    entry.Slug == exactSlug
+                    || (entry.PublishedSnapshotJson != null && entry.PublishedSnapshotJson.Contains(snapshotMarker)));
+            }
+            else
+            {
+                query = query.Where(entry => entry.Slug == exactSlug);
+            }
         }
 
         if (criteria.PublishedFrom is { } publishedFrom)
@@ -127,7 +170,16 @@ internal sealed class EfContentEntryRepository(AppDbContext dbContext) : IConten
             .ConfigureAwait(false)
             ?? throw new InvalidOperationException($"Content entry '{entry.Id}' was not found.");
 
+        var persistedToken = checked((uint)entity.ConcurrencyToken);
+        var expectedOriginal = entry.ConcurrencyToken.Previous().Value;
+        if (persistedToken != expectedOriginal)
+        {
+            throw new ConcurrencyConflictException(expectedOriginal, persistedToken);
+        }
+
+        var originalToken = entity.ConcurrencyToken;
         ContentEntryMapper.UpdateEntity(entity, entry);
+        dbContext.Entry(entity).Property(contentEntry => contentEntry.ConcurrencyToken).OriginalValue = originalToken;
         await MarkNewVersionsAsAddedAsync(entity, cancellationToken);
     }
 

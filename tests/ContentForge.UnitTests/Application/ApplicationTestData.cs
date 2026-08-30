@@ -42,8 +42,13 @@ internal static class ApplicationTestData
 
 internal static class RepositorySubstituteExtensions
 {
-    internal static IUnitOfWork CreateUnitOfWork() =>
-        Substitute.For<IUnitOfWork>();
+    internal static IUnitOfWork CreateUnitOfWork()
+    {
+        var unitOfWork = Substitute.For<IUnitOfWork>();
+        unitOfWork.ExecuteInTransactionAsync(Arg.Any<Func<CancellationToken, Task>>(), Arg.Any<CancellationToken>())
+            .Returns(call => call.Arg<Func<CancellationToken, Task>>()(call.Arg<CancellationToken>()));
+        return unitOfWork;
+    }
 
     internal static IAuditService CreateAuditService() =>
         Substitute.For<IAuditService>();

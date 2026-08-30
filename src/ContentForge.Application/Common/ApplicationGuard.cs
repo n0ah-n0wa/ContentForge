@@ -1,5 +1,6 @@
 namespace ContentForge.Application.Common;
 
+using ContentForge.Application.Abstractions;
 using ContentForge.Application.Common.Concurrency;
 using ContentForge.Application.Common.Exceptions;
 using ContentForge.Domain.Authorization;
@@ -94,8 +95,7 @@ public static class ApplicationGuard
         }
         catch (ConcurrencyConflictException exception)
         {
-            throw new ConcurrencyConflictApplicationException(
-                new ConcurrencyConflictResult(exception.ExpectedVersion, exception.ActualVersion, DateTimeOffset.UtcNow));
+            throw ToConcurrencyConflict(exception);
         }
         catch (DomainValidationException exception)
         {
@@ -115,8 +115,7 @@ public static class ApplicationGuard
         }
         catch (ConcurrencyConflictException exception)
         {
-            throw new ConcurrencyConflictApplicationException(
-                new ConcurrencyConflictResult(exception.ExpectedVersion, exception.ActualVersion, DateTimeOffset.UtcNow));
+            throw ToConcurrencyConflict(exception);
         }
         catch (DomainValidationException exception)
         {
@@ -127,4 +126,19 @@ public static class ApplicationGuard
             throw new ApplicationValidationException(string.Empty, exception.Message);
         }
     }
+
+    public static async Task SaveChangesAsync(IUnitOfWork unitOfWork, CancellationToken cancellationToken)
+    {
+        try
+        {
+            await unitOfWork.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
+        }
+        catch (ConcurrencyConflictException exception)
+        {
+            throw ToConcurrencyConflict(exception);
+        }
+    }
+
+    public static ConcurrencyConflictApplicationException ToConcurrencyConflict(ConcurrencyConflictException exception) =>
+        new(new ConcurrencyConflictResult(exception.ExpectedVersion, exception.ActualVersion, DateTimeOffset.UtcNow));
 }

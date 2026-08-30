@@ -20,4 +20,14 @@ public readonly record struct ConcurrencyToken
     public static ConcurrencyToken Initial { get; } = new(1);
 
     public ConcurrencyToken Next() => new(Value + 1);
+
+    public ConcurrencyToken Previous()
+    {
+        if (Value <= 1)
+        {
+            throw new DomainValidationException(nameof(Value), "Concurrency token cannot be decremented below 1.");
+        }
+
+        return new ConcurrencyToken(Value - 1);
+    }
 }
