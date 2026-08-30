@@ -6,15 +6,15 @@ using FluentAssertions;
 
 public sealed class MediaContentInspectorTests
 {
-    private static readonly byte[] JpegSignature = [0xFF, 0xD8, 0xFF, 0xD9];
+    private static readonly byte[] _jpegSignature = [0xFF, 0xD8, 0xFF, 0xD9];
 
-    private static readonly byte[] PngSignature =
+    private static readonly byte[] _pngSignature =
         [137, 80, 78, 71, 13, 10, 26, 10, 0, 0, 0, 0, 0, 0, 0, 0];
 
     [Fact]
     public void EnsureMatchesDeclaredType_AcceptsValidJpegContent()
     {
-        var action = () => MediaContentInspector.EnsureMatchesDeclaredType(JpegSignature, ".jpg");
+        var action = () => MediaContentInspector.EnsureMatchesDeclaredType(_jpegSignature, ".jpg");
 
         action.Should().NotThrow();
     }
@@ -69,7 +69,7 @@ public sealed class MediaContentInspectorTests
     [Fact]
     public void EnsureMatchesDeclaredType_AcceptsValidPngContent()
     {
-        var action = () => MediaContentInspector.EnsureMatchesDeclaredType(PngSignature, ".png");
+        var action = () => MediaContentInspector.EnsureMatchesDeclaredType(_pngSignature, ".png");
 
         action.Should().NotThrow();
     }
