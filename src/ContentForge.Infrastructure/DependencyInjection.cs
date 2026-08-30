@@ -58,6 +58,7 @@ public static class DependencyInjection
         services.AddScoped<IMediaRepository, EfMediaRepository>();
         services.AddScoped<IAuditLogRepository, EfAuditLogRepository>();
         services.AddScoped<IUserRepository, EfUserRepository>();
+        services.AddScoped<IDashboardReadService, EfDashboardReadService>();
 
         return services;
     }

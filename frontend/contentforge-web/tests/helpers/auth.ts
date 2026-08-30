@@ -18,4 +18,13 @@ export const adminPermissions = [
   'audit.read',
   'content.create',
   'content.update',
+  'content.delete',
+  'content.publish',
+  'content.archive',
+  'content.restore',
+  'content.review',
+  'content.version.restore',
+  'contentType.create',
+  'contentType.update',
+  'contentType.delete',
 ];

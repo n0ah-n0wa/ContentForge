@@ -5,6 +5,7 @@ using ContentForge.Application.Content.Commands;
 using ContentForge.Application.Content.Queries;
 using ContentForge.Application.ContentTypes.Commands;
 using ContentForge.Application.ContentTypes.Queries;
+using ContentForge.Application.Dashboard.Queries;
 using ContentForge.Application.Media.Commands;
 using ContentForge.Application.Media.Queries;
 using ContentForge.Application.PublicContent.Queries;
@@ -86,6 +87,8 @@ public static class DependencyInjection
 
         services.AddScoped<GetAuditLogQueryHandler>();
         services.AddScoped<ListAuditLogsQueryHandler>();
+
+        services.AddScoped<GetDashboardQueryHandler>();
 
         services.AddScoped<ListPublicContentQueryHandler>();
         services.AddScoped<GetPublicContentBySlugQueryHandler>();
