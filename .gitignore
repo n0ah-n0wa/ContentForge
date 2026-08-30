@@ -52,3 +52,7 @@ coverage/
 .env
 .env.local
 .env.*.local
+
+## Local media storage
+**/App_Data/media/
+**/App_Data/media-test/

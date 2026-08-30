@@ -225,7 +225,7 @@ public static class ContentDataValidator
 
     private static void ValidateGuid(ContentTypes.ContentTypeField field, object? value, List<ContentValidationError> errors)
     {
-        if (value is not Guid guidValue || guidValue == Guid.Empty)
+        if (!TryGetGuid(value, out var guidValue) || guidValue == Guid.Empty)
         {
             errors.Add(new ContentValidationError(field.Name.Value, "Expected a non-empty identifier."));
         }
@@ -233,15 +233,51 @@ public static class ContentDataValidator
 
     private static void ValidateGuidCollection(ContentTypes.ContentTypeField field, object? value, List<ContentValidationError> errors)
     {
-        if (value is not IEnumerable<Guid> values)
+        if (value is IEnumerable<Guid> guidValues)
         {
-            errors.Add(new ContentValidationError(field.Name.Value, "Expected a collection of identifiers."));
+            if (guidValues.Any(id => id == Guid.Empty))
+            {
+                errors.Add(new ContentValidationError(field.Name.Value, "Collections must not contain empty identifiers."));
+            }
+
             return;
         }
 
-        if (values.Any(id => id == Guid.Empty))
+        if (value is IEnumerable<object?> values)
         {
-            errors.Add(new ContentValidationError(field.Name.Value, "Collections must not contain empty identifiers."));
+            var hasInvalid = false;
+            foreach (var item in values)
+            {
+                if (!TryGetGuid(item, out var guid) || guid == Guid.Empty)
+                {
+                    hasInvalid = true;
+                }
+            }
+
+            if (hasInvalid)
+            {
+                errors.Add(new ContentValidationError(field.Name.Value, "Collections must not contain empty identifiers."));
+            }
+
+            return;
+        }
+
+        errors.Add(new ContentValidationError(field.Name.Value, "Expected a collection of identifiers."));
+    }
+
+    private static bool TryGetGuid(object? value, out Guid guid)
+    {
+        switch (value)
+        {
+            case Guid guidValue:
+                guid = guidValue;
+                return true;
+            case string text when Guid.TryParse(text, out var parsed):
+                guid = parsed;
+                return true;
+            default:
+                guid = default;
+                return false;
         }
     }
 

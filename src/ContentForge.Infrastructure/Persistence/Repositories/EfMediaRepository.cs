@@ -70,6 +70,26 @@ internal sealed class EfMediaRepository(AppDbContext dbContext) : IMediaReposito
         MediaAssetMapper.UpdateEntity(entity, asset);
     }
 
+    public async Task<IReadOnlyList<Guid>> FindUnavailableIdsAsync(
+        IReadOnlyCollection<Guid> mediaIds,
+        CancellationToken cancellationToken = default)
+    {
+        if (mediaIds.Count == 0)
+        {
+            return [];
+        }
+
+        var requested = mediaIds.Distinct().ToArray();
+        var available = await dbContext.MediaAssets
+            .AsNoTracking()
+            .Where(media => requested.Contains(media.Id) && !media.IsDeleted)
+            .Select(media => media.Id)
+            .ToListAsync(cancellationToken)
+            .ConfigureAwait(false);
+
+        return requested.Except(available).ToList();
+    }
+
     private static IQueryable<MediaAssetEntity> ApplySort(IQueryable<MediaAssetEntity> query, SortRequest sort) =>
         sort.SortBy switch
         {

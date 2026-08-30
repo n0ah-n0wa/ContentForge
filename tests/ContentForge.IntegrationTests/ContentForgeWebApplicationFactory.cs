@@ -7,8 +7,15 @@ namespace ContentForge.IntegrationTests;
 
 public sealed class ContentForgeWebApplicationFactory : WebApplicationFactory<Program>
 {
+    public string MediaRoot { get; } = Path.Combine(
+        Path.GetTempPath(),
+        "contentforge-media-tests",
+        Guid.NewGuid().ToString("N"));
+
     protected override void ConfigureWebHost(IWebHostBuilder builder)
     {
+        Directory.CreateDirectory(MediaRoot);
+
         builder.UseEnvironment("Testing");
         builder.ConfigureAppConfiguration((_, configurationBuilder) =>
         {
@@ -24,7 +31,26 @@ public sealed class ContentForgeWebApplicationFactory : WebApplicationFactory<Pr
                 ["Jwt:SigningKey"] = "TEST_ONLY_SIGNING_KEY_32_CHARS_MINIMUM_VALUE",
                 ["Jwt:AccessTokenLifetimeMinutes"] = "15",
                 ["Jwt:RefreshTokenLifetimeDays"] = "7",
+                ["Media:Provider"] = "Local",
+                ["Media:LocalRoot"] = MediaRoot,
+                ["Media:PublicBaseUrl"] = "/media-files",
             });
         });
+    }
+
+    protected override void Dispose(bool disposing)
+    {
+        base.Dispose(disposing);
+        if (disposing && Directory.Exists(MediaRoot))
+        {
+            try
+            {
+                Directory.Delete(MediaRoot, recursive: true);
+            }
+            catch (IOException)
+            {
+                // Best-effort cleanup for temporary media files.
+            }
+        }
     }
 }

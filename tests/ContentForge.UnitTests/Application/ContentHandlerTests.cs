@@ -78,9 +78,14 @@ public sealed class ContentEntryHandlerTests
         var entryRepository = Substitute.For<IContentEntryRepository>();
         entryRepository.ExistsBySlugAsync(contentType.Id, Arg.Any<Slug>(), Arg.Any<CancellationToken>()).Returns(false);
 
+        var mediaRepository = Substitute.For<IMediaRepository>();
+        mediaRepository.FindUnavailableIdsAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
+            .Returns([]);
+
         var handler = new CreateContentEntryCommandHandler(
             contentTypeRepository,
             entryRepository,
+            mediaRepository,
             RepositorySubstituteExtensions.CreateUnitOfWork(),
             ApplicationTestData.CreateCurrentUser(ApplicationTestData.AuthorUserId, ApplicationTestData.AuthorRole),
             ApplicationTestData.CreateClock(),
@@ -108,9 +113,14 @@ public sealed class ContentEntryHandlerTests
         var entryRepository = Substitute.For<IContentEntryRepository>();
         entryRepository.GetByIdAsync(entry.Id, Arg.Any<CancellationToken>()).Returns(entry);
 
+        var mediaRepository = Substitute.For<IMediaRepository>();
+        mediaRepository.FindUnavailableIdsAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
+            .Returns([]);
+
         var handler = new UpdateContentEntryCommandHandler(
             contentTypeRepository,
             entryRepository,
+            mediaRepository,
             RepositorySubstituteExtensions.CreateUnitOfWork(),
             ApplicationTestData.CreateCurrentUser(ApplicationTestData.OtherAuthorUserId, ApplicationTestData.AuthorRole),
             ApplicationTestData.CreateClock(),
@@ -142,9 +152,14 @@ public sealed class ContentEntryHandlerTests
         var entryRepository = Substitute.For<IContentEntryRepository>();
         entryRepository.GetByIdAsync(entry.Id, Arg.Any<CancellationToken>()).Returns(entry);
 
+        var mediaRepository = Substitute.For<IMediaRepository>();
+        mediaRepository.FindUnavailableIdsAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
+            .Returns([]);
+
         var handler = new PublishContentCommandHandler(
             contentTypeRepository,
             entryRepository,
+            mediaRepository,
             RepositorySubstituteExtensions.CreateUnitOfWork(),
             ApplicationTestData.CreateCurrentUser(ApplicationTestData.EditorUserId, ApplicationTestData.EditorRole),
             ApplicationTestData.CreateClock(),
@@ -191,9 +206,14 @@ public sealed class ContentEntryHandlerTests
         var entryRepository = Substitute.For<IContentEntryRepository>();
         entryRepository.GetByIdAsync(entry.Id, Arg.Any<CancellationToken>()).Returns(entry);
 
+        var mediaRepository = Substitute.For<IMediaRepository>();
+        mediaRepository.FindUnavailableIdsAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
+            .Returns([]);
+
         var handler = new RestoreContentVersionCommandHandler(
             contentTypeRepository,
             entryRepository,
+            mediaRepository,
             RepositorySubstituteExtensions.CreateUnitOfWork(),
             ApplicationTestData.CreateCurrentUser(ApplicationTestData.EditorUserId, ApplicationTestData.EditorRole),
             ApplicationTestData.CreateClock(),

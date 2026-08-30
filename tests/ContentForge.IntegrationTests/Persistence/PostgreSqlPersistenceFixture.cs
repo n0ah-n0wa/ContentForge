@@ -30,6 +30,9 @@ public sealed class PostgreSqlPersistenceFixture : IAsyncLifetime
                 ["Jwt:SigningKey"] = "TEST_ONLY_SIGNING_KEY_32_CHARS_MINIMUM_VALUE",
                 ["Jwt:AccessTokenLifetimeMinutes"] = "15",
                 ["Jwt:RefreshTokenLifetimeDays"] = "7",
+                ["Media:Provider"] = "Local",
+                ["Media:LocalRoot"] = Path.Combine(Path.GetTempPath(), "contentforge-persistence-media"),
+                ["Media:PublicBaseUrl"] = "/media-files",
                 ["ASPNETCORE_ENVIRONMENT"] = "Testing",
             })
             .Build();

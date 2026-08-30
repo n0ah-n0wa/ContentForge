@@ -17,4 +17,8 @@ public interface IMediaRepository
     Task AddAsync(MediaAsset asset, CancellationToken cancellationToken = default);
 
     Task UpdateAsync(MediaAsset asset, CancellationToken cancellationToken = default);
+
+    Task<IReadOnlyList<Guid>> FindUnavailableIdsAsync(
+        IReadOnlyCollection<Guid> mediaIds,
+        CancellationToken cancellationToken = default);
 }

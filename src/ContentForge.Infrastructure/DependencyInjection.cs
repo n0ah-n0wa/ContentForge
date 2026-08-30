@@ -47,7 +47,8 @@ public static class DependencyInjection
         });
 
         services.AddContentForgeAuthentication(configuration, environment);
-        services.AddApplicationPortStubs(environment);
+        services.AddApplicationPortStubs();
+        services.AddFileStorage(configuration, environment);
         services.AddScoped<IUnitOfWork, EfUnitOfWork>();
         services.AddScoped<IAuditService, EfAuditService>();
         services.AddScoped<IContentSearchService, EfContentSearchService>();

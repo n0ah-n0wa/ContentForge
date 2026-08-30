@@ -2,15 +2,17 @@ namespace ContentForge.Api.Controllers;
 
 using ContentForge.Api.Contracts;
 using ContentForge.Api.Infrastructure;
-using ContentForge.Application.Common.Exceptions;
 using ContentForge.Application.Authorization;
+using ContentForge.Application.Common.Exceptions;
 using ContentForge.Application.Common.Pagination;
 using ContentForge.Application.Common.Query;
+using ContentForge.Application.Media;
 using ContentForge.Application.Media.Commands;
 using ContentForge.Application.Media.Models;
 using ContentForge.Application.Media.Queries;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.RateLimiting;
 
 [ApiController]
 [Route($"{ApiConstants.VersionPrefix}/media")]
@@ -63,9 +65,13 @@ public sealed class MediaController : ControllerBase
 
     [HttpPost]
     [Authorize(Policy = AuthorizationPolicies.MediaUpload)]
+    [EnableRateLimiting("media-upload")]
+    [RequestSizeLimit(MediaUploadLimits.MaxFileSizeBytes + 65_536)]
+    [RequestFormLimits(MultipartBodyLengthLimit = MediaUploadLimits.MaxFileSizeBytes + 65_536)]
     [Consumes("multipart/form-data")]
     [ProducesResponseType(typeof(MediaAssetDto), StatusCodes.Status201Created)]
     [ProducesResponseType(StatusCodes.Status422UnprocessableEntity)]
+    [ProducesResponseType(StatusCodes.Status429TooManyRequests)]
     public async Task<ActionResult<MediaAssetDto>> Upload(
         IFormFile? file,
         [FromForm] string? altText,
@@ -83,7 +89,6 @@ public sealed class MediaController : ControllerBase
         var result = await handler.HandleAsync(
             new UploadMediaCommand(
                 stream,
-                file.FileName,
                 file.FileName,
                 file.ContentType,
                 file.Length,

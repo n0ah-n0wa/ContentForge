@@ -31,6 +31,8 @@ public abstract class PersistenceTestBase : IAsyncLifetime
             DbContext = scope.ServiceProvider.GetRequiredService<AppDbContext>();
             ContentTypes = scope.ServiceProvider.GetRequiredService<IContentTypeRepository>();
             ContentEntries = scope.ServiceProvider.GetRequiredService<IContentEntryRepository>();
+            MediaAssets = scope.ServiceProvider.GetRequiredService<IMediaRepository>();
+            FileStorage = scope.ServiceProvider.GetRequiredService<IFileStorage>();
             AuditLogs = scope.ServiceProvider.GetRequiredService<IAuditLogRepository>();
             UnitOfWork = scope.ServiceProvider.GetRequiredService<IUnitOfWork>();
             AuditService = scope.ServiceProvider.GetRequiredService<IAuditService>();
@@ -41,6 +43,10 @@ public abstract class PersistenceTestBase : IAsyncLifetime
         internal IContentTypeRepository ContentTypes { get; }
 
         internal IContentEntryRepository ContentEntries { get; }
+
+        internal IMediaRepository MediaAssets { get; }
+
+        internal IFileStorage FileStorage { get; }
 
         internal IAuditLogRepository AuditLogs { get; }
 

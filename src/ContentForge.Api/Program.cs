@@ -122,6 +122,11 @@ builder.Services.PostConfigure<JwtBearerOptions>(JwtBearerDefaults.Authenticatio
     options.Events = existing;
 });
 
+builder.Services.Configure<Microsoft.AspNetCore.Http.Features.FormOptions>(options =>
+{
+    options.MultipartBodyLengthLimit = ContentForge.Application.Media.MediaUploadLimits.MaxFileSizeBytes + 65_536;
+});
+
 builder.Services.AddRateLimiter(options =>
 {
     options.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
@@ -131,7 +136,7 @@ builder.Services.AddRateLimiter(options =>
             context.HttpContext,
             StatusCodes.Status429TooManyRequests,
             "Too Many Requests",
-            "Public API rate limit exceeded. Retry later.",
+            "Rate limit exceeded. Retry later.",
             "https://contentforge/errors/rate-limit");
         await ProblemDetailsFactory.WriteAsync(context.HttpContext, problem, cancellationToken).ConfigureAwait(false);
     };
@@ -144,6 +149,20 @@ builder.Services.AddRateLimiter(options =>
                 PermitLimit = httpContext.RequestServices.GetRequiredService<IHostEnvironment>().IsEnvironment("Testing")
                     ? 10_000
                     : 120,
+                Window = TimeSpan.FromMinutes(1),
+                QueueLimit = 0,
+            }));
+
+    options.AddPolicy("media-upload", httpContext =>
+        RateLimitPartition.GetFixedWindowLimiter(
+            httpContext.User.FindFirst("sub")?.Value
+                ?? httpContext.Connection.RemoteIpAddress?.ToString()
+                ?? "anonymous",
+            _ => new FixedWindowRateLimiterOptions
+            {
+                PermitLimit = httpContext.RequestServices.GetRequiredService<IHostEnvironment>().IsEnvironment("Testing")
+                    ? 10_000
+                    : 30,
                 Window = TimeSpan.FromMinutes(1),
                 QueueLimit = 0,
             }));
@@ -183,9 +202,9 @@ if (corsOrigins.Length > 0)
     app.UseCors("ContentForgeCors");
 }
 
-app.UseRateLimiter();
 app.UseAuthentication();
 app.UseAuthorization();
+app.UseRateLimiter();
 app.MapControllers();
 
 app.Run();

@@ -7,6 +7,7 @@ using ContentForge.Application.Common.Concurrency;
 using ContentForge.Application.Common.Exceptions;
 using ContentForge.Application.Content.Models;
 using ContentForge.Application.Mapping;
+using ContentForge.Application.Media;
 using ContentForge.Domain.Audit;
 using ContentForge.Domain.Authorization;
 using ContentForge.Domain.Common;
@@ -34,6 +35,7 @@ public sealed class RestoreContentVersionCommandHandler
 {
     private readonly IContentTypeRepository _contentTypeRepository;
     private readonly IContentEntryRepository _repository;
+    private readonly IMediaRepository _mediaRepository;
     private readonly IUnitOfWork _unitOfWork;
     private readonly ICurrentUserService _currentUser;
     private readonly IDateTimeProvider _clock;
@@ -43,6 +45,7 @@ public sealed class RestoreContentVersionCommandHandler
     public RestoreContentVersionCommandHandler(
         IContentTypeRepository contentTypeRepository,
         IContentEntryRepository repository,
+        IMediaRepository mediaRepository,
         IUnitOfWork unitOfWork,
         ICurrentUserService currentUser,
         IDateTimeProvider clock,
@@ -51,6 +54,7 @@ public sealed class RestoreContentVersionCommandHandler
     {
         _contentTypeRepository = contentTypeRepository;
         _repository = repository;
+        _mediaRepository = mediaRepository;
         _unitOfWork = unitOfWork;
         _currentUser = currentUser;
         _clock = clock;
@@ -76,6 +80,13 @@ public sealed class RestoreContentVersionCommandHandler
         var sourceVersion = ApplicationGuard.TranslateDomainException(() =>
                 entry.GetVersion(VersionNumber.From(command.VersionNumber)))
             ?? throw new NotFoundApplicationException("ContentVersion", command.VersionNumber);
+
+        await MediaReferenceValidator.ValidateAsync(
+                contentType,
+                sourceVersion.Snapshot.Data,
+                _mediaRepository,
+                cancellationToken)
+            .ConfigureAwait(false);
 
         ApplicationGuard.TranslateDomainException(() =>
             entry.RestoreVersion(

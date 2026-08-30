@@ -7,6 +7,7 @@ using ContentForge.Application.Common.Concurrency;
 using ContentForge.Application.Common.Exceptions;
 using ContentForge.Application.Content.Models;
 using ContentForge.Application.Mapping;
+using ContentForge.Application.Media;
 using ContentForge.Domain.Audit;
 using ContentForge.Domain.Authorization;
 using ContentForge.Domain.Common;
@@ -28,6 +29,7 @@ public sealed class SubmitContentForReviewCommandHandler
 {
     private readonly IContentTypeRepository _contentTypeRepository;
     private readonly IContentEntryRepository _repository;
+    private readonly IMediaRepository _mediaRepository;
     private readonly IUnitOfWork _unitOfWork;
     private readonly ICurrentUserService _currentUser;
     private readonly IDateTimeProvider _clock;
@@ -37,6 +39,7 @@ public sealed class SubmitContentForReviewCommandHandler
     public SubmitContentForReviewCommandHandler(
         IContentTypeRepository contentTypeRepository,
         IContentEntryRepository repository,
+        IMediaRepository mediaRepository,
         IUnitOfWork unitOfWork,
         ICurrentUserService currentUser,
         IDateTimeProvider clock,
@@ -45,6 +48,7 @@ public sealed class SubmitContentForReviewCommandHandler
     {
         _contentTypeRepository = contentTypeRepository;
         _repository = repository;
+        _mediaRepository = mediaRepository;
         _unitOfWork = unitOfWork;
         _currentUser = currentUser;
         _clock = clock;
@@ -64,6 +68,9 @@ public sealed class SubmitContentForReviewCommandHandler
 
         var contentType = await _contentTypeRepository.GetByIdAsync(entry.ContentTypeId, cancellationToken)
             ?? throw new NotFoundApplicationException("ContentType", entry.ContentTypeId.Value);
+
+        await MediaReferenceValidator.ValidateAsync(contentType, entry.DraftData, _mediaRepository, cancellationToken)
+            .ConfigureAwait(false);
 
         ApplicationGuard.TranslateDomainException(() =>
             entry.SubmitForReview(contentType, userId, ApplicationGuard.ToDomainToken(command.Concurrency), _clock.UtcNow));
@@ -169,6 +176,7 @@ public sealed class PublishContentCommandHandler
 {
     private readonly IContentTypeRepository _contentTypeRepository;
     private readonly IContentEntryRepository _contentEntryRepository;
+    private readonly IMediaRepository _mediaRepository;
     private readonly IUnitOfWork _unitOfWork;
     private readonly ICurrentUserService _currentUser;
     private readonly IDateTimeProvider _clock;
@@ -178,6 +186,7 @@ public sealed class PublishContentCommandHandler
     public PublishContentCommandHandler(
         IContentTypeRepository contentTypeRepository,
         IContentEntryRepository contentEntryRepository,
+        IMediaRepository mediaRepository,
         IUnitOfWork unitOfWork,
         ICurrentUserService currentUser,
         IDateTimeProvider clock,
@@ -186,6 +195,7 @@ public sealed class PublishContentCommandHandler
     {
         _contentTypeRepository = contentTypeRepository;
         _contentEntryRepository = contentEntryRepository;
+        _mediaRepository = mediaRepository;
         _unitOfWork = unitOfWork;
         _currentUser = currentUser;
         _clock = clock;
@@ -205,6 +215,9 @@ public sealed class PublishContentCommandHandler
 
         var contentType = await _contentTypeRepository.GetByIdAsync(entry.ContentTypeId, cancellationToken)
             ?? throw new NotFoundApplicationException("ContentType", entry.ContentTypeId.Value);
+
+        await MediaReferenceValidator.ValidateAsync(contentType, entry.DraftData, _mediaRepository, cancellationToken)
+            .ConfigureAwait(false);
 
         ApplicationGuard.TranslateDomainException(() =>
             entry.Publish(contentType, userId, ApplicationGuard.ToDomainToken(command.Concurrency), command.ChangeSummary, _clock.UtcNow));

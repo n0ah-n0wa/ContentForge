@@ -8,6 +8,7 @@ using ContentForge.Application.Common.Exceptions;
 using ContentForge.Application.Content.Models;
 using ContentForge.Application.Common.Serialization;
 using ContentForge.Application.Mapping;
+using ContentForge.Application.Media;
 using ContentForge.Domain.Audit;
 using ContentForge.Domain.Authorization;
 using ContentForge.Domain.Common;
@@ -33,6 +34,7 @@ public sealed class CreateContentEntryCommandHandler
 {
     private readonly IContentTypeRepository _contentTypeRepository;
     private readonly IContentEntryRepository _contentEntryRepository;
+    private readonly IMediaRepository _mediaRepository;
     private readonly IUnitOfWork _unitOfWork;
     private readonly ICurrentUserService _currentUser;
     private readonly IDateTimeProvider _clock;
@@ -42,6 +44,7 @@ public sealed class CreateContentEntryCommandHandler
     public CreateContentEntryCommandHandler(
         IContentTypeRepository contentTypeRepository,
         IContentEntryRepository contentEntryRepository,
+        IMediaRepository mediaRepository,
         IUnitOfWork unitOfWork,
         ICurrentUserService currentUser,
         IDateTimeProvider clock,
@@ -50,6 +53,7 @@ public sealed class CreateContentEntryCommandHandler
     {
         _contentTypeRepository = contentTypeRepository;
         _contentEntryRepository = contentEntryRepository;
+        _mediaRepository = mediaRepository;
         _unitOfWork = unitOfWork;
         _currentUser = currentUser;
         _clock = clock;
@@ -74,8 +78,10 @@ public sealed class CreateContentEntryCommandHandler
             throw new ApplicationValidationException(nameof(command.Slug), "An entry with this slug already exists for the content type.");
         }
 
-        var data = ContentData.FromDictionary(JsonPayloadNormalizer.NormalizeDictionary(command.Data));
+        var data = ContentDataCoercer.Coerce(contentType, command.Data);
         ApplicationGuard.TranslateDomainException(() => ContentDataValidator.Validate(contentType, data));
+        await MediaReferenceValidator.ValidateAsync(contentType, data, _mediaRepository, cancellationToken)
+            .ConfigureAwait(false);
 
         var entry = ContentEntry.Create(contentTypeId, slug, userId, data, _clock.UtcNow);
         await _contentEntryRepository.AddAsync(entry, cancellationToken);
@@ -115,6 +121,7 @@ public sealed class UpdateContentEntryCommandHandler
 {
     private readonly IContentTypeRepository _contentTypeRepository;
     private readonly IContentEntryRepository _contentEntryRepository;
+    private readonly IMediaRepository _mediaRepository;
     private readonly IUnitOfWork _unitOfWork;
     private readonly ICurrentUserService _currentUser;
     private readonly IDateTimeProvider _clock;
@@ -124,6 +131,7 @@ public sealed class UpdateContentEntryCommandHandler
     public UpdateContentEntryCommandHandler(
         IContentTypeRepository contentTypeRepository,
         IContentEntryRepository contentEntryRepository,
+        IMediaRepository mediaRepository,
         IUnitOfWork unitOfWork,
         ICurrentUserService currentUser,
         IDateTimeProvider clock,
@@ -132,6 +140,7 @@ public sealed class UpdateContentEntryCommandHandler
     {
         _contentTypeRepository = contentTypeRepository;
         _contentEntryRepository = contentEntryRepository;
+        _mediaRepository = mediaRepository;
         _unitOfWork = unitOfWork;
         _currentUser = currentUser;
         _clock = clock;
@@ -161,10 +170,15 @@ public sealed class UpdateContentEntryCommandHandler
             throw new ApplicationValidationException(nameof(command.Slug), "An entry with this slug already exists for the content type.");
         }
 
+        var data = ContentDataCoercer.Coerce(contentType, command.Data);
+        ApplicationGuard.TranslateDomainException(() => ContentDataValidator.Validate(contentType, data));
+        await MediaReferenceValidator.ValidateAsync(contentType, data, _mediaRepository, cancellationToken)
+            .ConfigureAwait(false);
+
         ApplicationGuard.TranslateDomainException(() =>
             entry.UpdateDraft(
                 contentType,
-                ContentData.FromDictionary(JsonPayloadNormalizer.NormalizeDictionary(command.Data)),
+                data,
                 slug,
                 userId,
                 ApplicationGuard.ToDomainToken(command.Concurrency),

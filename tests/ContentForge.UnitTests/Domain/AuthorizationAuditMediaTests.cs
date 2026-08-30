@@ -70,7 +70,7 @@ public sealed class MediaAssetTests
             "My Cover.jpg",
             "image/jpeg",
             1024,
-            StorageKey.Create(Guid.NewGuid(), ".jpg"),
+            StorageKey.Create(Guid.NewGuid(), ".jpg", DomainTestData.Timestamp),
             DomainTestData.User1);
 
         media.StorageKey.Value.Should().StartWith("media/");
@@ -85,7 +85,7 @@ public sealed class MediaAssetTests
             "secrets.jpg",
             "image/jpeg",
             1024,
-            StorageKey.Create(Guid.NewGuid(), ".jpg"),
+            StorageKey.Create(Guid.NewGuid(), ".jpg", DomainTestData.Timestamp),
             DomainTestData.User1);
 
         action.Should().Throw<DomainValidationException>();
@@ -99,7 +99,7 @@ public sealed class MediaAssetTests
             "My Cover.jpg",
             "image/jpeg",
             1024,
-            StorageKey.Create(Guid.NewGuid(), ".jpg"),
+            StorageKey.Create(Guid.NewGuid(), ".jpg", DomainTestData.Timestamp),
             DomainTestData.User1);
 
         media.MarkDeleted();
