@@ -20,6 +20,8 @@ public sealed record ContentEntryDto(
     DateTimeOffset UpdatedAt,
     DateTimeOffset? PublishedAt,
     Guid? PublishedBy,
+    DateTimeOffset? ScheduledPublishAt,
+    DateTimeOffset? ScheduledUnpublishAt,
     bool IsDeleted);
 
 /// <summary>

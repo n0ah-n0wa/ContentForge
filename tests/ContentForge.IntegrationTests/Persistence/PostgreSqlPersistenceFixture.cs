@@ -33,6 +33,11 @@ public sealed class PostgreSqlPersistenceFixture : IAsyncLifetime
                 ["Media:Provider"] = "Local",
                 ["Media:LocalRoot"] = Path.Combine(Path.GetTempPath(), "contentforge-persistence-media"),
                 ["Media:PublicBaseUrl"] = "/media-files",
+                ["ScheduledPublishing:PollIntervalSeconds"] = "1",
+                ["ScheduledPublishing:BatchSize"] = "20",
+                ["ScheduledPublishing:LockDurationSeconds"] = "30",
+                ["ScheduledPublishing:MaxAttempts"] = "5",
+                ["ScheduledPublishing:RetryDelaySeconds"] = "5",
                 ["ASPNETCORE_ENVIRONMENT"] = "Testing",
             })
             .Build();
@@ -92,6 +97,8 @@ public sealed class PostgreSqlPersistenceFixture : IAsyncLifetime
                 "UserTokens",
                 "ContentEntryRelations",
                 "ContentVersions",
+                "ScheduledJobs",
+                "ContentPreviewTokens",
                 "ContentEntries",
                 "ContentTypeFields",
                 "ContentTypes",

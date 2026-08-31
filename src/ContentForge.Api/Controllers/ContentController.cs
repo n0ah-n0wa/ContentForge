@@ -7,6 +7,9 @@ using ContentForge.Application.Common.Concurrency;
 using ContentForge.Application.Common.Pagination;
 using ContentForge.Application.Common.Query;
 using ContentForge.Application.Content.Commands;
+using ContentForge.Application.ContentPreview.Commands;
+using ContentForge.Application.ContentPreview.Models;
+using ContentForge.Application.ContentPreview.Queries;
 using ContentForge.Application.Content.Models;
 using ContentForge.Application.Content.Queries;
 using Microsoft.AspNetCore.Authorization;
@@ -96,6 +99,19 @@ public sealed class ContentController : ControllerBase
             createdTo);
 
         var result = await handler.HandleAsync(new SearchContentQuery(criteria), cancellationToken);
+        return Ok(result);
+    }
+
+    [HttpGet("preview/{token}")]
+    [AllowAnonymous]
+    [ProducesResponseType(typeof(ContentPreviewDto), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    public async Task<ActionResult<ContentPreviewDto>> GetPreview(
+        string token,
+        [FromServices] GetContentPreviewQueryHandler handler,
+        CancellationToken cancellationToken)
+    {
+        var result = await handler.HandleAsync(new GetContentPreviewQuery(token), cancellationToken);
         return Ok(result);
     }
 
@@ -294,6 +310,61 @@ public sealed class ContentController : ControllerBase
                 id,
                 request.ChangeSummary,
                 new ConcurrencyRequest(request.ConcurrencyToken)),
+            cancellationToken);
+
+        return Ok(result);
+    }
+
+    [HttpPost("{id:guid}/preview-token")]
+    [Authorize(Policy = AuthorizationPolicies.ContentRead)]
+    [ProducesResponseType(typeof(ContentPreviewTokenDto), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    [ProducesResponseType(StatusCodes.Status403Forbidden)]
+    public async Task<ActionResult<ContentPreviewTokenDto>> CreatePreviewToken(
+        Guid id,
+        [FromServices] CreateContentPreviewTokenCommandHandler handler,
+        CancellationToken cancellationToken)
+    {
+        var result = await handler.HandleAsync(new CreateContentPreviewTokenCommand(id), cancellationToken);
+        return Ok(result);
+    }
+
+    [HttpPut("{id:guid}/schedule")]
+    [Authorize(Policy = AuthorizationPolicies.ContentPublish)]
+    [ProducesResponseType(typeof(ContentEntryDto), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    [ProducesResponseType(StatusCodes.Status409Conflict)]
+    [ProducesResponseType(StatusCodes.Status422UnprocessableEntity)]
+    public async Task<ActionResult<ContentEntryDto>> SchedulePublishing(
+        Guid id,
+        [FromBody] ScheduleContentPublishingApiRequest request,
+        [FromServices] ScheduleContentPublishingCommandHandler handler,
+        CancellationToken cancellationToken)
+    {
+        var result = await handler.HandleAsync(
+            new ScheduleContentPublishingCommand(
+                id,
+                request.PublishAt,
+                request.UnpublishAt,
+                new ConcurrencyRequest(request.ConcurrencyToken)),
+            cancellationToken);
+
+        return Ok(result);
+    }
+
+    [HttpDelete("{id:guid}/schedule")]
+    [Authorize(Policy = AuthorizationPolicies.ContentPublish)]
+    [ProducesResponseType(typeof(ContentEntryDto), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    [ProducesResponseType(StatusCodes.Status409Conflict)]
+    public async Task<ActionResult<ContentEntryDto>> ClearSchedule(
+        Guid id,
+        [FromBody] ContentConcurrencyApiRequest request,
+        [FromServices] ClearContentPublishingScheduleCommandHandler handler,
+        CancellationToken cancellationToken)
+    {
+        var result = await handler.HandleAsync(
+            new ClearContentPublishingScheduleCommand(id, new ConcurrencyRequest(request.ConcurrencyToken)),
             cancellationToken);
 
         return Ok(result);

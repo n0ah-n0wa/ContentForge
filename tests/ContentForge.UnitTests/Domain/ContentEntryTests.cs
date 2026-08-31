@@ -198,6 +198,56 @@ public sealed class ContentEntryTests
         action.Should().Throw<InvalidOperationDomainException>();
     }
 
+    [Fact]
+    public void SetPublishingSchedule_WithPastPublishAt_Throws()
+    {
+        var contentType = DomainTestData.CreateArticleType();
+        var entry = DomainTestData.CreateDraftEntry(contentType);
+
+        var action = () => entry.SetPublishingSchedule(
+            DomainTestData.Timestamp.AddMinutes(-1),
+            null,
+            DomainTestData.User1,
+            DomainTestData.Timestamp);
+
+        action.Should().Throw<DomainValidationException>();
+    }
+
+    [Fact]
+    public void SetPublishingSchedule_WithUnpublishBeforePublish_Throws()
+    {
+        var contentType = DomainTestData.CreateArticleType();
+        var entry = DomainTestData.CreateDraftEntry(contentType);
+        var publishAt = DomainTestData.Timestamp.AddHours(2);
+        var unpublishAt = DomainTestData.Timestamp.AddHours(1);
+
+        var action = () => entry.SetPublishingSchedule(
+            publishAt,
+            unpublishAt,
+            DomainTestData.User1,
+            DomainTestData.Timestamp);
+
+        action.Should().Throw<DomainValidationException>();
+    }
+
+    [Fact]
+    public void PublishScheduled_FromDraft_PublishesWithoutManualReview()
+    {
+        var contentType = DomainTestData.CreateArticleType();
+        var entry = DomainTestData.CreateDraftEntry(contentType);
+        entry.SetPublishingSchedule(
+            DomainTestData.Timestamp.AddHours(1),
+            null,
+            DomainTestData.User1,
+            DomainTestData.Timestamp);
+
+        entry.PublishScheduled(contentType, DomainTestData.User1, DomainTestData.Timestamp.AddHours(1));
+
+        entry.Status.Should().Be(ContentStatus.Published);
+        entry.ScheduledPublishAt.Should().BeNull();
+        entry.HasPublishedRepresentation.Should().BeTrue();
+    }
+
     private static ContentEntry PublishEntry(ContentType contentType)
     {
         var entry = DomainTestData.CreateDraftEntry(contentType);

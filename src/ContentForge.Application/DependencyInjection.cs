@@ -1,6 +1,9 @@
 using ContentForge.Application.Audit.Queries;
 using ContentForge.Application.Auth.Commands;
 using ContentForge.Application.Auth.Queries;
+using ContentForge.Application.ContentPreview;
+using ContentForge.Application.ContentPreview.Commands;
+using ContentForge.Application.ContentPreview.Queries;
 using ContentForge.Application.Content.Commands;
 using ContentForge.Application.Content.Queries;
 using ContentForge.Application.ContentTypes.Commands;
@@ -65,6 +68,10 @@ public static class DependencyInjection
         services.AddScoped<ArchiveContentCommandHandler>();
         services.AddScoped<RestoreArchivedContentCommandHandler>();
         services.AddScoped<RestoreContentVersionCommandHandler>();
+        services.AddScoped<ScheduleContentPublishingCommandHandler>();
+        services.AddScoped<ClearContentPublishingScheduleCommandHandler>();
+        services.AddScoped<CreateContentPreviewTokenCommandHandler>();
+        services.AddScoped<GetContentPreviewQueryHandler>();
         services.AddScoped<GetContentEntryQueryHandler>();
         services.AddScoped<ListContentEntriesQueryHandler>();
         services.AddScoped<ListContentVersionsQueryHandler>();

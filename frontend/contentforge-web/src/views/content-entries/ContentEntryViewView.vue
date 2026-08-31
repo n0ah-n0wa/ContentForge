@@ -18,13 +18,14 @@ import { useContentEntryActions } from '@/composables/useContentEntryActions';
 import { useContentPermissions } from '@/composables/useContentPermissions';
 import { normalizeEntryData } from '@/utils/contentEntryValidation';
 import { getLifecycleConfirmationMessage } from '@/utils/contentLifecycle';
+import { openContentPreview } from '@/utils/contentPreview';
 import type { ContentEntry } from '@/types/contentEntries';
 import type { ContentType } from '@/types/contentTypes';
 
 const route = useRoute();
 const router = useRouter();
 const { handleError } = useApiErrorHandling();
-const { canUpdate, canDelete } = useContentPermissions();
+const { canUpdate, canDelete, canRead } = useContentPermissions();
 
 const entryId = computed(() => route.params.entryId as string);
 const contentTypeSlug = computed(() => route.params.contentTypeSlug as string);
@@ -34,6 +35,7 @@ const loading = ref(true);
 const pageErrorMessage = ref<string | null>(null);
 const concurrencyConflict = ref<ConcurrencyConflictProblem | null>(null);
 const showDeleteConfirm = ref(false);
+const previewLoading = ref(false);
 const versionHistoryRef = ref<InstanceType<typeof ContentVersionHistoryPanel> | null>(null);
 
 const sortedFields = computed(() => {
@@ -132,6 +134,21 @@ async function reloadAfterConflict(): Promise<void> {
   await loadPage();
 }
 
+async function openPreview(): Promise<void> {
+  if (!entry.value || !canRead.value) {
+    return;
+  }
+
+  previewLoading.value = true;
+  try {
+    await openContentPreview(entry.value.id);
+  } catch (error) {
+    handleError(error, 'Failed to open preview');
+  } finally {
+    previewLoading.value = false;
+  }
+}
+
 onMounted(() => {
   void loadPage();
 });
@@ -145,6 +162,15 @@ onMounted(() => {
         <p class="page-card__lead">Read-only view of the current draft snapshot.</p>
       </div>
       <div class="entry-editor__actions">
+        <AppButton
+          v-if="canRead && entry"
+          variant="secondary"
+          type="button"
+          :disabled="previewLoading || actionLoading"
+          @click="openPreview"
+        >
+          {{ previewLoading ? 'Opening preview…' : 'Preview draft' }}
+        </AppButton>
         <ContentEntryLifecycleActions
           v-if="entry"
           :entry="entry"

@@ -30,6 +30,10 @@ public sealed class ContentEntryEntity
 
     public Guid? PublishedBy { get; set; }
 
+    public DateTimeOffset? ScheduledPublishAt { get; set; }
+
+    public DateTimeOffset? ScheduledUnpublishAt { get; set; }
+
     public bool IsDeleted { get; set; }
 
     public ContentTypeEntity ContentType { get; set; } = null!;

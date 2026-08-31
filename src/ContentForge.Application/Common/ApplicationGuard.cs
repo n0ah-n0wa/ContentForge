@@ -87,6 +87,15 @@ public static class ApplicationGuard
     public static ConcurrencyToken ToDomainToken(ConcurrencyRequest request) =>
         new((uint)request.Version);
 
+    public static void EnsureConcurrency(ContentEntry entry, ConcurrencyRequest request)
+    {
+        var expected = ToDomainToken(request);
+        if (entry.ConcurrencyToken != expected)
+        {
+            throw ToConcurrencyConflict(new ConcurrencyConflictException(expected.Value, entry.ConcurrencyToken.Value));
+        }
+    }
+
     public static void TranslateDomainException(Action action)
     {
         try

@@ -20,6 +20,12 @@ const router = createRouter({
       ],
     },
     {
+      path: '/preview/:token',
+      name: 'content-preview',
+      component: () => import('@/views/content-entries/ContentPreviewView.vue'),
+      meta: { title: 'Preview', publicPreview: true },
+    },
+    {
       path: '/',
       component: AppLayout,
       meta: { requiresAuth: true },

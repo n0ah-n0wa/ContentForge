@@ -160,7 +160,9 @@ internal static class ContentEntryMapper
             entity.IsDeleted,
             entity.Versions
                 .OrderBy(version => version.VersionNumber)
-                .Select(ContentVersionMapper.ToDomain));
+                .Select(ContentVersionMapper.ToDomain),
+            entity.ScheduledPublishAt,
+            entity.ScheduledUnpublishAt);
 
     internal static ContentEntry ToDomainSummary(ContentEntryEntity entity) =>
         ContentEntry.Restore(
@@ -181,7 +183,9 @@ internal static class ContentEntryMapper
             entity.PublishedAt,
             entity.PublishedBy is { } publishedBy ? UserId.From(publishedBy) : null,
             entity.IsDeleted,
-            []);
+            [],
+            entity.ScheduledPublishAt,
+            entity.ScheduledUnpublishAt);
 
     internal static ContentEntryEntity ToEntity(ContentEntry domain) => new()
     {
@@ -201,6 +205,8 @@ internal static class ContentEntryMapper
         UpdatedAt = domain.UpdatedAt,
         PublishedAt = domain.PublishedAt,
         PublishedBy = domain.PublishedBy?.Value,
+        ScheduledPublishAt = domain.ScheduledPublishAt,
+        ScheduledUnpublishAt = domain.ScheduledUnpublishAt,
         IsDeleted = domain.IsDeleted,
         Versions = domain.Versions.Select(ContentVersionMapper.ToEntity).ToList(),
     };
@@ -219,6 +225,8 @@ internal static class ContentEntryMapper
         entity.UpdatedAt = domain.UpdatedAt;
         entity.PublishedAt = domain.PublishedAt;
         entity.PublishedBy = domain.PublishedBy?.Value;
+        entity.ScheduledPublishAt = domain.ScheduledPublishAt;
+        entity.ScheduledUnpublishAt = domain.ScheduledUnpublishAt;
         entity.IsDeleted = domain.IsDeleted;
 
         var existingVersionIds = entity.Versions.Select(version => version.Id).ToHashSet();

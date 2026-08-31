@@ -37,6 +37,12 @@
   </ItemGroup>
 
   <ItemGroup>
+    <Compile Update="Migrations\20260831075033_AddContentPreviewTokens.cs">
+      <NoWarn>$(NoWarn);CA1861</NoWarn>
+    </Compile>
+    <Compile Update="Migrations\20260831070446_AddScheduledPublishing.cs">
+      <NoWarn>$(NoWarn);CA1861</NoWarn>
+    </Compile>
     <Compile Update="Migrations\20260829150732_AddIdentityAndRefreshTokens.cs">
       <NoWarn>$(NoWarn);CA1861</NoWarn>
     </Compile>

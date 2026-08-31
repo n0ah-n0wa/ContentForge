@@ -22,7 +22,9 @@ public sealed class ContentEntry
         DateTimeOffset updatedAt,
         DateTimeOffset? publishedAt,
         Common.UserId? publishedBy,
-        bool isDeleted)
+        bool isDeleted,
+        DateTimeOffset? scheduledPublishAt = null,
+        DateTimeOffset? scheduledUnpublishAt = null)
     {
         Id = id;
         ContentTypeId = contentTypeId;
@@ -39,6 +41,8 @@ public sealed class ContentEntry
         PublishedAt = publishedAt;
         PublishedBy = publishedBy;
         IsDeleted = isDeleted;
+        ScheduledPublishAt = scheduledPublishAt;
+        ScheduledUnpublishAt = scheduledUnpublishAt;
     }
 
     public Common.ContentEntryId Id { get; }
@@ -70,6 +74,10 @@ public sealed class ContentEntry
     public Common.UserId? PublishedBy { get; private set; }
 
     public bool IsDeleted { get; private set; }
+
+    public DateTimeOffset? ScheduledPublishAt { get; private set; }
+
+    public DateTimeOffset? ScheduledUnpublishAt { get; private set; }
 
     public IReadOnlyList<ContentVersion> Versions => _versions.AsReadOnly();
 
@@ -122,7 +130,9 @@ public sealed class ContentEntry
         DateTimeOffset? publishedAt,
         Common.UserId? publishedBy,
         bool isDeleted,
-        IEnumerable<ContentVersion> versions)
+        IEnumerable<ContentVersion> versions,
+        DateTimeOffset? scheduledPublishAt = null,
+        DateTimeOffset? scheduledUnpublishAt = null)
     {
         var entry = new ContentEntry(
             id,
@@ -139,7 +149,9 @@ public sealed class ContentEntry
             updatedAt,
             publishedAt,
             publishedBy,
-            isDeleted);
+            isDeleted,
+            scheduledPublishAt,
+            scheduledUnpublishAt);
 
         entry._versions.AddRange(versions.OrderBy(version => version.VersionNumber.Value));
         entry.EnsureVersionIntegrity();
@@ -348,6 +360,133 @@ public sealed class ContentEntry
         ConcurrencyToken = ConcurrencyToken.Next();
 
         return RecordVersion(actorId, $"Restored from version {sourceVersion.VersionNumber.Value}: {changeSummary}", timestamp);
+    }
+
+    public void SetPublishingSchedule(
+        DateTimeOffset? publishAt,
+        DateTimeOffset? unpublishAt,
+        Common.UserId actorId,
+        DateTimeOffset timestamp)
+    {
+        EnsureNotDeleted();
+
+        if (publishAt is not null && publishAt <= timestamp)
+        {
+            throw new Common.DomainValidationException(nameof(publishAt), "Scheduled publish time must be in the future.");
+        }
+
+        if (unpublishAt is not null && unpublishAt <= timestamp)
+        {
+            throw new Common.DomainValidationException(nameof(unpublishAt), "Scheduled unpublish time must be in the future.");
+        }
+
+        if (publishAt is not null && unpublishAt is not null && unpublishAt <= publishAt)
+        {
+            throw new Common.DomainValidationException(
+                nameof(unpublishAt),
+                "Scheduled unpublish time must be after the scheduled publish time.");
+        }
+
+        ScheduledPublishAt = publishAt;
+        ScheduledUnpublishAt = unpublishAt;
+        UpdatedBy = actorId;
+        UpdatedAt = timestamp;
+        ConcurrencyToken = ConcurrencyToken.Next();
+    }
+
+    public void ClearScheduledPublish(Common.UserId actorId, DateTimeOffset timestamp)
+    {
+        if (ScheduledPublishAt is null)
+        {
+            return;
+        }
+
+        ScheduledPublishAt = null;
+        UpdatedBy = actorId;
+        UpdatedAt = timestamp;
+        ConcurrencyToken = ConcurrencyToken.Next();
+    }
+
+    public void ClearScheduledUnpublish(Common.UserId actorId, DateTimeOffset timestamp)
+    {
+        if (ScheduledUnpublishAt is null)
+        {
+            return;
+        }
+
+        ScheduledUnpublishAt = null;
+        UpdatedBy = actorId;
+        UpdatedAt = timestamp;
+        ConcurrencyToken = ConcurrencyToken.Next();
+    }
+
+    public bool IsAlreadyPublishedForSchedule() => Status == ContentStatus.Published;
+
+    public bool IsAlreadyUnpublishedForSchedule() =>
+        Status is ContentStatus.Draft or ContentStatus.Unpublished or ContentStatus.Archived;
+
+    public ContentVersion PublishScheduled(
+        ContentTypes.ContentType contentType,
+        Common.UserId actorId,
+        DateTimeOffset timestamp)
+    {
+        EnsureNotDeleted();
+
+        if (Status == ContentStatus.Published)
+        {
+            ScheduledPublishAt = null;
+            UpdatedAt = timestamp;
+            return _versions[^1];
+        }
+
+        EnsureContentTypeMatches(contentType);
+        EnsureContentTypeActive(contentType);
+        ContentDataValidator.Validate(contentType, DraftData);
+
+        if (Status == ContentStatus.Draft)
+        {
+            ContentLifecycle.EnsureTransition(Status, ContentStatus.InReview);
+            Status = ContentStatus.InReview;
+        }
+
+        ContentLifecycle.EnsureTransition(Status, ContentStatus.Published);
+
+        Status = ContentStatus.Published;
+        PublishedSnapshot = new ContentSnapshot(Slug, DraftData.Clone(), ContentStatus.Published);
+        PublishedAt = timestamp;
+        PublishedBy = actorId;
+        UpdatedBy = actorId;
+        UpdatedAt = timestamp;
+        ScheduledPublishAt = null;
+        ConcurrencyToken = ConcurrencyToken.Next();
+
+        return RecordVersion(actorId, "Scheduled publication", timestamp);
+    }
+
+    public ContentVersion UnpublishScheduled(Common.UserId actorId, DateTimeOffset timestamp)
+    {
+        EnsureNotDeleted();
+
+        if (Status is ContentStatus.Draft or ContentStatus.Unpublished or ContentStatus.Archived)
+        {
+            ScheduledUnpublishAt = null;
+            UpdatedAt = timestamp;
+            return _versions[^1];
+        }
+
+        ContentLifecycle.EnsureTransition(Status, ContentStatus.Unpublished);
+
+        Status = ContentStatus.Unpublished;
+        ClearPublishedRepresentation();
+        UpdatedBy = actorId;
+        UpdatedAt = timestamp;
+        ScheduledUnpublishAt = null;
+        ConcurrencyToken = ConcurrencyToken.Next();
+
+        var version = RecordVersion(actorId, "Scheduled unpublish", timestamp);
+        ContentLifecycle.EnsureTransition(Status, ContentStatus.Draft);
+        Status = ContentStatus.Draft;
+        return version;
     }
 
     public void SoftDelete(Common.UserId actorId, Common.ConcurrencyToken expectedConcurrency, DateTimeOffset timestamp)

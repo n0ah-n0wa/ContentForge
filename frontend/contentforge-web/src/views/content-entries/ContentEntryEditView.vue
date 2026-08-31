@@ -22,11 +22,12 @@ import type { ContentEntry } from '@/types/contentEntries';
 import type { ContentType } from '@/types/contentTypes';
 import { getLifecycleConfirmationMessage } from '@/utils/contentLifecycle';
 import { hasValidationErrors, serializeEntryDataForApi } from '@/utils/contentEntryValidation';
+import { openContentPreview } from '@/utils/contentPreview';
 
 const route = useRoute();
 const router = useRouter();
 const { handleError } = useApiErrorHandling();
-const { canUpdate, canDelete } = useContentPermissions();
+const { canUpdate, canDelete, canRead } = useContentPermissions();
 
 const entryId = computed(() => route.params.entryId as string);
 const contentTypeSlug = computed(() => route.params.contentTypeSlug as string);
@@ -37,6 +38,7 @@ const saving = ref(false);
 const pageErrorMessage = ref<string | null>(null);
 const concurrencyConflict = ref<ConcurrencyConflictProblem | null>(null);
 const showDeleteConfirm = ref(false);
+const previewLoading = ref(false);
 const versionHistoryRef = ref<InstanceType<typeof ContentVersionHistoryPanel> | null>(null);
 
 const {
@@ -193,6 +195,21 @@ async function reloadAfterConflict(): Promise<void> {
   await loadPage();
 }
 
+async function openPreview(): Promise<void> {
+  if (!entry.value || !canRead.value) {
+    return;
+  }
+
+  previewLoading.value = true;
+  try {
+    await openContentPreview(entry.value.id);
+  } catch (error) {
+    handleError(error, 'Failed to open preview');
+  } finally {
+    previewLoading.value = false;
+  }
+}
+
 onMounted(() => {
   void loadPage();
 });
@@ -216,6 +233,15 @@ onBeforeRouteLeave((_to, _from, next) => {
         <p class="page-card__lead">Edit draft content, manage lifecycle actions, and review versions.</p>
       </div>
       <div class="entry-editor__actions">
+        <AppButton
+          v-if="canRead && entry"
+          variant="secondary"
+          type="button"
+          :disabled="previewLoading || saving || actionLoading"
+          @click="openPreview"
+        >
+          {{ previewLoading ? 'Opening preview…' : 'Preview draft' }}
+        </AppButton>
         <AppButton
           variant="secondary"
           type="button"

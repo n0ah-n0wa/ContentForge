@@ -66,4 +66,10 @@ internal sealed class JwtTokenService(IOptions<JwtOptions> options, TimeProvider
         var bytes = SHA256.HashData(Encoding.UTF8.GetBytes(token));
         return Convert.ToHexString(bytes);
     }
+
+    internal static string GenerateOpaqueToken()
+    {
+        var bytes = RandomNumberGenerator.GetBytes(48);
+        return Convert.ToHexString(bytes);
+    }
 }

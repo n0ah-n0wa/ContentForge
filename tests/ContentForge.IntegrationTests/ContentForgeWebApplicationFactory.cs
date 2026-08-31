@@ -34,6 +34,12 @@ public sealed class ContentForgeWebApplicationFactory : WebApplicationFactory<Pr
                 ["Media:Provider"] = "Local",
                 ["Media:LocalRoot"] = MediaRoot,
                 ["Media:PublicBaseUrl"] = "/media-files",
+                ["ScheduledPublishing:PollIntervalSeconds"] = "1",
+                ["ScheduledPublishing:BatchSize"] = "20",
+                ["ScheduledPublishing:LockDurationSeconds"] = "30",
+                ["ScheduledPublishing:MaxAttempts"] = "5",
+                ["ScheduledPublishing:RetryDelaySeconds"] = "5",
+                ["ContentPreview:TokenLifetimeMinutes"] = "15",
             });
         });
     }

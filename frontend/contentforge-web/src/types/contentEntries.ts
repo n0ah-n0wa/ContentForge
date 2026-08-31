@@ -110,3 +110,25 @@ export const CONTENT_STATUS_FILTER_OPTIONS = (
   value: ContentStatus[Number(statusValue) as ContentStatus],
   label,
 }));
+
+export interface ContentPreviewToken {
+  token: string;
+  expiresAt: string;
+  previewPath: string;
+}
+
+export interface ContentPreviewField {
+  name: string;
+  displayName: string;
+  fieldType: number;
+  sortOrder: number;
+}
+
+export interface ContentPreview {
+  contentTypeSlug: string;
+  slug: string;
+  status: ContentStatus;
+  data: Record<string, ContentFieldValue>;
+  fields: ContentPreviewField[];
+  expiresAt: string;
+}

@@ -12,6 +12,10 @@ export const authGuard: NavigationGuard = async (to) => {
     return { name: 'dashboard' };
   }
 
+  if (to.meta.publicPreview) {
+    return true;
+  }
+
   if (to.meta.requiresAuth && !authStore.isAuthenticated) {
     const reason = authStore.sessionStatus === 'expired' ? 'expired' : undefined;
     return {
@@ -29,7 +33,7 @@ export const authGuard: NavigationGuard = async (to) => {
 export const permissionGuard: NavigationGuard = (to) => {
   const permissions = to.meta.permissions;
 
-  if (!permissions?.length || to.meta.guestOnly) {
+  if (!permissions?.length || to.meta.guestOnly || to.meta.publicPreview) {
     return true;
   }
 

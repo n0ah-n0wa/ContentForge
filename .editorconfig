@@ -36,6 +36,9 @@ dotnet_diagnostic.CA1720.severity = none
 [tests/**/*.cs]
 dotnet_diagnostic.CA1707.severity = none
 
+[src/ContentForge.Infrastructure/Migrations/**/*.cs]
+dotnet_diagnostic.CA1861.severity = none
+
 [*.{json,yml,yaml}]
 indent_size = 2
 

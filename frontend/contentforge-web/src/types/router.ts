@@ -3,6 +3,7 @@ declare module 'vue-router' {
     title?: string;
     requiresAuth?: boolean;
     guestOnly?: boolean;
+    publicPreview?: boolean;
     permissions?: string[];
   }
 }

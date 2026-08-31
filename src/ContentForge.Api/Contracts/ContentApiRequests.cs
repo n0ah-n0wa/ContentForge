@@ -30,6 +30,14 @@ public sealed record ContentLifecycleApiRequest(
     uint ConcurrencyToken);
 
 /// <summary>
+/// Request body for scheduling automatic publish/unpublish actions.
+/// </summary>
+public sealed record ScheduleContentPublishingApiRequest(
+    DateTimeOffset? PublishAt,
+    DateTimeOffset? UnpublishAt,
+    uint ConcurrencyToken);
+
+/// <summary>
 /// Request body for lifecycle transitions that only require concurrency.
 /// </summary>
 public sealed record ContentConcurrencyApiRequest(uint ConcurrencyToken);

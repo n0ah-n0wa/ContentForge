@@ -6,6 +6,8 @@ import type {
   ContentEntryListParams,
   ContentEntrySearchParams,
   ContentLifecycleRequest,
+  ContentPreview,
+  ContentPreviewToken,
   ContentVersion,
   ContentVersionComparison,
   CreateContentEntryRequest,
@@ -174,5 +176,17 @@ export function restoreContentVersion(
   return apiRequest<ContentEntry>(`${BASE}/${entryId}/versions/${versionNumber}/restore`, {
     method: 'POST',
     body: request,
+  });
+}
+
+export function createContentPreviewToken(entryId: string): Promise<ContentPreviewToken> {
+  return apiRequest<ContentPreviewToken>(`${BASE}/${entryId}/preview-token`, {
+    method: 'POST',
+  });
+}
+
+export function getContentPreview(token: string): Promise<ContentPreview> {
+  return apiRequest<ContentPreview>(`${BASE}/preview/${encodeURIComponent(token)}`, {
+    auth: false,
   });
 }

@@ -2,11 +2,15 @@ namespace ContentForge.Infrastructure;
 
 using ContentForge.Application.Abstractions;
 using ContentForge.Application.Abstractions.Persistence;
+using ContentForge.Application.Abstractions.Scheduling;
+using ContentForge.Application.ContentPreview;
+using ContentForge.Application.Scheduling;
 using ContentForge.Infrastructure.Options;
 using ContentForge.Infrastructure.Persistence;
-using ContentForge.Infrastructure.Persistence.Repositories;
 using ContentForge.Infrastructure.Services;
 using Microsoft.EntityFrameworkCore;
+using ContentForge.Infrastructure.Persistence.Repositories;
+using ContentForge.Infrastructure.Scheduling;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
@@ -59,6 +63,17 @@ public static class DependencyInjection
         services.AddScoped<IAuditLogRepository, EfAuditLogRepository>();
         services.AddScoped<IUserRepository, EfUserRepository>();
         services.AddScoped<IDashboardReadService, EfDashboardReadService>();
+        services.AddScoped<IScheduledJobRepository, EfScheduledJobRepository>();
+        services.AddScoped<IContentPreviewTokenRepository, EfContentPreviewTokenRepository>();
+        services.AddScoped<IBackgroundJobScheduler, BackgroundJobScheduler>();
+        services.AddScoped<IScheduledJobProcessor, ScheduledJobProcessor>();
+        services.Configure<ScheduledPublishingOptions>(configuration.GetSection(ScheduledPublishingOptions.SectionName));
+        services.Configure<ContentPreviewOptions>(configuration.GetSection(ContentPreviewOptions.SectionName));
+
+        if (environment?.IsEnvironment("Testing") != true)
+        {
+            services.AddHostedService<ScheduledPublishingBackgroundService>();
+        }
 
         return services;
     }

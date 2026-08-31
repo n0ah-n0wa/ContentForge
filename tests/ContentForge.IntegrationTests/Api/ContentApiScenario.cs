@@ -138,6 +138,41 @@ internal sealed class ContentApiScenario
         return (await response.Content.ReadFromJsonAsync<ContentEntryDto>())!;
     }
 
+    internal async Task<(HttpResponseMessage Response, ContentEntryDto? Entry)> SchedulePublishingAsync(
+        string token,
+        Guid entryId,
+        uint concurrencyToken,
+        DateTimeOffset? publishAt,
+        DateTimeOffset? unpublishAt)
+    {
+        var response = await SendAsync(
+            HttpMethod.Put,
+            $"/api/v1/content/{entryId}/schedule",
+            token,
+            new { publishAt, unpublishAt, concurrencyToken });
+
+        ContentEntryDto? entry = response.IsSuccessStatusCode
+            ? await response.Content.ReadFromJsonAsync<ContentEntryDto>()
+            : null;
+
+        return (response, entry);
+    }
+
+    internal async Task<ContentEntryDto> ClearScheduleAsync(
+        string token,
+        Guid entryId,
+        uint concurrencyToken)
+    {
+        var response = await SendAsync(
+            HttpMethod.Delete,
+            $"/api/v1/content/{entryId}/schedule",
+            token,
+            new { concurrencyToken });
+
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+        return (await response.Content.ReadFromJsonAsync<ContentEntryDto>())!;
+    }
+
     internal async Task<ContentEntryDto> ArchiveAsync(
         string token,
         Guid entryId,

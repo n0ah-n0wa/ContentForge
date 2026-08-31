@@ -1,6 +1,7 @@
 namespace ContentForge.Application.Mapping;
 
 using ContentForge.Application.Audit.Models;
+using ContentForge.Application.ContentPreview.Models;
 using ContentForge.Application.Content.Models;
 using ContentForge.Application.ContentTypes.Models;
 using ContentForge.Application.Media.Models;
@@ -69,6 +70,8 @@ internal static class ContentEntryMapper
             entry.UpdatedAt,
             entry.PublishedAt,
             entry.PublishedBy?.Value,
+            entry.ScheduledPublishAt,
+            entry.ScheduledUnpublishAt,
             entry.IsDeleted);
 
     internal static ContentVersionDto ToVersionDto(ContentVersion version) =>
@@ -97,6 +100,26 @@ internal static class ContentEntryMapper
             entry.PublishedAt
                 ?? throw new InvalidOperationException("Published content must have a published timestamp."));
     }
+
+    internal static ContentPreviewDto ToPreviewDto(
+        string contentTypeSlug,
+        ContentEntry entry,
+        ContentType contentType,
+        DateTimeOffset expiresAt) =>
+        new(
+            contentTypeSlug,
+            entry.Slug.Value,
+            entry.Status,
+            entry.DraftData.Values.ToDictionary(static pair => pair.Key, static pair => pair.Value),
+            contentType.Fields
+                .OrderBy(field => field.SortOrder)
+                .Select(field => new ContentPreviewFieldDto(
+                    field.Name.Value,
+                    field.DisplayName,
+                    field.FieldType,
+                    field.SortOrder))
+                .ToList(),
+            expiresAt);
 }
 
 internal static class MediaMapper

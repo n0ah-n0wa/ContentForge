@@ -53,6 +53,10 @@ public sealed class AppDbContext : IdentityUserContext<
 
     public DbSet<RefreshTokenEntity> RefreshTokens => Set<RefreshTokenEntity>();
 
+    public DbSet<ScheduledJobEntity> ScheduledJobs => Set<ScheduledJobEntity>();
+
+    public DbSet<ContentPreviewTokenEntity> ContentPreviewTokens => Set<ContentPreviewTokenEntity>();
+
     protected override void OnModelCreating(ModelBuilder builder)
     {
         ArgumentNullException.ThrowIfNull(builder);
