@@ -2,7 +2,7 @@
 import { computed, ref, watch } from 'vue';
 import AppButton from '@/components/common/AppButton.vue';
 import MediaPickerDialog from '@/components/media/MediaPickerDialog.vue';
-import { getMedia } from '@/api/media';
+import { getCachedMediaAssets } from '@/composables/useMediaAssetCache';
 import type { MediaAsset } from '@/types/media';
 import { formatMediaSize, isImageMedia, resolveMediaUrl } from '@/utils/mediaUrl';
 
@@ -33,7 +33,7 @@ async function loadAssets(ids: string[]): Promise<void> {
 
   loadingAssets.value = true;
   try {
-    loadedAssets.value = await Promise.all(ids.map((id) => getMedia(id)));
+    loadedAssets.value = await getCachedMediaAssets(ids);
   } catch {
     loadedAssets.value = ids.map((id) => ({
       id,

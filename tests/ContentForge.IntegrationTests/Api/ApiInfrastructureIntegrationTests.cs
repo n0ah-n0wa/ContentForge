@@ -125,6 +125,28 @@ public sealed class ApiInfrastructureIntegrationTests : IAsyncLifetime
     }
 
     [Fact]
+    public async Task ListContent_ClampOversizedPageSizeInResponseEnvelope()
+    {
+        var token = await ApiTestHelper.LoginAsync(
+            _client,
+            AuthTestConstants.AdminEmail,
+            AuthTestConstants.AdminPassword);
+
+        using var request = ApiTestHelper.CreateAuthenticatedRequest(
+            HttpMethod.Get,
+            "/api/v1/content?page=0&pageSize=500&sortBy=slug",
+            token);
+
+        var response = await _client.SendAsync(request);
+
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+        var payload = await response.Content.ReadFromJsonAsync<JsonElement>();
+        payload.GetProperty("page").GetInt32().Should().Be(1);
+        payload.GetProperty("pageSize").GetInt32().Should().Be(100);
+        payload.GetProperty("items").GetArrayLength().Should().BeLessThanOrEqualTo(100);
+    }
+
+    [Fact]
     public async Task UnsupportedFilterParameter_ReturnsBadRequestProblemDetails()
     {
         var token = await ApiTestHelper.LoginAsync(

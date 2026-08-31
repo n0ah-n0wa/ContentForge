@@ -21,6 +21,10 @@ public interface IContentEntryRepository
 
     Task<PaginatedResult<ContentEntry>> ListAsync(ContentEntryListCriteria criteria, CancellationToken cancellationToken = default);
 
+    Task<IReadOnlyList<ContentEntry>> GetSummariesByIdsAsync(
+        IReadOnlyList<ContentEntryId> ids,
+        CancellationToken cancellationToken = default);
+
     Task AddAsync(ContentEntry entry, CancellationToken cancellationToken = default);
 
     Task UpdateAsync(ContentEntry entry, CancellationToken cancellationToken = default);

@@ -47,22 +47,42 @@ internal sealed class EfContentEntryRepository(AppDbContext dbContext) : IConten
         CancellationToken cancellationToken = default)
     {
         var slugValue = slug.Value;
-        var snapshotMarker = $"\"slug\":\"{slugValue}\"";
 
-        var matches = await dbContext.ContentEntries
+        var entity = await dbContext.ContentEntries
             .AsNoTracking()
-            .Include(entry => entry.Versions)
             .Where(entry =>
                 entry.ContentTypeId == contentTypeId.Value
                 && !entry.IsDeleted
                 && entry.PublishedSnapshotJson != null
                 && entry.PublishedAt != null
-                && (entry.Slug == slugValue || entry.PublishedSnapshotJson.Contains(snapshotMarker)))
+                && entry.Slug == slugValue)
+            .SingleOrDefaultAsync(cancellationToken)
+            .ConfigureAwait(false);
+
+        if (entity is not null)
+        {
+            var matched = ContentEntryMapper.ToDomainPublicSummary(entity);
+            if (matched.HasPublishedRepresentation && matched.PublishedSnapshot!.Slug.Value == slugValue)
+            {
+                return matched;
+            }
+        }
+
+        var snapshotMarker = $"\"slug\":\"{slugValue}\"";
+        var fallbackMatches = await dbContext.ContentEntries
+            .AsNoTracking()
+            .Where(entry =>
+                entry.ContentTypeId == contentTypeId.Value
+                && !entry.IsDeleted
+                && entry.PublishedSnapshotJson != null
+                && entry.PublishedAt != null
+                && entry.Slug != slugValue
+                && entry.PublishedSnapshotJson.Contains(snapshotMarker))
             .ToListAsync(cancellationToken)
             .ConfigureAwait(false);
 
-        return matches
-            .Select(ContentEntryMapper.ToDomain)
+        return fallbackMatches
+            .Select(ContentEntryMapper.ToDomainPublicSummary)
             .SingleOrDefault(entry =>
                 entry.HasPublishedRepresentation
                 && entry.PublishedSnapshot!.Slug.Value == slugValue);
@@ -114,7 +134,7 @@ internal sealed class EfContentEntryRepository(AppDbContext dbContext) : IConten
 
         if (!string.IsNullOrWhiteSpace(criteria.Search))
         {
-            var pattern = $"%{PortableSearch.NormalizeTerm(criteria.Search)}%";
+            var pattern = PortableSearch.CreateContainsPattern(criteria.Search);
             query = query.WhereSlugContains(dbContext, pattern);
         }
 
@@ -148,10 +168,40 @@ internal sealed class EfContentEntryRepository(AppDbContext dbContext) : IConten
 
         var page = await query.ToPaginatedResultAsync(criteria.Pagination, cancellationToken).ConfigureAwait(false);
         return new PaginatedResult<ContentEntry>(
-            page.Items.Select(ContentEntryMapper.ToDomainSummary).ToList(),
+            page.Items.Select(entity => MapListEntity(entity, criteria.PublishedRepresentationOnly)).ToList(),
             page.Page,
             page.PageSize,
             page.TotalItems);
+    }
+
+    public async Task<IReadOnlyList<ContentEntry>> GetSummariesByIdsAsync(
+        IReadOnlyList<ContentEntryId> ids,
+        CancellationToken cancellationToken = default)
+    {
+        if (ids.Count == 0)
+        {
+            return [];
+        }
+
+        var idValues = ids.Select(id => id.Value).ToList();
+        var entities = await dbContext.ContentEntries
+            .AsNoTracking()
+            .Where(entry => idValues.Contains(entry.Id))
+            .ToListAsync(cancellationToken)
+            .ConfigureAwait(false);
+
+        var entitiesById = entities.ToDictionary(entry => entry.Id);
+        var summaries = new List<ContentEntry>(ids.Count);
+
+        foreach (var id in ids)
+        {
+            if (entitiesById.TryGetValue(id.Value, out var entity))
+            {
+                summaries.Add(ContentEntryMapper.ToDomainSummary(entity));
+            }
+        }
+
+        return summaries;
     }
 
     public async Task AddAsync(ContentEntry entry, CancellationToken cancellationToken = default)
@@ -187,18 +237,16 @@ internal sealed class EfContentEntryRepository(AppDbContext dbContext) : IConten
         ContentTypeId contentTypeId,
         CancellationToken cancellationToken = default)
     {
-        var entries = await dbContext.ContentEntries
+        await dbContext.ContentEntries
             .Where(entry => entry.ContentTypeId == contentTypeId.Value)
-            .ToListAsync(cancellationToken)
+            .ExecuteDeleteAsync(cancellationToken)
             .ConfigureAwait(false);
-
-        if (entries.Count == 0)
-        {
-            return;
-        }
-
-        dbContext.ContentEntries.RemoveRange(entries);
     }
+
+    private static ContentEntry MapListEntity(ContentEntryEntity entity, bool publishedRepresentationOnly) =>
+        publishedRepresentationOnly
+            ? ContentEntryMapper.ToDomainPublicSummary(entity)
+            : ContentEntryMapper.ToDomainSummary(entity);
 
     private async Task MarkNewVersionsAsAddedAsync(
         ContentEntryEntity entity,

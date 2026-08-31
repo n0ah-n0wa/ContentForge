@@ -1,6 +1,7 @@
 namespace ContentForge.Application.Content.Commands;
 
 using ContentForge.Application.Abstractions;
+using ContentForge.Application.Abstractions.Caching;
 using ContentForge.Application.Abstractions.Persistence;
 using ContentForge.Application.Common;
 using ContentForge.Application.Common.Concurrency;
@@ -9,6 +10,7 @@ using ContentForge.Application.Content.Models;
 using ContentForge.Application.Common.Serialization;
 using ContentForge.Application.Mapping;
 using ContentForge.Application.Media;
+using ContentForge.Application.PublicContent.Caching;
 using ContentForge.Domain.Audit;
 using ContentForge.Domain.Authorization;
 using ContentForge.Domain.Common;
@@ -127,6 +129,7 @@ public sealed class UpdateContentEntryCommandHandler
     private readonly IDateTimeProvider _clock;
     private readonly IAuditService _auditService;
     private readonly IValidator<UpdateContentEntryCommand> _validator;
+    private readonly IPublicContentCacheInvalidator _cacheInvalidator;
 
     public UpdateContentEntryCommandHandler(
         IContentTypeRepository contentTypeRepository,
@@ -136,7 +139,8 @@ public sealed class UpdateContentEntryCommandHandler
         ICurrentUserService currentUser,
         IDateTimeProvider clock,
         IAuditService auditService,
-        IValidator<UpdateContentEntryCommand> validator)
+        IValidator<UpdateContentEntryCommand> validator,
+        IPublicContentCacheInvalidator cacheInvalidator)
     {
         _contentTypeRepository = contentTypeRepository;
         _contentEntryRepository = contentEntryRepository;
@@ -146,6 +150,7 @@ public sealed class UpdateContentEntryCommandHandler
         _clock = clock;
         _auditService = auditService;
         _validator = validator;
+        _cacheInvalidator = cacheInvalidator;
     }
 
     public async Task<ContentEntryDto> HandleAsync(UpdateContentEntryCommand command, CancellationToken cancellationToken)
@@ -175,6 +180,8 @@ public sealed class UpdateContentEntryCommandHandler
         await MediaReferenceValidator.ValidateAsync(contentType, data, _mediaRepository, cancellationToken)
             .ConfigureAwait(false);
 
+        var publishedSlug = entry.HasPublishedRepresentation ? entry.PublishedSnapshot!.Slug : null;
+
         ApplicationGuard.TranslateDomainException(() =>
             entry.UpdateDraft(
                 contentType,
@@ -193,6 +200,16 @@ public sealed class UpdateContentEntryCommandHandler
             AuditAction.ContentUpdated,
             userId,
             cancellationToken);
+
+        if (publishedSlug is not null)
+        {
+            await PublicContentCacheInvalidation.InvalidateEntryAsync(
+                _cacheInvalidator,
+                entry.ContentTypeId,
+                entry,
+                publishedSlug,
+                cancellationToken).ConfigureAwait(false);
+        }
 
         return ContentEntryMapper.ToDto(entry);
     }
@@ -217,6 +234,7 @@ public sealed class DeleteContentEntryCommandHandler
     private readonly IDateTimeProvider _clock;
     private readonly IAuditService _auditService;
     private readonly IValidator<DeleteContentEntryCommand> _validator;
+    private readonly IPublicContentCacheInvalidator _cacheInvalidator;
 
     public DeleteContentEntryCommandHandler(
         IContentEntryRepository repository,
@@ -224,7 +242,8 @@ public sealed class DeleteContentEntryCommandHandler
         ICurrentUserService currentUser,
         IDateTimeProvider clock,
         IAuditService auditService,
-        IValidator<DeleteContentEntryCommand> validator)
+        IValidator<DeleteContentEntryCommand> validator,
+        IPublicContentCacheInvalidator cacheInvalidator)
     {
         _repository = repository;
         _unitOfWork = unitOfWork;
@@ -232,6 +251,7 @@ public sealed class DeleteContentEntryCommandHandler
         _clock = clock;
         _auditService = auditService;
         _validator = validator;
+        _cacheInvalidator = cacheInvalidator;
     }
 
     public async Task HandleAsync(DeleteContentEntryCommand command, CancellationToken cancellationToken)
@@ -243,6 +263,8 @@ public sealed class DeleteContentEntryCommandHandler
 
         var entry = await _repository.GetByIdAsync(ContentEntryId.From(command.ContentEntryId), cancellationToken)
             ?? throw new NotFoundApplicationException("ContentEntry", command.ContentEntryId);
+
+        var publishedSlug = entry.HasPublishedRepresentation ? entry.PublishedSnapshot!.Slug : null;
 
         ApplicationGuard.EnsureCanModifyContent(role, userId, entry.CreatedBy);
 
@@ -257,5 +279,12 @@ public sealed class DeleteContentEntryCommandHandler
             AuditAction.ContentDeleted,
             userId,
             cancellationToken);
+
+        await PublicContentCacheInvalidation.InvalidateEntryAsync(
+            _cacheInvalidator,
+            entry.ContentTypeId,
+            entry,
+            publishedSlug,
+            cancellationToken).ConfigureAwait(false);
     }
 }

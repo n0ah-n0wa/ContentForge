@@ -44,4 +44,5 @@ public sealed record ContentTypeDto(
     Guid UpdatedBy,
     DateTimeOffset CreatedAt,
     DateTimeOffset UpdatedAt,
-    IReadOnlyList<ContentTypeFieldDto> Fields);
+    IReadOnlyList<ContentTypeFieldDto> Fields,
+    int FieldCount);

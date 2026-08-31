@@ -1,10 +1,13 @@
 namespace ContentForge.Infrastructure;
 
 using ContentForge.Application.Abstractions;
+using ContentForge.Application.Abstractions.Caching;
 using ContentForge.Application.Abstractions.Persistence;
 using ContentForge.Application.Abstractions.Scheduling;
 using ContentForge.Application.ContentPreview;
+using ContentForge.Application.PublicContent.Caching;
 using ContentForge.Application.Scheduling;
+using ContentForge.Infrastructure.Caching;
 using ContentForge.Infrastructure.Options;
 using ContentForge.Infrastructure.Persistence;
 using ContentForge.Infrastructure.Services;
@@ -69,6 +72,19 @@ public static class DependencyInjection
         services.AddScoped<IScheduledJobProcessor, ScheduledJobProcessor>();
         services.Configure<ScheduledPublishingOptions>(configuration.GetSection(ScheduledPublishingOptions.SectionName));
         services.Configure<ContentPreviewOptions>(configuration.GetSection(ContentPreviewOptions.SectionName));
+        services.Configure<PublicContentCacheOptions>(configuration.GetSection(PublicContentCacheOptions.SectionName));
+
+        services.AddMemoryCache(options =>
+        {
+            var cacheOptions = configuration.GetSection(PublicContentCacheOptions.SectionName).Get<PublicContentCacheOptions>()
+                ?? new PublicContentCacheOptions();
+            options.SizeLimit = Math.Max(1, cacheOptions.MaxEntries);
+        });
+
+        services.AddSingleton<MemoryPublicContentCache>();
+        services.AddSingleton<IPublicContentCache>(sp => sp.GetRequiredService<MemoryPublicContentCache>());
+        services.AddSingleton<IPublicContentCacheStatistics>(sp => sp.GetRequiredService<MemoryPublicContentCache>());
+        services.AddScoped<IPublicContentCacheInvalidator, PublicContentCacheInvalidator>();
 
         if (environment?.IsEnvironment("Testing") != true)
         {

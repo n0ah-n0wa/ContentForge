@@ -37,10 +37,12 @@ internal sealed class ContentEntryEntityConfiguration : IEntityTypeConfiguration
         builder.HasIndex(entry => entry.UpdatedAt);
         builder.HasIndex(entry => entry.IsDeleted);
         builder.HasIndex(entry => entry.CreatedBy);
+        builder.HasIndex(entry => entry.PublishedAt);
         builder.HasIndex(entry => entry.ScheduledPublishAt);
         builder.HasIndex(entry => entry.ScheduledUnpublishAt);
 
         builder.HasIndex(entry => new { entry.ContentTypeId, entry.IsDeleted, entry.UpdatedAt });
+        builder.HasIndex(entry => new { entry.ContentTypeId, entry.IsDeleted, entry.PublishedAt });
 
         builder.HasOne(entry => entry.ContentType)
             .WithMany(contentType => contentType.Entries)

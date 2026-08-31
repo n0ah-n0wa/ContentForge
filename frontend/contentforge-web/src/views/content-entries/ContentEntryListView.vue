@@ -44,29 +44,31 @@ const totalItems = ref(0);
 const totalPages = ref(1);
 const useAdvancedSearch = ref(false);
 
-async function loadPage(): Promise<void> {
+async function resolveContentType(): Promise<ContentType | null> {
+  const types = await listContentTypes({
+    page: 1,
+    pageSize: 100,
+    sortBy: 'name',
+    sortDirection: 'asc',
+    search: contentTypeSlug.value,
+  });
+
+  return (
+    types.items.find((item) => item.slug === contentTypeSlug.value) ??
+    types.items.find((item) => item.name === contentTypeSlug.value) ??
+    null
+  );
+}
+
+async function loadEntries(): Promise<void> {
+  if (!contentType.value) {
+    return;
+  }
+
   loading.value = true;
   errorMessage.value = null;
 
   try {
-    const types = await listContentTypes({
-      page: 1,
-      pageSize: 100,
-      sortBy: 'name',
-      sortDirection: 'asc',
-      search: contentTypeSlug.value,
-    });
-    contentType.value =
-      types.items.find((item) => item.slug === contentTypeSlug.value) ??
-      types.items.find((item) => item.name === contentTypeSlug.value) ??
-      null;
-
-    if (!contentType.value) {
-      errorMessage.value = 'Content type not found.';
-      items.value = [];
-      return;
-    }
-
     const commonParams = {
       page: page.value,
       pageSize: pageSize.value,
@@ -98,9 +100,29 @@ async function loadPage(): Promise<void> {
   }
 }
 
+async function initializePage(): Promise<void> {
+  loading.value = true;
+  errorMessage.value = null;
+
+  try {
+    contentType.value = await resolveContentType();
+    if (!contentType.value) {
+      errorMessage.value = 'Content type not found.';
+      items.value = [];
+      return;
+    }
+
+    await loadEntries();
+  } catch (error) {
+    errorMessage.value = 'Unable to load content entries.';
+    handleError(error, 'Failed to load content entries');
+    loading.value = false;
+  }
+}
+
 function applyFilters(): void {
   page.value = 1;
-  void loadPage();
+  void loadEntries();
 }
 
 function toggleSortDirection(): void {
@@ -108,12 +130,30 @@ function toggleSortDirection(): void {
   applyFilters();
 }
 
-watch([page, pageSize], () => {
-  void loadPage();
+watch(contentTypeSlug, () => {
+  page.value = 1;
+  void initializePage();
+});
+
+watch(page, () => {
+  void loadEntries();
+});
+
+watch(pageSize, (newSize, oldSize) => {
+  if (newSize === oldSize) {
+    return;
+  }
+
+  if (page.value !== 1) {
+    page.value = 1;
+    return;
+  }
+
+  void loadEntries();
 });
 
 onMounted(() => {
-  void loadPage();
+  void initializePage();
 });
 </script>
 

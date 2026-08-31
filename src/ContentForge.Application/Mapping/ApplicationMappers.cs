@@ -26,7 +26,24 @@ internal static class ContentTypeMapper
             contentType.UpdatedBy.Value,
             contentType.CreatedAt,
             contentType.UpdatedAt,
-            contentType.Fields.Select(ToFieldDto).ToList());
+            contentType.Fields.Select(ToFieldDto).ToList(),
+            contentType.Fields.Count);
+
+    internal static ContentTypeDto ToListDto(ContentTypeListItem item) =>
+        new(
+            item.ContentType.Id.Value,
+            item.ContentType.Name.Value,
+            item.ContentType.DisplayName,
+            item.ContentType.Description,
+            item.ContentType.Slug.Value,
+            item.ContentType.IsActive,
+            item.ContentType.Version,
+            item.ContentType.CreatedBy.Value,
+            item.ContentType.UpdatedBy.Value,
+            item.ContentType.CreatedAt,
+            item.ContentType.UpdatedAt,
+            [],
+            item.FieldCount);
 
     internal static ContentTypeFieldDto ToFieldDto(ContentTypeField field) =>
         new(

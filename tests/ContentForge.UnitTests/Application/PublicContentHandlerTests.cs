@@ -1,9 +1,11 @@
 namespace ContentForge.UnitTests.Application;
 
+using ContentForge.Application.Abstractions.Caching;
 using ContentForge.Application.Abstractions.Persistence;
 using ContentForge.Application.Common.Exceptions;
 using ContentForge.Application.Common.Pagination;
 using ContentForge.Application.Common.Sorting;
+using ContentForge.Application.Content.Models;
 using ContentForge.Application.Content.Queries;
 using ContentForge.Application.PublicContent.Queries;
 using ContentForge.Domain.Content;
@@ -25,7 +27,10 @@ public sealed class PublicContentHandlerTests
         var entryRepository = Substitute.For<IContentEntryRepository>();
         entryRepository.GetPublishedBySlugAsync(contentType.Id, entry.Slug, Arg.Any<CancellationToken>()).Returns(entry);
 
-        var handler = new GetPublicContentBySlugQueryHandler(contentTypeRepository, entryRepository);
+        var handler = new GetPublicContentBySlugQueryHandler(
+            contentTypeRepository,
+            entryRepository,
+            CreatePassThroughCache());
 
         var action = () => handler.HandleAsync(
             new GetPublicContentBySlugQuery("article", "hello-world"),
@@ -48,7 +53,10 @@ public sealed class PublicContentHandlerTests
         var entryRepository = Substitute.For<IContentEntryRepository>();
         entryRepository.GetPublishedBySlugAsync(contentType.Id, entry.Slug, Arg.Any<CancellationToken>()).Returns(entry);
 
-        var handler = new GetPublicContentBySlugQueryHandler(contentTypeRepository, entryRepository);
+        var handler = new GetPublicContentBySlugQueryHandler(
+            contentTypeRepository,
+            entryRepository,
+            CreatePassThroughCache());
 
         var result = await handler.HandleAsync(
             new GetPublicContentBySlugQuery("article", "hello-world"),
@@ -73,7 +81,10 @@ public sealed class PublicContentHandlerTests
         var entryRepository = Substitute.For<IContentEntryRepository>();
         entryRepository.GetPublishedBySlugAsync(contentType.Id, entry.Slug, Arg.Any<CancellationToken>()).Returns(entry);
 
-        var handler = new GetPublicContentBySlugQueryHandler(contentTypeRepository, entryRepository);
+        var handler = new GetPublicContentBySlugQueryHandler(
+            contentTypeRepository,
+            entryRepository,
+            CreatePassThroughCache());
 
         var action = () => handler.HandleAsync(
             new GetPublicContentBySlugQuery("article", "hello-world"),
@@ -93,7 +104,8 @@ public sealed class PublicContentHandlerTests
 
         var handler = new GetPublicContentBySlugQueryHandler(
             contentTypeRepository,
-            Substitute.For<IContentEntryRepository>());
+            Substitute.For<IContentEntryRepository>(),
+            CreatePassThroughCache());
 
         var action = () => handler.HandleAsync(
             new GetPublicContentBySlugQuery("article", "hello-world"),
@@ -107,7 +119,8 @@ public sealed class PublicContentHandlerTests
     {
         var handler = new ListPublicContentQueryHandler(
             Substitute.For<IContentTypeRepository>(),
-            Substitute.For<IContentEntryRepository>());
+            Substitute.For<IContentEntryRepository>(),
+            CreatePassThroughCache());
 
         var action = () => handler.HandleAsync(
             new ListPublicContentQuery(
@@ -119,6 +132,50 @@ public sealed class PublicContentHandlerTests
             CancellationToken.None);
 
         await action.Should().ThrowAsync<ContentForge.Application.Common.Filtering.UnsupportedQueryParameterException>();
+    }
+
+    private static NoOpPublicContentCache CreatePassThroughCache() => new();
+
+    private sealed class NoOpPublicContentCache : IPublicContentCache
+    {
+        public bool IsEnabled => false;
+
+        public ValueTask<PublicContentDto?> TryGetEntryAsync(
+            string contentTypeSlug,
+            string slug,
+            CancellationToken cancellationToken = default) =>
+            ValueTask.FromResult<PublicContentDto?>(null);
+
+        public ValueTask SetEntryAsync(
+            string contentTypeSlug,
+            string slug,
+            PublicContentDto entry,
+            CancellationToken cancellationToken = default) =>
+            ValueTask.CompletedTask;
+
+        public ValueTask<PaginatedResult<PublicContentDto>?> TryGetListAsync(
+            string contentTypeSlug,
+            string listKey,
+            CancellationToken cancellationToken = default) =>
+            ValueTask.FromResult<PaginatedResult<PublicContentDto>?>(null);
+
+        public ValueTask SetListAsync(
+            string contentTypeSlug,
+            string listKey,
+            PaginatedResult<PublicContentDto> page,
+            CancellationToken cancellationToken = default) =>
+            ValueTask.CompletedTask;
+
+        public Task InvalidateEntryAsync(
+            string contentTypeSlug,
+            string slug,
+            CancellationToken cancellationToken = default) =>
+            Task.CompletedTask;
+
+        public Task InvalidateContentTypeAsync(
+            string contentTypeSlug,
+            CancellationToken cancellationToken = default) =>
+            Task.CompletedTask;
     }
 }
 

@@ -108,7 +108,7 @@ internal sealed class AzureBlobStorageGateway : IBlobStorageGateway
         }
 
         public override int Read(byte[] buffer, int offset, int count) =>
-            ReadAsync(buffer.AsMemory(offset, count)).AsTask().GetAwaiter().GetResult();
+            throw new NotSupportedException("Synchronous reads are not supported for upload streams.");
 
         public override async ValueTask<int> ReadAsync(
             Memory<byte> buffer,

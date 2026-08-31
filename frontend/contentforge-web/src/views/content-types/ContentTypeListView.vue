@@ -111,7 +111,7 @@ onMounted(() => {
             <td>{{ item.displayName }}</td>
             <td><code>{{ item.name }}</code></td>
             <td>{{ item.slug }}</td>
-            <td>{{ item.fields.length }}</td>
+            <td>{{ item.fieldCount ?? item.fields.length }}</td>
             <td>
               <span class="status-badge" :class="{ 'status-badge--inactive': !item.isActive }">
                 {{ item.isActive ? 'Active' : 'Inactive' }}

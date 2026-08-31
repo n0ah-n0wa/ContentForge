@@ -1,6 +1,7 @@
 namespace ContentForge.Application.Content.Commands;
 
 using ContentForge.Application.Abstractions;
+using ContentForge.Application.Abstractions.Caching;
 using ContentForge.Application.Abstractions.Persistence;
 using ContentForge.Application.Common;
 using ContentForge.Application.Common.Concurrency;
@@ -8,6 +9,7 @@ using ContentForge.Application.Common.Exceptions;
 using ContentForge.Application.Content.Models;
 using ContentForge.Application.Mapping;
 using ContentForge.Application.Media;
+using ContentForge.Application.PublicContent.Caching;
 using ContentForge.Domain.Audit;
 using ContentForge.Domain.Authorization;
 using ContentForge.Domain.Common;
@@ -182,6 +184,7 @@ public sealed class PublishContentCommandHandler
     private readonly IDateTimeProvider _clock;
     private readonly IAuditService _auditService;
     private readonly IValidator<PublishContentCommand> _validator;
+    private readonly IPublicContentCacheInvalidator _cacheInvalidator;
 
     public PublishContentCommandHandler(
         IContentTypeRepository contentTypeRepository,
@@ -191,7 +194,8 @@ public sealed class PublishContentCommandHandler
         ICurrentUserService currentUser,
         IDateTimeProvider clock,
         IAuditService auditService,
-        IValidator<PublishContentCommand> validator)
+        IValidator<PublishContentCommand> validator,
+        IPublicContentCacheInvalidator cacheInvalidator)
     {
         _contentTypeRepository = contentTypeRepository;
         _contentEntryRepository = contentEntryRepository;
@@ -201,6 +205,7 @@ public sealed class PublishContentCommandHandler
         _clock = clock;
         _auditService = auditService;
         _validator = validator;
+        _cacheInvalidator = cacheInvalidator;
     }
 
     public async Task<ContentEntryDto> HandleAsync(PublishContentCommand command, CancellationToken cancellationToken)
@@ -231,6 +236,12 @@ public sealed class PublishContentCommandHandler
             userId,
             cancellationToken);
 
+        await PublicContentCacheInvalidation.InvalidateEntryAsync(
+            _cacheInvalidator,
+            contentType.Id,
+            entry,
+            cancellationToken: cancellationToken).ConfigureAwait(false);
+
         return ContentEntryMapper.ToDto(entry);
     }
 }
@@ -258,6 +269,7 @@ public sealed class UnpublishContentCommandHandler
     private readonly IDateTimeProvider _clock;
     private readonly IAuditService _auditService;
     private readonly IValidator<UnpublishContentCommand> _validator;
+    private readonly IPublicContentCacheInvalidator _cacheInvalidator;
 
     public UnpublishContentCommandHandler(
         IContentEntryRepository repository,
@@ -265,7 +277,8 @@ public sealed class UnpublishContentCommandHandler
         ICurrentUserService currentUser,
         IDateTimeProvider clock,
         IAuditService auditService,
-        IValidator<UnpublishContentCommand> validator)
+        IValidator<UnpublishContentCommand> validator,
+        IPublicContentCacheInvalidator cacheInvalidator)
     {
         _repository = repository;
         _unitOfWork = unitOfWork;
@@ -273,6 +286,7 @@ public sealed class UnpublishContentCommandHandler
         _clock = clock;
         _auditService = auditService;
         _validator = validator;
+        _cacheInvalidator = cacheInvalidator;
     }
 
     public async Task<ContentEntryDto> HandleAsync(UnpublishContentCommand command, CancellationToken cancellationToken)
@@ -285,6 +299,8 @@ public sealed class UnpublishContentCommandHandler
         var entry = await _repository.GetByIdAsync(ContentEntryId.From(command.ContentEntryId), cancellationToken)
             ?? throw new NotFoundApplicationException("ContentEntry", command.ContentEntryId);
 
+        var publishedSlug = entry.HasPublishedRepresentation ? entry.PublishedSnapshot!.Slug : null;
+
         ApplicationGuard.TranslateDomainException(() =>
             entry.Unpublish(userId, ApplicationGuard.ToDomainToken(command.Concurrency), command.ChangeSummary, _clock.UtcNow));
 
@@ -296,6 +312,13 @@ public sealed class UnpublishContentCommandHandler
             AuditAction.ContentUnpublished,
             userId,
             cancellationToken);
+
+        await PublicContentCacheInvalidation.InvalidateEntryAsync(
+            _cacheInvalidator,
+            entry.ContentTypeId,
+            entry,
+            publishedSlug,
+            cancellationToken).ConfigureAwait(false);
 
         return ContentEntryMapper.ToDto(entry);
     }
@@ -324,6 +347,7 @@ public sealed class ArchiveContentCommandHandler
     private readonly IDateTimeProvider _clock;
     private readonly IAuditService _auditService;
     private readonly IValidator<ArchiveContentCommand> _validator;
+    private readonly IPublicContentCacheInvalidator _cacheInvalidator;
 
     public ArchiveContentCommandHandler(
         IContentEntryRepository repository,
@@ -331,7 +355,8 @@ public sealed class ArchiveContentCommandHandler
         ICurrentUserService currentUser,
         IDateTimeProvider clock,
         IAuditService auditService,
-        IValidator<ArchiveContentCommand> validator)
+        IValidator<ArchiveContentCommand> validator,
+        IPublicContentCacheInvalidator cacheInvalidator)
     {
         _repository = repository;
         _unitOfWork = unitOfWork;
@@ -339,6 +364,7 @@ public sealed class ArchiveContentCommandHandler
         _clock = clock;
         _auditService = auditService;
         _validator = validator;
+        _cacheInvalidator = cacheInvalidator;
     }
 
     public async Task<ContentEntryDto> HandleAsync(ArchiveContentCommand command, CancellationToken cancellationToken)
@@ -351,6 +377,8 @@ public sealed class ArchiveContentCommandHandler
         var entry = await _repository.GetByIdAsync(ContentEntryId.From(command.ContentEntryId), cancellationToken)
             ?? throw new NotFoundApplicationException("ContentEntry", command.ContentEntryId);
 
+        var publishedSlug = entry.HasPublishedRepresentation ? entry.PublishedSnapshot!.Slug : null;
+
         ApplicationGuard.TranslateDomainException(() =>
             entry.Archive(userId, ApplicationGuard.ToDomainToken(command.Concurrency), command.ChangeSummary, _clock.UtcNow));
 
@@ -362,6 +390,13 @@ public sealed class ArchiveContentCommandHandler
             AuditAction.ContentArchived,
             userId,
             cancellationToken);
+
+        await PublicContentCacheInvalidation.InvalidateEntryAsync(
+            _cacheInvalidator,
+            entry.ContentTypeId,
+            entry,
+            publishedSlug,
+            cancellationToken).ConfigureAwait(false);
 
         return ContentEntryMapper.ToDto(entry);
     }

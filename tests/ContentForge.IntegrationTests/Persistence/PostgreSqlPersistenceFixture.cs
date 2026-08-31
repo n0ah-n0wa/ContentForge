@@ -38,6 +38,10 @@ public sealed class PostgreSqlPersistenceFixture : IAsyncLifetime
                 ["ScheduledPublishing:LockDurationSeconds"] = "30",
                 ["ScheduledPublishing:MaxAttempts"] = "5",
                 ["ScheduledPublishing:RetryDelaySeconds"] = "5",
+                ["PublicContentCache:Enabled"] = "true",
+                ["PublicContentCache:EntryTtlSeconds"] = "300",
+                ["PublicContentCache:ListTtlSeconds"] = "60",
+                ["PublicContentCache:MaxEntries"] = "1024",
                 ["ASPNETCORE_ENVIRONMENT"] = "Testing",
             })
             .Build();

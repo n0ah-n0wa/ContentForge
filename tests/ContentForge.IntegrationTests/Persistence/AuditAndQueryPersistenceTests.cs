@@ -178,6 +178,6 @@ public sealed class QueryPersistenceTests(PostgreSqlPersistenceFixture fixture)
             Search: "news"));
 
         results.Items.Should().ContainSingle();
-        results.Items[0].Name.Should().Be(FieldName.Create("newsItem"));
+        results.Items[0].ContentType.Name.Should().Be(FieldName.Create("newsItem"));
     }
 }

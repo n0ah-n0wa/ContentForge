@@ -3,7 +3,7 @@ import { computed, ref, watch } from 'vue';
 import { FieldType, type ContentTypeField } from '@/types/contentTypes';
 import type { ContentFieldValue } from '@/types/contentEntries';
 import { sanitizeRichText, richTextToPlainText } from '@/utils/richTextSanitizer';
-import { listContentEntries } from '@/api/content';
+import { getRelationOptions } from '@/composables/useRelationOptions';
 import MediaFieldSelector from '@/components/media/MediaFieldSelector.vue';
 
 const model = defineModel<ContentFieldValue>({ required: true });
@@ -96,17 +96,7 @@ async function loadRelationOptions(): Promise<void> {
 
   relationLoading.value = true;
   try {
-    const response = await listContentEntries({
-      contentTypeId: props.relationTargetTypeId,
-      page: 1,
-      pageSize: 100,
-      sortBy: 'updatedAt',
-      sortDirection: 'desc',
-    });
-    relationOptions.value = response.items.map((entry) => ({
-      id: entry.id,
-      label: entry.slug,
-    }));
+    relationOptions.value = await getRelationOptions(props.relationTargetTypeId);
   } catch {
     relationOptions.value = [];
   } finally {

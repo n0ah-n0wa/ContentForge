@@ -1,10 +1,12 @@
 namespace ContentForge.Application.Scheduling;
 
 using ContentForge.Application.Abstractions;
+using ContentForge.Application.Abstractions.Caching;
 using ContentForge.Application.Abstractions.Persistence;
 using ContentForge.Application.Abstractions.Scheduling;
 using ContentForge.Application.Common;
 using ContentForge.Application.Media;
+using ContentForge.Application.PublicContent.Caching;
 using ContentForge.Application.Scheduling.Models;
 using ContentForge.Domain.Audit;
 using ContentForge.Domain.Common;
@@ -22,6 +24,7 @@ public sealed class ScheduledJobProcessor(
     IAuditService auditService,
     IDateTimeProvider clock,
     IOptions<ScheduledPublishingOptions> options,
+    IPublicContentCacheInvalidator cacheInvalidator,
     ILogger<ScheduledJobProcessor> logger) : IScheduledJobProcessor
 {
     private readonly ScheduledPublishingOptions _options = options.Value;
@@ -130,6 +133,12 @@ public sealed class ScheduledJobProcessor(
             actorId,
             metadata: AuditMetadataSanitizer.Build(("source", "scheduled")),
             cancellationToken: cancellationToken).ConfigureAwait(false);
+
+        await PublicContentCacheInvalidation.InvalidateEntryAsync(
+            cacheInvalidator,
+            entry.ContentTypeId,
+            entry,
+            cancellationToken: cancellationToken).ConfigureAwait(false);
     }
 
     private async Task ExecuteUnpublishAsync(
@@ -147,6 +156,8 @@ public sealed class ScheduledJobProcessor(
             return;
         }
 
+        var publishedSlug = entry.HasPublishedRepresentation ? entry.PublishedSnapshot!.Slug : null;
+
         entry.UnpublishScheduled(actorId, timestamp);
         await contentEntryRepository.UpdateAsync(entry, cancellationToken).ConfigureAwait(false);
         await unitOfWork.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
@@ -158,5 +169,12 @@ public sealed class ScheduledJobProcessor(
             actorId,
             metadata: AuditMetadataSanitizer.Build(("source", "scheduled")),
             cancellationToken: cancellationToken).ConfigureAwait(false);
+
+        await PublicContentCacheInvalidation.InvalidateEntryAsync(
+            cacheInvalidator,
+            entry.ContentTypeId,
+            entry,
+            publishedSlug,
+            cancellationToken).ConfigureAwait(false);
     }
 }

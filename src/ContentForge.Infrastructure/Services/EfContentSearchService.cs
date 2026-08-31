@@ -46,27 +46,16 @@ internal sealed class EfContentSearchService(AppDbContext dbContext) : IContentS
 
         if (!string.IsNullOrWhiteSpace(criteria.Keyword))
         {
-            var pattern = $"%{PortableSearch.NormalizeTerm(criteria.Keyword)}%";
+            var pattern = PortableSearch.CreateContainsPattern(criteria.Keyword);
             query = query.WhereContentSearchContains(dbContext, pattern);
         }
 
         query = ApplySort(query, criteria.Sort);
 
-        var projected = query.Select(entry => entry.Id);
-        var totalItems = await projected.LongCountAsync(cancellationToken).ConfigureAwait(false);
-        if (totalItems == 0)
-        {
-            return new PaginatedResult<Guid>([], criteria.Pagination.Page, criteria.Pagination.PageSize, 0);
-        }
-
-        var skip = (criteria.Pagination.Page - 1) * criteria.Pagination.PageSize;
-        var items = await projected
-            .Skip(skip)
-            .Take(criteria.Pagination.PageSize)
-            .ToListAsync(cancellationToken)
+        return await query
+            .Select(entry => entry.Id)
+            .ToPaginatedResultAsync(criteria.Pagination, cancellationToken)
             .ConfigureAwait(false);
-
-        return new PaginatedResult<Guid>(items, criteria.Pagination.Page, criteria.Pagination.PageSize, totalItems);
     }
 
     private static IQueryable<ContentEntryEntity> ApplySort(

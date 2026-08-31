@@ -3,6 +3,7 @@ namespace ContentForge.Infrastructure.Persistence.Repositories;
 using ContentForge.Application.Abstractions.Persistence;
 using ContentForge.Application.Common.Pagination;
 using ContentForge.Application.Common.Sorting;
+using ContentForge.Application.ContentTypes.Models;
 using ContentForge.Application.ContentTypes.Queries;
 using ContentForge.Domain.Common;
 using ContentForge.Domain.ContentTypes;
@@ -43,13 +44,12 @@ internal sealed class EfContentTypeRepository(AppDbContext dbContext) : IContent
     public Task<bool> HasDependentEntriesAsync(ContentTypeId id, CancellationToken cancellationToken = default) =>
         dbContext.ContentEntries.AnyAsync(entry => entry.ContentTypeId == id.Value, cancellationToken);
 
-    public async Task<PaginatedResult<ContentType>> ListAsync(
+    public async Task<PaginatedResult<ContentTypeListItem>> ListAsync(
         ContentTypeListCriteria criteria,
         CancellationToken cancellationToken = default)
     {
         var query = dbContext.ContentTypes
             .AsNoTracking()
-            .Include(contentType => contentType.Fields)
             .AsQueryable();
 
         if (criteria.IsActive is { } isActive)
@@ -59,15 +59,32 @@ internal sealed class EfContentTypeRepository(AppDbContext dbContext) : IContent
 
         if (!string.IsNullOrWhiteSpace(criteria.Search))
         {
-            var pattern = $"%{PortableSearch.NormalizeTerm(criteria.Search)}%";
+            var pattern = PortableSearch.CreateContainsPattern(criteria.Search);
             query = query.WhereContentTypeContains(dbContext, pattern);
         }
 
         query = ApplySort(query, criteria.Sort);
 
         var page = await query.ToPaginatedResultAsync(criteria.Pagination, cancellationToken).ConfigureAwait(false);
-        return new PaginatedResult<ContentType>(
-            page.Items.Select(ContentTypeMapper.ToDomain).ToList(),
+        if (page.Items.Count == 0)
+        {
+            return new PaginatedResult<ContentTypeListItem>([], page.Page, page.PageSize, page.TotalItems);
+        }
+
+        var contentTypeIds = page.Items.Select(contentType => contentType.Id).ToList();
+        var fieldCounts = await dbContext.ContentTypeFields
+            .AsNoTracking()
+            .Where(field => contentTypeIds.Contains(field.ContentTypeId))
+            .GroupBy(field => field.ContentTypeId)
+            .Select(group => new { ContentTypeId = group.Key, Count = group.Count() })
+            .ToDictionaryAsync(item => item.ContentTypeId, item => item.Count, cancellationToken)
+            .ConfigureAwait(false);
+
+        return new PaginatedResult<ContentTypeListItem>(
+            page.Items.Select(entity => new ContentTypeListItem(
+                ContentTypeMapper.ToDomainListSummary(entity),
+                fieldCounts.GetValueOrDefault(entity.Id)))
+                .ToList(),
             page.Page,
             page.PageSize,
             page.TotalItems);

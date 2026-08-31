@@ -34,10 +34,10 @@ describe('AuditLogView', () => {
           action: 9,
           entityType: 'ContentEntry',
           entityId: 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa',
-          metadata: null,
-          ipAddress: null,
-          userAgent: null,
-          correlationId: null,
+          metadata: '{"previousRole":"Viewer"}',
+          ipAddress: '127.0.0.1',
+          userAgent: 'unit-test-agent',
+          correlationId: 'corr-123',
         },
       ],
       page: 1,
@@ -46,18 +46,7 @@ describe('AuditLogView', () => {
       totalPages: 1,
     });
 
-    vi.spyOn(auditApi, 'getAuditLog').mockResolvedValue({
-      id: 'cccccccc-cccc-cccc-cccc-cccccccccccc',
-      timestamp: '2026-01-01T12:00:00.000Z',
-      userId: '11111111-1111-1111-1111-111111111111',
-      action: 9,
-      entityType: 'ContentEntry',
-      entityId: 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa',
-      metadata: '{"previousRole":"Viewer"}',
-      ipAddress: '127.0.0.1',
-      userAgent: 'unit-test-agent',
-      correlationId: 'corr-123',
-    });
+    vi.spyOn(auditApi, 'getAuditLog');
   });
 
   it('loads audit events and shows event details', async () => {
@@ -80,7 +69,7 @@ describe('AuditLogView', () => {
     await wrapper.find('.audit-log-row__button').trigger('click');
     await flushPromises();
 
-    expect(auditApi.getAuditLog).toHaveBeenCalledWith('cccccccc-cccc-cccc-cccc-cccccccccccc');
+    expect(auditApi.getAuditLog).not.toHaveBeenCalled();
     expect(wrapper.text()).toContain('Event details');
     expect(wrapper.text()).toContain('corr-123');
     expect(wrapper.text()).toContain('Viewer');

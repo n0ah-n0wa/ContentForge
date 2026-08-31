@@ -254,22 +254,19 @@ public sealed class SearchContentQueryHandler
             : query.Criteria;
 
         var searchResult = await _searchService.SearchAsync(criteria, cancellationToken);
-        var entries = new List<ContentEntryDto>();
+        var entries = await _contentEntryRepository.GetSummariesByIdsAsync(
+            searchResult.Items.Select(ContentEntryId.From).ToList(),
+            cancellationToken);
 
-        foreach (var entryId in searchResult.Items)
+        var authorizedEntries = new List<ContentEntryDto>(entries.Count);
+        foreach (var entry in entries)
         {
-            var entry = await _contentEntryRepository.GetByIdAsync(ContentEntryId.From(entryId), cancellationToken);
-            if (entry is null)
-            {
-                continue;
-            }
-
             ApplicationGuard.EnsureCanReadContent(role, userId, entry.CreatedBy);
-            entries.Add(ContentEntryMapper.ToDto(entry));
+            authorizedEntries.Add(ContentEntryMapper.ToDto(entry));
         }
 
         return new PaginatedResult<ContentEntryDto>(
-            entries,
+            authorizedEntries,
             searchResult.Page,
             searchResult.PageSize,
             searchResult.TotalItems);

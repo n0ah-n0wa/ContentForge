@@ -40,6 +40,10 @@ public sealed class ContentForgeWebApplicationFactory : WebApplicationFactory<Pr
                 ["ScheduledPublishing:MaxAttempts"] = "5",
                 ["ScheduledPublishing:RetryDelaySeconds"] = "5",
                 ["ContentPreview:TokenLifetimeMinutes"] = "15",
+                ["PublicContentCache:Enabled"] = "true",
+                ["PublicContentCache:EntryTtlSeconds"] = "300",
+                ["PublicContentCache:ListTtlSeconds"] = "60",
+                ["PublicContentCache:MaxEntries"] = "1024",
             });
         });
     }

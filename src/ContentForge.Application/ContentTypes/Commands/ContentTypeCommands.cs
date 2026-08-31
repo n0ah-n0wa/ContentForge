@@ -1,6 +1,7 @@
 namespace ContentForge.Application.ContentTypes.Commands;
 
 using ContentForge.Application.Abstractions;
+using ContentForge.Application.Abstractions.Caching;
 using ContentForge.Application.Abstractions.Persistence;
 using ContentForge.Application.Common;
 using ContentForge.Application.Common.Exceptions;
@@ -112,6 +113,7 @@ public sealed class UpdateContentTypeCommandHandler
     private readonly IDateTimeProvider _clock;
     private readonly IAuditService _auditService;
     private readonly IValidator<UpdateContentTypeCommand> _validator;
+    private readonly IPublicContentCacheInvalidator _cacheInvalidator;
 
     public UpdateContentTypeCommandHandler(
         IContentTypeRepository repository,
@@ -119,7 +121,8 @@ public sealed class UpdateContentTypeCommandHandler
         ICurrentUserService currentUser,
         IDateTimeProvider clock,
         IAuditService auditService,
-        IValidator<UpdateContentTypeCommand> validator)
+        IValidator<UpdateContentTypeCommand> validator,
+        IPublicContentCacheInvalidator cacheInvalidator)
     {
         _repository = repository;
         _unitOfWork = unitOfWork;
@@ -127,6 +130,7 @@ public sealed class UpdateContentTypeCommandHandler
         _clock = clock;
         _auditService = auditService;
         _validator = validator;
+        _cacheInvalidator = cacheInvalidator;
     }
 
     public async Task<ContentTypeDto> HandleAsync(UpdateContentTypeCommand command, CancellationToken cancellationToken)
@@ -139,6 +143,7 @@ public sealed class UpdateContentTypeCommandHandler
         var contentType = await _repository.GetByIdAsync(ContentTypeId.From(command.ContentTypeId), cancellationToken)
             ?? throw new NotFoundApplicationException("ContentType", command.ContentTypeId);
 
+        var previousSlug = contentType.Slug;
         var slug = ApplicationGuard.CreateSlug(command.Slug);
         if (contentType.Slug != slug)
         {
@@ -162,6 +167,11 @@ public sealed class UpdateContentTypeCommandHandler
             userId,
             cancellationToken: cancellationToken);
 
+        if (previousSlug != slug)
+        {
+            await _cacheInvalidator.InvalidateContentTypeAsync(contentType.Id, cancellationToken).ConfigureAwait(false);
+        }
+
         return ContentTypeMapper.ToDto(contentType);
     }
 }
@@ -183,19 +193,22 @@ public sealed class DeleteContentTypeCommandHandler
     private readonly IUnitOfWork _unitOfWork;
     private readonly ICurrentUserService _currentUser;
     private readonly IValidator<DeleteContentTypeCommand> _validator;
+    private readonly IPublicContentCacheInvalidator _cacheInvalidator;
 
     public DeleteContentTypeCommandHandler(
         IContentTypeRepository repository,
         IContentEntryRepository contentEntryRepository,
         IUnitOfWork unitOfWork,
         ICurrentUserService currentUser,
-        IValidator<DeleteContentTypeCommand> validator)
+        IValidator<DeleteContentTypeCommand> validator,
+        IPublicContentCacheInvalidator cacheInvalidator)
     {
         _repository = repository;
         _contentEntryRepository = contentEntryRepository;
         _unitOfWork = unitOfWork;
         _currentUser = currentUser;
         _validator = validator;
+        _cacheInvalidator = cacheInvalidator;
     }
 
     public async Task HandleAsync(DeleteContentTypeCommand command, CancellationToken cancellationToken)
@@ -220,6 +233,8 @@ public sealed class DeleteContentTypeCommandHandler
 
         await _repository.DeleteAsync(contentType, cancellationToken);
         await _unitOfWork.SaveChangesAsync(cancellationToken);
+
+        await _cacheInvalidator.InvalidateContentTypeAsync(contentType.Id, cancellationToken).ConfigureAwait(false);
     }
 }
 
@@ -338,6 +353,7 @@ public sealed class DeactivateContentTypeCommandHandler
     private readonly IDateTimeProvider _clock;
     private readonly IAuditService _auditService;
     private readonly IValidator<DeactivateContentTypeCommand> _validator;
+    private readonly IPublicContentCacheInvalidator _cacheInvalidator;
 
     public DeactivateContentTypeCommandHandler(
         IContentTypeRepository repository,
@@ -345,7 +361,8 @@ public sealed class DeactivateContentTypeCommandHandler
         ICurrentUserService currentUser,
         IDateTimeProvider clock,
         IAuditService auditService,
-        IValidator<DeactivateContentTypeCommand> validator)
+        IValidator<DeactivateContentTypeCommand> validator,
+        IPublicContentCacheInvalidator cacheInvalidator)
     {
         _repository = repository;
         _unitOfWork = unitOfWork;
@@ -353,6 +370,7 @@ public sealed class DeactivateContentTypeCommandHandler
         _clock = clock;
         _auditService = auditService;
         _validator = validator;
+        _cacheInvalidator = cacheInvalidator;
     }
 
     public async Task<ContentTypeDto> HandleAsync(DeactivateContentTypeCommand command, CancellationToken cancellationToken)
@@ -376,6 +394,8 @@ public sealed class DeactivateContentTypeCommandHandler
             contentType.Id.Value.ToString(),
             userId,
             cancellationToken: cancellationToken);
+
+        await _cacheInvalidator.InvalidateContentTypeAsync(contentType.Id, cancellationToken).ConfigureAwait(false);
 
         return ContentTypeMapper.ToDto(contentType);
     }

@@ -6,6 +6,7 @@ using Microsoft.EntityFrameworkCore;
 /// <summary>
 /// Provider-portable case-insensitive search predicates.
 /// PostgreSQL uses ILike; SQL Server uses Like with CI collation defaults.
+/// User input is escaped so % and _ are treated literally.
 /// </summary>
 internal static class EfSearchExpressions
 {
@@ -14,8 +15,8 @@ internal static class EfSearchExpressions
         AppDbContext dbContext,
         string pattern) =>
         dbContext.Database.IsNpgsql()
-            ? query.Where(entry => EF.Functions.ILike(entry.Slug, pattern))
-            : query.Where(entry => EF.Functions.Like(entry.Slug, pattern));
+            ? query.Where(entry => EF.Functions.ILike(entry.Slug, pattern, PortableSearch.LikeEscapeCharacter))
+            : query.Where(entry => EF.Functions.Like(entry.Slug, pattern, PortableSearch.LikeEscapeCharacter));
 
     internal static IQueryable<ContentTypeEntity> WhereContentTypeContains(
         this IQueryable<ContentTypeEntity> query,
@@ -23,13 +24,13 @@ internal static class EfSearchExpressions
         string pattern) =>
         dbContext.Database.IsNpgsql()
             ? query.Where(contentType =>
-                EF.Functions.ILike(contentType.Name, pattern)
-                || EF.Functions.ILike(contentType.DisplayName, pattern)
-                || EF.Functions.ILike(contentType.Slug, pattern))
+                EF.Functions.ILike(contentType.Name, pattern, PortableSearch.LikeEscapeCharacter)
+                || EF.Functions.ILike(contentType.DisplayName, pattern, PortableSearch.LikeEscapeCharacter)
+                || EF.Functions.ILike(contentType.Slug, pattern, PortableSearch.LikeEscapeCharacter))
             : query.Where(contentType =>
-                EF.Functions.Like(contentType.Name, pattern)
-                || EF.Functions.Like(contentType.DisplayName, pattern)
-                || EF.Functions.Like(contentType.Slug, pattern));
+                EF.Functions.Like(contentType.Name, pattern, PortableSearch.LikeEscapeCharacter)
+                || EF.Functions.Like(contentType.DisplayName, pattern, PortableSearch.LikeEscapeCharacter)
+                || EF.Functions.Like(contentType.Slug, pattern, PortableSearch.LikeEscapeCharacter));
 
     internal static IQueryable<ContentEntryEntity> WhereContentSearchContains(
         this IQueryable<ContentEntryEntity> query,
@@ -37,11 +38,11 @@ internal static class EfSearchExpressions
         string pattern) =>
         dbContext.Database.IsNpgsql()
             ? query.Where(entry =>
-                EF.Functions.ILike(entry.Slug, pattern)
-                || EF.Functions.ILike(entry.DraftDataJson, pattern))
+                EF.Functions.ILike(entry.Slug, pattern, PortableSearch.LikeEscapeCharacter)
+                || EF.Functions.ILike(entry.DraftDataJson, pattern, PortableSearch.LikeEscapeCharacter))
             : query.Where(entry =>
-                EF.Functions.Like(entry.Slug, pattern)
-                || EF.Functions.Like(entry.DraftDataJson, pattern));
+                EF.Functions.Like(entry.Slug, pattern, PortableSearch.LikeEscapeCharacter)
+                || EF.Functions.Like(entry.DraftDataJson, pattern, PortableSearch.LikeEscapeCharacter));
 
     internal static IQueryable<MediaAssetEntity> WhereMediaContains(
         this IQueryable<MediaAssetEntity> query,
@@ -49,13 +50,13 @@ internal static class EfSearchExpressions
         string pattern) =>
         dbContext.Database.IsNpgsql()
             ? query.Where(media =>
-                EF.Functions.ILike(media.FileName, pattern)
-                || EF.Functions.ILike(media.OriginalFileName, pattern)
-                || EF.Functions.ILike(media.Title ?? string.Empty, pattern))
+                EF.Functions.ILike(media.FileName, pattern, PortableSearch.LikeEscapeCharacter)
+                || EF.Functions.ILike(media.OriginalFileName, pattern, PortableSearch.LikeEscapeCharacter)
+                || EF.Functions.ILike(media.Title ?? string.Empty, pattern, PortableSearch.LikeEscapeCharacter))
             : query.Where(media =>
-                EF.Functions.Like(media.FileName, pattern)
-                || EF.Functions.Like(media.OriginalFileName, pattern)
-                || EF.Functions.Like(media.Title ?? string.Empty, pattern));
+                EF.Functions.Like(media.FileName, pattern, PortableSearch.LikeEscapeCharacter)
+                || EF.Functions.Like(media.OriginalFileName, pattern, PortableSearch.LikeEscapeCharacter)
+                || EF.Functions.Like(media.Title ?? string.Empty, pattern, PortableSearch.LikeEscapeCharacter));
 
     internal static IQueryable<ContentForgeUser> WhereUserContains(
         this IQueryable<ContentForgeUser> query,
@@ -63,9 +64,9 @@ internal static class EfSearchExpressions
         string pattern) =>
         dbContext.Database.IsNpgsql()
             ? query.Where(user =>
-                EF.Functions.ILike(user.Email ?? string.Empty, pattern)
-                || EF.Functions.ILike(user.DisplayName, pattern))
+                EF.Functions.ILike(user.Email ?? string.Empty, pattern, PortableSearch.LikeEscapeCharacter)
+                || EF.Functions.ILike(user.DisplayName, pattern, PortableSearch.LikeEscapeCharacter))
             : query.Where(user =>
-                EF.Functions.Like(user.Email ?? string.Empty, pattern)
-                || EF.Functions.Like(user.DisplayName, pattern));
+                EF.Functions.Like(user.Email ?? string.Empty, pattern, PortableSearch.LikeEscapeCharacter)
+                || EF.Functions.Like(user.DisplayName, pattern, PortableSearch.LikeEscapeCharacter));
 }

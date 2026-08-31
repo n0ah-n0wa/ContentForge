@@ -57,7 +57,7 @@ internal sealed class EfUserRepository(AppDbContext dbContext) : IUserRepository
 
         if (!string.IsNullOrWhiteSpace(criteria.Search))
         {
-            var pattern = $"%{PortableSearch.NormalizeTerm(criteria.Search)}%";
+            var pattern = PortableSearch.CreateContainsPattern(criteria.Search);
             query = query.WhereUserContains(dbContext, pattern);
         }
 

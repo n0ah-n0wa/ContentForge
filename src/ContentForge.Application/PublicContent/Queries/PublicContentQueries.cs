@@ -1,5 +1,6 @@
 namespace ContentForge.Application.PublicContent.Queries;
 
+using ContentForge.Application.Abstractions.Caching;
 using ContentForge.Application.Abstractions.Persistence;
 using ContentForge.Application.Common;
 using ContentForge.Application.Common.Exceptions;
@@ -8,6 +9,7 @@ using ContentForge.Application.Common.Pagination;
 using ContentForge.Application.Content.Models;
 using ContentForge.Application.Content.Queries;
 using ContentForge.Application.Mapping;
+using ContentForge.Application.PublicContent.Caching;
 using ContentForge.Domain.Content;
 using ContentForge.Domain.ContentTypes;
 
@@ -19,13 +21,16 @@ public sealed class ListPublicContentQueryHandler
 
     private readonly IContentTypeRepository _contentTypeRepository;
     private readonly IContentEntryRepository _contentEntryRepository;
+    private readonly IPublicContentCache _cache;
 
     public ListPublicContentQueryHandler(
         IContentTypeRepository contentTypeRepository,
-        IContentEntryRepository contentEntryRepository)
+        IContentEntryRepository contentEntryRepository,
+        IPublicContentCache cache)
     {
         _contentTypeRepository = contentTypeRepository;
         _contentEntryRepository = contentEntryRepository;
+        _cache = cache;
     }
 
     public async Task<PaginatedResult<PublicContentDto>> HandleAsync(
@@ -37,6 +42,17 @@ public sealed class ListPublicContentQueryHandler
             query.Criteria.UnsupportedFilters ?? new Dictionary<string, string?>(StringComparer.Ordinal),
             _emptyFilterSet,
             "public content");
+
+        var listCacheKey = PublicContentCacheListKeyBuilder.Build(query.Criteria);
+        var cachedPage = await _cache.TryGetListAsync(
+            query.Criteria.ContentTypeSlug,
+            listCacheKey,
+            cancellationToken).ConfigureAwait(false);
+
+        if (cachedPage is not null)
+        {
+            return cachedPage;
+        }
 
         var contentType = await PublicContentVisibility.RequireActiveContentTypeAsync(
             _contentTypeRepository,
@@ -61,11 +77,17 @@ public sealed class ListPublicContentQueryHandler
 
         var result = await _contentEntryRepository.ListAsync(listCriteria, cancellationToken);
         var items = result.Items
-            .Where(PublicContentVisibility.IsPubliclyVisible)
             .Select(entry => ContentEntryMapper.ToPublicDto(contentType.Slug.Value, entry))
             .ToList();
 
-        return new PaginatedResult<PublicContentDto>(items, result.Page, result.PageSize, result.TotalItems);
+        var page = new PaginatedResult<PublicContentDto>(items, result.Page, result.PageSize, result.TotalItems);
+        await _cache.SetListAsync(
+            contentType.Slug.Value,
+            listCacheKey,
+            page,
+            cancellationToken).ConfigureAwait(false);
+
+        return page;
     }
 }
 
@@ -75,17 +97,31 @@ public sealed class GetPublicContentBySlugQueryHandler
 {
     private readonly IContentTypeRepository _contentTypeRepository;
     private readonly IContentEntryRepository _contentEntryRepository;
+    private readonly IPublicContentCache _cache;
 
     public GetPublicContentBySlugQueryHandler(
         IContentTypeRepository contentTypeRepository,
-        IContentEntryRepository contentEntryRepository)
+        IContentEntryRepository contentEntryRepository,
+        IPublicContentCache cache)
     {
         _contentTypeRepository = contentTypeRepository;
         _contentEntryRepository = contentEntryRepository;
+        _cache = cache;
     }
 
     public async Task<PublicContentDto> HandleAsync(GetPublicContentBySlugQuery query, CancellationToken cancellationToken)
     {
+        var normalizedSlug = ApplicationGuard.CreateSlug(query.Slug).Value;
+        var cachedEntry = await _cache.TryGetEntryAsync(
+            query.ContentTypeSlug,
+            normalizedSlug,
+            cancellationToken).ConfigureAwait(false);
+
+        if (cachedEntry is not null)
+        {
+            return cachedEntry;
+        }
+
         var contentType = await PublicContentVisibility.RequireActiveContentTypeAsync(
             _contentTypeRepository,
             query.ContentTypeSlug,
@@ -102,7 +138,9 @@ public sealed class GetPublicContentBySlugQueryHandler
             throw new NotFoundApplicationException("ContentEntry", query.Slug);
         }
 
-        return ContentEntryMapper.ToPublicDto(contentType.Slug.Value, entry);
+        var dto = ContentEntryMapper.ToPublicDto(contentType.Slug.Value, entry);
+        await _cache.SetEntryAsync(contentType.Slug.Value, normalizedSlug, dto, cancellationToken).ConfigureAwait(false);
+        return dto;
     }
 }
 

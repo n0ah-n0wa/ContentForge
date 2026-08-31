@@ -5,7 +5,7 @@ import AppButton from '@/components/common/AppButton.vue';
 import AppSpinner from '@/components/common/AppSpinner.vue';
 import PaginationBar from '@/components/common/PaginationBar.vue';
 import AuditLogDetailPanel from '@/components/audit/AuditLogDetailPanel.vue';
-import { getAuditLog, listAuditLogs } from '@/api/audit';
+import { listAuditLogs } from '@/api/audit';
 import { useApiErrorHandling } from '@/composables/useApiErrorHandling';
 import { useAuditPermissions } from '@/composables/useAuditPermissions';
 import {
@@ -22,7 +22,6 @@ const { canRead } = useAuditPermissions();
 
 const items = ref<AuditLogEntry[]>([]);
 const loading = ref(true);
-const detailLoading = ref(false);
 const errorMessage = ref<string | null>(null);
 const selectedEntryId = ref<string | null>(null);
 const selectedEntry = ref<AuditLogEntry | null>(null);
@@ -93,16 +92,7 @@ async function loadAuditLogs(): Promise<void> {
 
 async function selectEntry(entry: AuditLogEntry): Promise<void> {
   selectedEntryId.value = entry.id;
-  detailLoading.value = true;
-
-  try {
-    selectedEntry.value = await getAuditLog(entry.id);
-  } catch (error) {
-    selectedEntry.value = entry;
-    handleError(error, 'Failed to load audit event details');
-  } finally {
-    detailLoading.value = false;
-  }
+  selectedEntry.value = entry;
 }
 
 function applyFilters(): void {
@@ -248,7 +238,7 @@ watch([page, pageSize], () => {
           </template>
         </section>
 
-        <AuditLogDetailPanel :entry="selectedEntry" :loading="detailLoading" />
+        <AuditLogDetailPanel :entry="selectedEntry" :loading="false" />
       </div>
     </template>
   </section>

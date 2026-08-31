@@ -8,7 +8,8 @@ import PaginationBar from '@/components/common/PaginationBar.vue';
 import MediaAssetCard from '@/components/media/MediaAssetCard.vue';
 import MediaAssetRow from '@/components/media/MediaAssetRow.vue';
 import MediaMetadataForm from '@/components/media/MediaMetadataForm.vue';
-import { deleteMedia, getMedia, listMedia, updateMediaMetadata } from '@/api/media';
+import { deleteMedia, listMedia, updateMediaMetadata } from '@/api/media';
+import { primeMediaAssetCache } from '@/composables/useMediaAssetCache';
 import { useApiErrorHandling } from '@/composables/useApiErrorHandling';
 import { useMediaPermissions } from '@/composables/useMediaPermissions';
 import { MEDIA_CONTENT_TYPE_FILTERS, type MediaAsset } from '@/types/media';
@@ -48,7 +49,6 @@ const totalItems = ref(0);
 const totalPages = ref(1);
 const selectedAssetId = ref<string | null>(null);
 const selectedAsset = ref<MediaAsset | null>(null);
-const detailLoading = ref(false);
 const savingMetadata = ref(false);
 const deleting = ref(false);
 const showDeleteConfirm = ref(false);
@@ -90,23 +90,6 @@ async function loadMedia(): Promise<void> {
   }
 }
 
-async function loadSelectedAsset(id: string): Promise<void> {
-  detailLoading.value = true;
-  try {
-    selectedAsset.value = await getMedia(id);
-    metadata.value = {
-      altText: selectedAsset.value.altText ?? '',
-      title: selectedAsset.value.title ?? '',
-      description: selectedAsset.value.description ?? '',
-    };
-  } catch (error) {
-    selectedAsset.value = null;
-    handleError(error, 'Failed to load media details');
-  } finally {
-    detailLoading.value = false;
-  }
-}
-
 function applyFilters(): void {
   page.value = 1;
   void loadMedia();
@@ -120,7 +103,13 @@ function onAssetSelect(asset: MediaAsset): void {
   }
 
   selectedAssetId.value = asset.id;
-  void loadSelectedAsset(asset.id);
+  primeMediaAssetCache(asset);
+  selectedAsset.value = asset;
+  metadata.value = {
+    altText: asset.altText ?? '',
+    title: asset.title ?? '',
+    description: asset.description ?? '',
+  };
 }
 
 function toggleSelection(id: string): void {
@@ -263,11 +252,7 @@ defineExpose({
     </template>
 
     <section v-if="!selectionMode && selectedAssetId" class="media-library__detail editor-panel">
-      <div v-if="detailLoading" class="inline-loading">
-        <AppSpinner label="Loading media details" />
-        <span>Loading details…</span>
-      </div>
-      <template v-else-if="selectedAsset">
+      <template v-if="selectedAsset">
         <header class="section-header">
           <div>
             <h3>{{ selectedAsset.originalFileName }}</h3>

@@ -85,7 +85,7 @@ onMounted(() => {
           <tr v-for="item in items" :key="item.id">
             <td>{{ item.displayName }}</td>
             <td>{{ item.slug }}</td>
-            <td>{{ item.fields.length }}</td>
+            <td>{{ item.fieldCount ?? item.fields.length }}</td>
             <td>
               <AppButton
                 variant="secondary"

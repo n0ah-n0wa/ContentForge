@@ -3,6 +3,7 @@ namespace ContentForge.Application.Abstractions.Persistence;
 using ContentForge.Application.Common.Pagination;
 using ContentForge.Application.ContentTypes.Queries;
 using ContentForge.Domain.Common;
+using ContentForge.Application.ContentTypes.Models;
 using ContentForge.Domain.ContentTypes;
 
 /// <summary>
@@ -20,7 +21,9 @@ public interface IContentTypeRepository
 
     Task<bool> HasDependentEntriesAsync(ContentTypeId id, CancellationToken cancellationToken = default);
 
-    Task<PaginatedResult<ContentType>> ListAsync(ContentTypeListCriteria criteria, CancellationToken cancellationToken = default);
+    Task<PaginatedResult<ContentTypeListItem>> ListAsync(
+        ContentTypeListCriteria criteria,
+        CancellationToken cancellationToken = default);
 
     Task AddAsync(ContentType contentType, CancellationToken cancellationToken = default);
 

@@ -1,5 +1,6 @@
 namespace ContentForge.UnitTests.Application;
 
+using ContentForge.Application.Abstractions.Caching;
 using ContentForge.Application.Abstractions.Persistence;
 using ContentForge.Application.Common.Concurrency;
 using ContentForge.Application.Common.Exceptions;
@@ -125,7 +126,8 @@ public sealed class ContentEntryHandlerTests
             ApplicationTestData.CreateCurrentUser(ApplicationTestData.OtherAuthorUserId, ApplicationTestData.AuthorRole),
             ApplicationTestData.CreateClock(),
             RepositorySubstituteExtensions.CreateAuditService(),
-            new UpdateContentEntryCommandValidator());
+            new UpdateContentEntryCommandValidator(),
+            Substitute.For<IPublicContentCacheInvalidator>());
 
         var action = () => handler.HandleAsync(
             new UpdateContentEntryCommand(
@@ -164,7 +166,8 @@ public sealed class ContentEntryHandlerTests
             ApplicationTestData.CreateCurrentUser(ApplicationTestData.EditorUserId, ApplicationTestData.EditorRole),
             ApplicationTestData.CreateClock(),
             RepositorySubstituteExtensions.CreateAuditService(),
-            new PublishContentCommandValidator());
+            new PublishContentCommandValidator(),
+            Substitute.For<IPublicContentCacheInvalidator>());
 
         var result = await handler.HandleAsync(
             new PublishContentCommand(entry.Id.Value, "Published first version", new ConcurrencyRequest(entry.ConcurrencyToken.Value)),

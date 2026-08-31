@@ -36,6 +36,7 @@ public abstract class PersistenceTestBase : IAsyncLifetime
             AuditLogs = scope.ServiceProvider.GetRequiredService<IAuditLogRepository>();
             UnitOfWork = scope.ServiceProvider.GetRequiredService<IUnitOfWork>();
             AuditService = scope.ServiceProvider.GetRequiredService<IAuditService>();
+            ContentSearch = scope.ServiceProvider.GetRequiredService<IContentSearchService>();
         }
 
         internal AppDbContext DbContext { get; }
@@ -53,6 +54,8 @@ public abstract class PersistenceTestBase : IAsyncLifetime
         internal IUnitOfWork UnitOfWork { get; }
 
         internal IAuditService AuditService { get; }
+
+        internal IContentSearchService ContentSearch { get; }
 
         public ValueTask DisposeAsync() => _scope.DisposeAsync();
     }

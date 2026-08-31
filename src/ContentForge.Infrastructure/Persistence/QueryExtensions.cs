@@ -11,20 +11,22 @@ internal static class QueryExtensions
         PaginationRequest pagination,
         CancellationToken cancellationToken)
     {
+        var page = pagination.NormalizedPage;
+        var pageSize = pagination.NormalizedPageSize;
+
         var totalItems = await query.LongCountAsync(cancellationToken).ConfigureAwait(false);
         if (totalItems == 0)
         {
-            return new PaginatedResult<T>([], pagination.Page, pagination.PageSize, 0);
+            return new PaginatedResult<T>([], page, pageSize, 0);
         }
 
-        var skip = (pagination.Page - 1) * pagination.PageSize;
         var items = await query
-            .Skip(skip)
-            .Take(pagination.PageSize)
+            .Skip(pagination.Skip)
+            .Take(pageSize)
             .ToListAsync(cancellationToken)
             .ConfigureAwait(false);
 
-        return new PaginatedResult<T>(items, pagination.Page, pagination.PageSize, totalItems);
+        return new PaginatedResult<T>(items, page, pageSize, totalItems);
     }
 
     internal static IQueryable<T> ApplySort<T>(

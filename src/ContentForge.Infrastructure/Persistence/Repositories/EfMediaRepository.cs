@@ -40,7 +40,7 @@ internal sealed class EfMediaRepository(AppDbContext dbContext) : IMediaReposito
 
         if (!string.IsNullOrWhiteSpace(criteria.Search))
         {
-            var pattern = $"%{PortableSearch.NormalizeTerm(criteria.Search)}%";
+            var pattern = PortableSearch.CreateContainsPattern(criteria.Search);
             query = query.WhereMediaContains(dbContext, pattern);
         }
 

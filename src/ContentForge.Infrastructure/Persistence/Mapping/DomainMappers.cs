@@ -30,6 +30,21 @@ internal static class ContentTypeMapper
                 .OrderBy(field => field.SortOrder)
                 .Select(ContentTypeFieldMapper.ToDomain));
 
+    internal static ContentType ToDomainListSummary(ContentTypeEntity entity) =>
+        ContentType.Restore(
+            ContentTypeId.From(entity.Id),
+            FieldName.Create(entity.Name),
+            entity.DisplayName,
+            entity.Description,
+            Slug.Create(entity.Slug),
+            entity.IsActive,
+            entity.Version,
+            UserId.From(entity.CreatedBy),
+            UserId.From(entity.UpdatedBy),
+            entity.CreatedAt,
+            entity.UpdatedAt,
+            []);
+
     internal static ContentTypeEntity ToEntity(ContentType domain) => new()
     {
         Id = domain.Id.Value,
@@ -171,6 +186,29 @@ internal static class ContentEntryMapper
             Slug.Create(entity.Slug),
             Enum.Parse<ContentStatus>(entity.Status),
             PersistenceJsonConverter.DeserializeContentData(entity.DraftDataJson),
+            string.IsNullOrWhiteSpace(entity.PublishedSnapshotJson)
+                ? null
+                : PersistenceJsonConverter.DeserializeContentSnapshot(entity.PublishedSnapshotJson),
+            VersionNumber.From(entity.CurrentVersion),
+            new ConcurrencyToken(checked((uint)entity.ConcurrencyToken)),
+            UserId.From(entity.CreatedBy),
+            UserId.From(entity.UpdatedBy),
+            entity.CreatedAt,
+            entity.UpdatedAt,
+            entity.PublishedAt,
+            entity.PublishedBy is { } publishedBy ? UserId.From(publishedBy) : null,
+            entity.IsDeleted,
+            [],
+            entity.ScheduledPublishAt,
+            entity.ScheduledUnpublishAt);
+
+    internal static ContentEntry ToDomainPublicSummary(ContentEntryEntity entity) =>
+        ContentEntry.Restore(
+            ContentEntryId.From(entity.Id),
+            ContentTypeId.From(entity.ContentTypeId),
+            Slug.Create(entity.Slug),
+            Enum.Parse<ContentStatus>(entity.Status),
+            ContentData.Empty,
             string.IsNullOrWhiteSpace(entity.PublishedSnapshotJson)
                 ? null
                 : PersistenceJsonConverter.DeserializeContentSnapshot(entity.PublishedSnapshotJson),

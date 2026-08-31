@@ -58,7 +58,7 @@ public sealed class ListContentTypesQueryHandler
 
         var result = await _repository.ListAsync(query.Criteria, cancellationToken);
         return new PaginatedResult<ContentTypeDto>(
-            result.Items.Select(ContentTypeMapper.ToDto).ToList(),
+            result.Items.Select(ContentTypeMapper.ToListDto).ToList(),
             result.Page,
             result.PageSize,
             result.TotalItems);

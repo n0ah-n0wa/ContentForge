@@ -61,6 +61,7 @@ export interface ContentType {
   createdAt: string;
   updatedAt: string;
   fields: ContentTypeField[];
+  fieldCount: number;
 }
 
 export interface CreateContentTypeRequest {
