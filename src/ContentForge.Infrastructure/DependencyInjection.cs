@@ -91,6 +91,11 @@ public static class DependencyInjection
             services.AddHostedService<ScheduledPublishingBackgroundService>();
         }
 
+        if (environment?.IsDevelopment() == true)
+        {
+            services.AddHostedService<Persistence.Development.DevelopmentDatabaseInitializer>();
+        }
+
         return services;
     }
 }

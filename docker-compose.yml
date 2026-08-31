@@ -1,31 +1,106 @@
+# Local development stack — backend, frontend, PostgreSQL, and Azurite.
+#
+# Quick start (from repository root):
+#   docker compose up -d --build
+#
+# Admin UI: http://localhost:8080
+# API (Swagger): http://localhost:5080/swagger
+#
+# Default sign-in: admin@contentforge.local / AdminPassword123!
+
+name: contentforge
+
 services:
   postgres:
     image: postgres:16-alpine
-    container_name: contentforge-postgres
     environment:
-      POSTGRES_USER: contentforge
-      POSTGRES_PASSWORD: contentforge
-      POSTGRES_DB: contentforge
+      POSTGRES_USER: ${POSTGRES_USER:-contentforge}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-contentforge}
+      POSTGRES_DB: ${POSTGRES_DB:-contentforge}
     ports:
-      - "5432:5432"
+      - "${POSTGRES_PORT:-5432}:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U contentforge -d contentforge"]
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-contentforge} -d ${POSTGRES_DB:-contentforge}"]
       interval: 10s
       timeout: 5s
-      retries: 5
+      retries: 10
+      start_period: 10s
 
   azurite:
     image: mcr.microsoft.com/azure-storage/azurite:latest
-    container_name: contentforge-azurite
+    command: azurite --blobHost 0.0.0.0 --queueHost 0.0.0.0 --tableHost 0.0.0.0 -l /data
     ports:
-      - "10000:10000"
-      - "10001:10001"
-      - "10002:10002"
+      - "${AZURITE_BLOB_PORT:-10000}:10000"
+      - "${AZURITE_QUEUE_PORT:-10001}:10001"
+      - "${AZURITE_TABLE_PORT:-10002}:10002"
     volumes:
       - azurite_data:/data
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          "node -e \"require('net').connect(10000,'127.0.0.1').on('connect',()=>process.exit(0)).on('error',()=>process.exit(1))\"",
+        ]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 10s
+
+  api:
+    build:
+      context: .
+      dockerfile: infra/docker/api/Dockerfile
+    image: ${CONTENTFORGE_API_IMAGE:-contentforge-api:dev}
+    environment:
+      ASPNETCORE_ENVIRONMENT: Development
+      Database__Provider: PostgreSQL
+      Database__ConnectionString: Host=postgres;Port=5432;Database=${POSTGRES_DB:-contentforge};Username=${POSTGRES_USER:-contentforge};Password=${POSTGRES_PASSWORD:-contentforge}
+      Jwt__Issuer: ${JWT_ISSUER:-ContentForge}
+      Jwt__Audience: ${JWT_AUDIENCE:-ContentForge.Admin}
+      Jwt__SigningKey: ${JWT_SIGNING_KEY:-DEV_ONLY_CHANGE_ME_32_CHARS_MINIMUM_KEY}
+      Media__Provider: ${MEDIA_PROVIDER:-Local}
+      Media__LocalRoot: /app/App_Data/media
+      Media__PublicBaseUrl: /media-files
+      Cors__AllowedOrigins__0: http://localhost:${WEB_PORT:-8080}
+      Cors__AllowedOrigins__1: http://localhost:5173
+    volumes:
+      - api_media:/app/App_Data/media
+    ports:
+      - "${API_PORT:-5080}:8080"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://127.0.0.1:8080/health/ready >/dev/null 2>&1 || exit 1"]
+      interval: 15s
+      timeout: 5s
+      start_period: 90s
+      retries: 10
+
+  web:
+    build:
+      context: .
+      dockerfile: infra/docker/web/Dockerfile
+      args:
+        VITE_API_BASE_URL: ${VITE_API_BASE_URL:-}
+    image: ${CONTENTFORGE_WEB_IMAGE:-contentforge-web:dev}
+    environment:
+      API_UPSTREAM: api:8080
+    ports:
+      - "${WEB_PORT:-8080}:8080"
+    depends_on:
+      api:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://127.0.0.1:8080/health >/dev/null 2>&1 || exit 1"]
+      interval: 15s
+      timeout: 5s
+      start_period: 20s
+      retries: 5
 
 volumes:
   postgres_data:
   azurite_data:
+  api_media:

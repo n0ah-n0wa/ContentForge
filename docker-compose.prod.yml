@@ -1,0 +1,118 @@
+# Production-oriented stack for local validation and CI/CD smoke tests.
+# Copy to .env.production and supply real secrets before running.
+#
+# Usage:
+#   cp infra/docker/.env.production.example .env.production
+#   docker compose -f docker-compose.prod.yml --env-file .env.production up -d
+#   docker compose -f docker-compose.prod.yml --env-file .env.production run --rm migrate
+
+name: contentforge-prod
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-contentforge}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD is required}
+      POSTGRES_DB: ${POSTGRES_DB:-contentforge}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-contentforge} -d ${POSTGRES_DB:-contentforge}"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+    restart: unless-stopped
+
+  migrate:
+    profiles: ["tools"]
+    image: mcr.microsoft.com/dotnet/sdk:8.0.424-noble-amd64
+    working_dir: /src
+    environment:
+      Database__Provider: PostgreSQL
+      Database__ConnectionString: Host=postgres;Port=5432;Database=${POSTGRES_DB:-contentforge};Username=${POSTGRES_USER:-contentforge};Password=${POSTGRES_PASSWORD}
+      ASPNETCORE_ENVIRONMENT: Production
+    volumes:
+      - ./:/src
+    depends_on:
+      postgres:
+        condition: service_healthy
+    entrypoint:
+      - /bin/sh
+      - -c
+      - |
+        dotnet tool install --global dotnet-ef --version 8.0.11
+        export PATH="$$PATH:/root/.dotnet/tools"
+        dotnet ef database update \
+          --project src/ContentForge.Infrastructure/ContentForge.Infrastructure.csproj \
+          --startup-project src/ContentForge.Api/ContentForge.Api.csproj
+
+  api:
+    build:
+      context: .
+      dockerfile: infra/docker/api/Dockerfile
+    image: ${CONTENTFORGE_API_IMAGE:-contentforge-api:local}
+    environment:
+      ASPNETCORE_ENVIRONMENT: Production
+      Database__Provider: PostgreSQL
+      Database__ConnectionString: Host=postgres;Port=5432;Database=${POSTGRES_DB:-contentforge};Username=${POSTGRES_USER:-contentforge};Password=${POSTGRES_PASSWORD}
+      Jwt__Issuer: ${JWT_ISSUER:-ContentForge}
+      Jwt__Audience: ${JWT_AUDIENCE:-ContentForge.Admin}
+      Jwt__SigningKey: ${JWT_SIGNING_KEY:?JWT_SIGNING_KEY is required}
+      Media__Provider: ${MEDIA_PROVIDER:-Local}
+      Media__LocalRoot: /app/App_Data/media
+      Media__PublicBaseUrl: /media-files
+      Cors__AllowedOrigins__0: ${PUBLIC_ORIGIN:-http://localhost:8080}
+    read_only: true
+    tmpfs:
+      - /tmp:size=64M
+      - /app/.aspnet:size=16M
+    security_opt:
+      - no-new-privileges:true
+    volumes:
+      - api_media:/app/App_Data/media
+    expose:
+      - "8080"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://127.0.0.1:8080/health/ready >/dev/null 2>&1 || exit 1"]
+      interval: 30s
+      timeout: 5s
+      start_period: 60s
+      retries: 3
+    restart: unless-stopped
+
+  web:
+    build:
+      context: .
+      dockerfile: infra/docker/web/Dockerfile
+      args:
+        VITE_API_BASE_URL: ${VITE_API_BASE_URL:-}
+    image: ${CONTENTFORGE_WEB_IMAGE:-contentforge-web:local}
+    environment:
+      API_UPSTREAM: api:8080
+    read_only: true
+    tmpfs:
+      - /tmp:size=16M
+      - /var/cache/nginx:size=16M
+      - /var/run:size=1M
+    security_opt:
+      - no-new-privileges:true
+    ports:
+      - "${PUBLIC_PORT:-8080}:8080"
+    depends_on:
+      api:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://127.0.0.1:8080/health >/dev/null 2>&1 || exit 1"]
+      interval: 30s
+      timeout: 5s
+      start_period: 15s
+      retries: 3
+    restart: unless-stopped
+
+volumes:
+  postgres_data:
+  api_media:

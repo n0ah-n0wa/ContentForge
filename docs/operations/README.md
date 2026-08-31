@@ -2,6 +2,7 @@
 
 Deployment, backup, recovery, and runbook documentation will be maintained here.
 
+- [Docker deployment](./docker.md)
 - [Azure Blob Storage (media)](./azure-storage.md)
 - [Azure Observability (Application Insights)](./azure-observability.md)
 

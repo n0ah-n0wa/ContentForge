@@ -1,0 +1,56 @@
+# Git and IDE
+.git
+.gitignore
+.github
+.vs
+.idea
+**/*.user
+**/*.suo
+
+# Build outputs
+**/bin/
+**/obj/
+**/dist/
+**/TestResults/
+**/coverage/
+**/.tools/
+
+# Tests and CI artifacts (not required for image builds)
+tests/
+**/*.trx
+**/*.coverage
+**/*.coveragexml
+
+# Frontend dev artifacts
+frontend/contentforge-web/node_modules/
+frontend/contentforge-web/coverage/
+
+# Local secrets and environment
+.env
+.env.*
+!.env.production.example
+!.env.development.example
+secrets.json
+**/.env.local
+infra/docker/.env.production
+infra/docker/.env.development
+
+# Local media and data
+**/App_Data/
+.docker/
+
+# Compose files and agent output (not needed in build context)
+docker-compose.yml
+docker-compose.test.yml
+docker-compose.prod.yml
+agent-tools/
+agent-transcripts/
+
+# Documentation (keep docker README for optional COPY references)
+docs/
+*.md
+!infra/docker/README.md
+
+# Misc
+**/*.log
+**/node_modules/

@@ -1,3 +1,5 @@
+name: contentforge-test
+
 services:
   postgres:
     image: postgres:16-alpine
@@ -7,6 +9,8 @@ services:
       POSTGRES_DB: contentforge_test
     ports:
       - "5433:5432"
+    volumes:
+      - postgres_test_data:/var/lib/postgresql/data
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U contentforge -d contentforge_test"]
       interval: 5s
@@ -17,3 +21,6 @@ services:
     image: mcr.microsoft.com/azure-storage/azurite:latest
     ports:
       - "10010:10000"
+
+volumes:
+  postgres_test_data:
