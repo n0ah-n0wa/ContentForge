@@ -18,5 +18,6 @@ internal static class ApiConstants
         internal const string Conflict = "https://contentforge/errors/conflict";
         internal const string BadRequest = "https://contentforge/errors/bad-request";
         internal const string Application = "https://contentforge/errors/application";
+        internal const string RateLimit = "https://contentforge/errors/rate-limit";
     }
 }

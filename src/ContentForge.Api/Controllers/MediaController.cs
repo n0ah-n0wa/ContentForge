@@ -12,6 +12,7 @@ using ContentForge.Application.Media.Models;
 using ContentForge.Application.Media.Queries;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using ContentForge.Api.Infrastructure.RateLimiting;
 using Microsoft.AspNetCore.RateLimiting;
 
 [ApiController]
@@ -65,7 +66,7 @@ public sealed class MediaController : ControllerBase
 
     [HttpPost]
     [Authorize(Policy = AuthorizationPolicies.MediaUpload)]
-    [EnableRateLimiting("media-upload")]
+    [EnableRateLimiting(RateLimitPolicyNames.MediaUpload)]
     [RequestSizeLimit(MediaUploadLimits.MaxFileSizeBytes + 65_536)]
     [RequestFormLimits(MultipartBodyLengthLimit = MediaUploadLimits.MaxFileSizeBytes + 65_536)]
     [Consumes("multipart/form-data")]

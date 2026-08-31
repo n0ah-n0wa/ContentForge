@@ -1,11 +1,10 @@
-using System.Threading.RateLimiting;
 using ContentForge.Api;
 using ContentForge.Api.Infrastructure;
+using ContentForge.Api.Infrastructure.RateLimiting;
 using ContentForge.Application;
 using ContentForge.Infrastructure;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.OpenApi.Models;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -129,46 +128,7 @@ builder.Services.Configure<Microsoft.AspNetCore.Http.Features.FormOptions>(optio
     options.MultipartBodyLengthLimit = ContentForge.Application.Media.MediaUploadLimits.MaxFileSizeBytes + 65_536;
 });
 
-builder.Services.AddRateLimiter(options =>
-{
-    options.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
-    options.OnRejected = async (context, cancellationToken) =>
-    {
-        var problem = ProblemDetailsFactory.Create(
-            context.HttpContext,
-            StatusCodes.Status429TooManyRequests,
-            "Too Many Requests",
-            "Rate limit exceeded. Retry later.",
-            "https://contentforge/errors/rate-limit");
-        await ProblemDetailsFactory.WriteAsync(context.HttpContext, problem, cancellationToken).ConfigureAwait(false);
-    };
-
-    options.AddPolicy("public", httpContext =>
-        RateLimitPartition.GetFixedWindowLimiter(
-            httpContext.Connection.RemoteIpAddress?.ToString() ?? "anonymous",
-            _ => new FixedWindowRateLimiterOptions
-            {
-                PermitLimit = httpContext.RequestServices.GetRequiredService<IHostEnvironment>().IsEnvironment("Testing")
-                    ? 10_000
-                    : 120,
-                Window = TimeSpan.FromMinutes(1),
-                QueueLimit = 0,
-            }));
-
-    options.AddPolicy("media-upload", httpContext =>
-        RateLimitPartition.GetFixedWindowLimiter(
-            httpContext.User.FindFirst("sub")?.Value
-                ?? httpContext.Connection.RemoteIpAddress?.ToString()
-                ?? "anonymous",
-            _ => new FixedWindowRateLimiterOptions
-            {
-                PermitLimit = httpContext.RequestServices.GetRequiredService<IHostEnvironment>().IsEnvironment("Testing")
-                    ? 10_000
-                    : 30,
-                Window = TimeSpan.FromMinutes(1),
-                QueueLimit = 0,
-            }));
-});
+builder.Services.AddContentForgeRateLimiting(builder.Configuration);
 
 var corsOrigins = builder.Configuration.GetSection("Cors:AllowedOrigins").Get<string[]>() ?? [];
 if (corsOrigins.Length > 0)

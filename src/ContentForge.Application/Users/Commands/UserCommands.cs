@@ -114,19 +114,22 @@ public sealed class UpdateUserCommandHandler
     private readonly ICurrentUserService _currentUser;
     private readonly IDateTimeProvider _clock;
     private readonly IAuditService _auditService;
+    private readonly ISessionInvalidationService _sessionInvalidation;
 
     public UpdateUserCommandHandler(
         IUserRepository repository,
         IUnitOfWork unitOfWork,
         ICurrentUserService currentUser,
         IDateTimeProvider clock,
-        IAuditService auditService)
+        IAuditService auditService,
+        ISessionInvalidationService sessionInvalidation)
     {
         _repository = repository;
         _unitOfWork = unitOfWork;
         _currentUser = currentUser;
         _clock = clock;
         _auditService = auditService;
+        _sessionInvalidation = sessionInvalidation;
     }
 
     public async Task<UserDto> HandleAsync(UpdateUserCommand command, CancellationToken cancellationToken)
@@ -145,6 +148,8 @@ public sealed class UpdateUserCommandHandler
 
         if (previousRole != user.Role)
         {
+            await _sessionInvalidation.InvalidateUserSessionsAsync(user.Id, cancellationToken);
+
             await _auditService.RecordAsync(
                 AuditAction.UserRoleChanged,
                 "User",

@@ -5,7 +5,7 @@ using Microsoft.Extensions.Hosting;
 
 namespace ContentForge.IntegrationTests;
 
-public sealed class ContentForgeWebApplicationFactory : WebApplicationFactory<Program>
+public class ContentForgeWebApplicationFactory : WebApplicationFactory<Program>
 {
     public string MediaRoot { get; } = Path.Combine(
         Path.GetTempPath(),

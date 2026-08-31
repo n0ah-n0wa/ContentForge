@@ -65,6 +65,41 @@ public sealed class UserHandlerTests
     }
 
     [Fact]
+    public async Task UpdateUserCommandHandler_RoleChange_InvalidatesSessions()
+    {
+        var userId = ApplicationTestData.AuthorUserId;
+        var user = new ContentForge.Application.Users.Models.UserAccount(
+            userId,
+            "author@example.com",
+            "Author",
+            "hashed-password",
+            true,
+            RoleName.Author,
+            ApplicationTestData.Timestamp,
+            ApplicationTestData.Timestamp,
+            null);
+
+        var repository = Substitute.For<IUserRepository>();
+        repository.GetByIdAsync(userId, Arg.Any<CancellationToken>()).Returns(user);
+
+        var sessionInvalidation = Substitute.For<ISessionInvalidationService>();
+
+        var handler = new UpdateUserCommandHandler(
+            repository,
+            RepositorySubstituteExtensions.CreateUnitOfWork(),
+            ApplicationTestData.CreateCurrentUser(ApplicationTestData.EditorUserId, ApplicationTestData.AdministratorRole),
+            ApplicationTestData.CreateClock(),
+            RepositorySubstituteExtensions.CreateAuditService(),
+            sessionInvalidation);
+
+        await handler.HandleAsync(
+            new UpdateUserCommand(userId.Value, "Author", RoleName.Viewer),
+            CancellationToken.None);
+
+        await sessionInvalidation.Received(1).InvalidateUserSessionsAsync(userId, Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
     public async Task EnableUserCommandHandler_DisabledUser_EnablesAccount()
     {
         var userId = ApplicationTestData.AuthorUserId;

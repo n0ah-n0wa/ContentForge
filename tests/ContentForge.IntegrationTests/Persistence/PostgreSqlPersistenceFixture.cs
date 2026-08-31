@@ -8,6 +8,8 @@ using Microsoft.Extensions.DependencyInjection;
 
 public sealed class PostgreSqlPersistenceFixture : IAsyncLifetime
 {
+    private static readonly SemaphoreSlim _resetLock = new(1, 1);
+
     private ServiceProvider? _serviceProvider;
 
     internal IServiceProvider Services =>
@@ -89,28 +91,36 @@ public sealed class PostgreSqlPersistenceFixture : IAsyncLifetime
 
     internal async Task ResetDatabaseAsync()
     {
-        await using var scope = Services.CreateAsyncScope();
-        var dbContext = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+        await _resetLock.WaitAsync();
+        try
+        {
+            await using var scope = Services.CreateAsyncScope();
+            var dbContext = scope.ServiceProvider.GetRequiredService<AppDbContext>();
 
-        await dbContext.Database.ExecuteSqlRawAsync(
-            """
-            TRUNCATE TABLE
-                "RefreshTokens",
-                "UserClaims",
-                "UserLogins",
-                "UserTokens",
-                "ContentEntryRelations",
-                "ContentVersions",
-                "ScheduledJobs",
-                "ContentPreviewTokens",
-                "ContentEntries",
-                "ContentTypeFields",
-                "ContentTypes",
-                "Media",
-                "AuditLogs",
-                "UserRoles",
-                "Users"
-            RESTART IDENTITY CASCADE;
-            """);
+            await dbContext.Database.ExecuteSqlRawAsync(
+                """
+                TRUNCATE TABLE
+                    "RefreshTokens",
+                    "UserClaims",
+                    "UserLogins",
+                    "UserTokens",
+                    "ContentEntryRelations",
+                    "ContentVersions",
+                    "ScheduledJobs",
+                    "ContentPreviewTokens",
+                    "ContentEntries",
+                    "ContentTypeFields",
+                    "ContentTypes",
+                    "Media",
+                    "AuditLogs",
+                    "UserRoles",
+                    "Users"
+                RESTART IDENTITY CASCADE;
+                """);
+        }
+        finally
+        {
+            _resetLock.Release();
+        }
     }
 }

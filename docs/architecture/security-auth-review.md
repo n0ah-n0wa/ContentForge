@@ -49,6 +49,19 @@ All listed vulnerabilities were **fixed in this pass**, with regression tests. S
 | M3 | No CORS allowlist | Spec §51; risk when SPA ships with credentials | Named CORS policy from `Cors:AllowedOrigins` (no `AllowAnyOrigin`) |
 | M4 | No explicit JWT algorithm allowlist | Defense in depth vs alg confusion | `ValidAlgorithms = [HmacSha256]`; `RequireHttpsMetadata` in Production |
 
+### High (2026-08-31 audit)
+
+| ID | Finding | Risk | Fix |
+|----|---------|------|-----|
+| H4 | Rich Text stored without server-side sanitization | Stored XSS via direct API → public consumers | `RichTextSanitizer` + coerce/public mapping |
+| H5 | Role change without session invalidation | Demoted users retain elevated JWT up to 15 min | `ISessionInvalidationService` in `UpdateUserCommandHandler` |
+
+### Medium (2026-08-31 audit)
+
+| ID | Finding | Risk | Fix |
+|----|---------|------|-----|
+| M5 | No rate limiting on `/auth/login` and `/auth/refresh` | Distributed credential stuffing | `"auth"` IP rate limit policy (20/min default) |
+
 ### Low / Informational (no change required)
 
 | ID | Finding | Assessment |

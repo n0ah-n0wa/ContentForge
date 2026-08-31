@@ -8,6 +8,7 @@ using ContentForge.Application.Content.Models;
 using ContentForge.Application.PublicContent.Queries;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using ContentForge.Api.Infrastructure.RateLimiting;
 using Microsoft.AspNetCore.RateLimiting;
 
 /// <summary>
@@ -16,7 +17,7 @@ using Microsoft.AspNetCore.RateLimiting;
 [ApiController]
 [Route($"{ApiConstants.VersionPrefix}/public")]
 [AllowAnonymous]
-[EnableRateLimiting("public")]
+[EnableRateLimiting(RateLimitPolicyNames.PublicApi)]
 [Tags("Public Content")]
 [Produces("application/json")]
 public sealed class PublicContentController : ControllerBase

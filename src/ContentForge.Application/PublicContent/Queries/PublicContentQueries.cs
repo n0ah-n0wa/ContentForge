@@ -77,7 +77,7 @@ public sealed class ListPublicContentQueryHandler
 
         var result = await _contentEntryRepository.ListAsync(listCriteria, cancellationToken);
         var items = result.Items
-            .Select(entry => ContentEntryMapper.ToPublicDto(contentType.Slug.Value, entry))
+            .Select(entry => ContentEntryMapper.ToPublicDto(contentType.Slug.Value, entry, contentType))
             .ToList();
 
         var page = new PaginatedResult<PublicContentDto>(items, result.Page, result.PageSize, result.TotalItems);
@@ -138,7 +138,7 @@ public sealed class GetPublicContentBySlugQueryHandler
             throw new NotFoundApplicationException("ContentEntry", query.Slug);
         }
 
-        var dto = ContentEntryMapper.ToPublicDto(contentType.Slug.Value, entry);
+        var dto = ContentEntryMapper.ToPublicDto(contentType.Slug.Value, entry, contentType);
         await _cache.SetEntryAsync(contentType.Slug.Value, normalizedSlug, dto, cancellationToken).ConfigureAwait(false);
         return dto;
     }

@@ -4,6 +4,7 @@ using ContentForge.Application.Abstractions;
 using ContentForge.Application.Auth.Models;
 using ContentForge.Application.Common;
 using ContentForge.Application.Common.Exceptions;
+using ContentForge.Application.Common.Validation;
 using ContentForge.Domain.Audit;
 using FluentValidation;
 
@@ -148,5 +149,91 @@ public sealed class RefreshTokenCommandHandler
         await CommandValidator.EnsureValidAsync(_validator, command, cancellationToken);
         var result = await _authenticationService.RefreshTokenAsync(command.Request, cancellationToken);
         return result.ToLoginResultDto();
+    }
+}
+
+/// <summary>
+/// Initiates a password reset without revealing whether the account exists.
+/// </summary>
+public sealed class ForgotPasswordCommand
+{
+    public required ForgotPasswordRequest Request { get; init; }
+}
+
+public sealed class ForgotPasswordCommandValidator : AbstractValidator<ForgotPasswordCommand>
+{
+    public ForgotPasswordCommandValidator()
+    {
+        RuleFor(command => command.Request.Email).NotEmpty().EmailAddress();
+    }
+}
+
+public sealed class ForgotPasswordCommandHandler
+{
+    private readonly IPasswordResetService _passwordResetService;
+    private readonly IValidator<ForgotPasswordCommand> _validator;
+
+    public ForgotPasswordCommandHandler(
+        IPasswordResetService passwordResetService,
+        IValidator<ForgotPasswordCommand> validator)
+    {
+        _passwordResetService = passwordResetService;
+        _validator = validator;
+    }
+
+    public async Task HandleAsync(ForgotPasswordCommand command, CancellationToken cancellationToken)
+    {
+        await CommandValidator.EnsureValidAsync(_validator, command, cancellationToken);
+        await _passwordResetService.RequestPasswordResetAsync(command.Request.Email, cancellationToken);
+    }
+}
+
+/// <summary>
+/// Completes a password reset with a new password.
+/// </summary>
+public sealed class ResetPasswordCommand
+{
+    public required ResetPasswordRequest Request { get; init; }
+}
+
+public sealed class ResetPasswordCommandValidator : AbstractValidator<ResetPasswordCommand>
+{
+    public ResetPasswordCommandValidator()
+    {
+        RuleFor(command => command.Request.Email).NotEmpty().EmailAddress();
+        RuleFor(command => command.Request.ResetToken).NotEmpty();
+        RuleFor(command => command.Request.NewPassword).ApplyPasswordPolicy();
+    }
+}
+
+public sealed class ResetPasswordCommandHandler
+{
+    private readonly IPasswordResetService _passwordResetService;
+    private readonly IValidator<ResetPasswordCommand> _validator;
+
+    public ResetPasswordCommandHandler(
+        IPasswordResetService passwordResetService,
+        IValidator<ResetPasswordCommand> validator)
+    {
+        _passwordResetService = passwordResetService;
+        _validator = validator;
+    }
+
+    public async Task HandleAsync(ResetPasswordCommand command, CancellationToken cancellationToken)
+    {
+        await CommandValidator.EnsureValidAsync(_validator, command, cancellationToken);
+
+        try
+        {
+            await _passwordResetService.ResetPasswordAsync(
+                command.Request.Email,
+                command.Request.ResetToken,
+                command.Request.NewPassword,
+                cancellationToken);
+        }
+        catch (InvalidOperationException)
+        {
+            throw new AuthenticationFailedException("Password reset failed.");
+        }
     }
 }

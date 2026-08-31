@@ -25,6 +25,7 @@ internal static class ContentDataCoercer
             {
                 FieldType.Media or FieldType.Relation => CoerceGuid(value),
                 FieldType.MediaMultiple or FieldType.RelationMultiple => CoerceGuidCollection(value),
+                FieldType.RichText when value is string html => RichTextSanitizer.Sanitize(html),
                 _ => value,
             };
         }

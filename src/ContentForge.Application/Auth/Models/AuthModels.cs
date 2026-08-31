@@ -25,6 +25,16 @@ public sealed record LogoutApiRequest(string? RefreshToken = null);
 public sealed record RefreshTokenRequest(string RefreshToken);
 
 /// <summary>
+/// Initiates a password reset for the supplied email address.
+/// </summary>
+public sealed record ForgotPasswordRequest(string Email);
+
+/// <summary>
+/// Completes a password reset using an identity-issued reset token.
+/// </summary>
+public sealed record ResetPasswordRequest(string Email, string ResetToken, string NewPassword);
+
+/// <summary>
 /// Issued authentication tokens and user context.
 /// </summary>
 public sealed record AuthenticationResult(

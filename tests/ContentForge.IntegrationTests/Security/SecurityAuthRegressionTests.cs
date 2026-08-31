@@ -142,6 +142,31 @@ public sealed class SecurityAuthRegressionTests : IAsyncLifetime
         response.StatusCode.Should().Be(HttpStatusCode.Forbidden);
     }
 
+    [Fact]
+    public async Task RoleChange_InvalidatesExistingAccessToken()
+    {
+        var editorLogin = await LoginFullAsync(AuthTestConstants.EditorEmail, AuthTestConstants.EditorPassword);
+        var adminToken = await LoginAsync(AuthTestConstants.AdminEmail, AuthTestConstants.AdminPassword);
+
+        using var updateRequest = new HttpRequestMessage(HttpMethod.Put, $"/api/v1/users/{AuthTestConstants.EditorUserId}")
+        {
+            Content = JsonContent.Create(new
+            {
+                displayName = "Editor",
+                role = "Viewer",
+            }),
+        };
+        updateRequest.Headers.Authorization = new AuthenticationHeaderValue("Bearer", adminToken);
+        var updateResponse = await _client.SendAsync(updateRequest);
+        updateResponse.StatusCode.Should().Be(HttpStatusCode.OK);
+
+        using var meRequest = new HttpRequestMessage(HttpMethod.Get, "/api/v1/auth/me");
+        meRequest.Headers.Authorization = new AuthenticationHeaderValue("Bearer", editorLogin.AccessToken);
+        var meResponse = await _client.SendAsync(meRequest);
+
+        meResponse.StatusCode.Should().Be(HttpStatusCode.Unauthorized);
+    }
+
     private async Task<string> LoginAsync(string email, string password)
     {
         var login = await LoginFullAsync(email, password);

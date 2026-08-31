@@ -2,6 +2,7 @@ namespace ContentForge.Application.Mapping;
 
 using ContentForge.Application.Audit.Models;
 using ContentForge.Application.ContentPreview.Models;
+using ContentForge.Application.Content;
 using ContentForge.Application.Content.Models;
 using ContentForge.Application.ContentTypes.Models;
 using ContentForge.Application.Media.Models;
@@ -103,17 +104,19 @@ internal static class ContentEntryMapper
             version.CreatedBy.Value,
             version.ChangeSummary);
 
-    internal static PublicContentDto ToPublicDto(string contentTypeSlug, ContentEntry entry)
+    internal static PublicContentDto ToPublicDto(string contentTypeSlug, ContentEntry entry, ContentType contentType)
     {
         if (entry.PublishedSnapshot is null)
         {
             throw new InvalidOperationException("Published snapshot is required for public content.");
         }
 
+        var publishedData = RichTextSanitizer.SanitizeRichTextFields(contentType, entry.PublishedSnapshot.Data);
+
         return new PublicContentDto(
             contentTypeSlug,
             entry.PublishedSnapshot.Slug.Value,
-            entry.PublishedSnapshot.Data.Values.ToDictionary(static pair => pair.Key, static pair => pair.Value),
+            publishedData.Values.ToDictionary(static pair => pair.Key, static pair => pair.Value),
             entry.PublishedAt
                 ?? throw new InvalidOperationException("Published content must have a published timestamp."));
     }

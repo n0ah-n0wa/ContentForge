@@ -2,6 +2,7 @@ namespace ContentForge.Api.Controllers;
 
 using ContentForge.Api.Contracts;
 using ContentForge.Api.Infrastructure;
+using ContentForge.Api.Infrastructure.RateLimiting;
 using ContentForge.Application.Authorization;
 using ContentForge.Application.Common.Concurrency;
 using ContentForge.Application.Common.Pagination;
@@ -14,6 +15,7 @@ using ContentForge.Application.Content.Models;
 using ContentForge.Application.Content.Queries;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.RateLimiting;
 
 [ApiController]
 [Route($"{ApiConstants.VersionPrefix}/content")]
@@ -104,8 +106,10 @@ public sealed class ContentController : ControllerBase
 
     [HttpGet("preview/{token}")]
     [AllowAnonymous]
+    [EnableRateLimiting(RateLimitPolicyNames.ContentPreview)]
     [ProducesResponseType(typeof(ContentPreviewDto), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(StatusCodes.Status429TooManyRequests)]
     public async Task<ActionResult<ContentPreviewDto>> GetPreview(
         string token,
         [FromServices] GetContentPreviewQueryHandler handler,
