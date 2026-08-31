@@ -21,6 +21,7 @@
   <ItemGroup>
     <ProjectReference Include="..\ContentForge.Application\ContentForge.Application.csproj" />
     <ProjectReference Include="..\ContentForge.Infrastructure\ContentForge.Infrastructure.csproj" />
+    <ProjectReference Include="..\ContentForge.Infrastructure.SqlServer\ContentForge.Infrastructure.SqlServer.csproj" />
   </ItemGroup>
 
   <ItemGroup>

@@ -43,4 +43,12 @@ public sealed class ProjectReferenceTests
             .Should()
             .NotContain("ContentForge.Domain", "Api must depend on Domain only transitively through Application.");
     }
+
+    [Fact]
+    public void SqlServerMigrations_ShouldOnlyReferenceInfrastructure()
+    {
+        ArchitectureAssemblies.GetContentForgeProjectReferences("ContentForge.Infrastructure.SqlServer")
+            .Should()
+            .BeEquivalentTo(["ContentForge.Infrastructure"]);
+    }
 }

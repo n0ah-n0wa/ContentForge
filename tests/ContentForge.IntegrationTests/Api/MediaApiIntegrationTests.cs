@@ -116,6 +116,26 @@ public sealed class MediaApiIntegrationTests : IAsyncLifetime
     }
 
     [Fact]
+    public async Task GetMediaFile_AfterUpload_ReturnsBinaryWithoutAuthentication()
+    {
+        var token = await ApiTestHelper.LoginAsync(
+            _client,
+            AuthTestConstants.EditorEmail,
+            AuthTestConstants.EditorPassword);
+
+        var payload = "public-media-bytes"u8.ToArray();
+        var uploadResponse = await UploadAsync(token, "public.txt", "text/plain", payload);
+        uploadResponse.StatusCode.Should().Be(HttpStatusCode.Created);
+        var asset = await uploadResponse.Content.ReadFromJsonAsync<MediaAssetDto>();
+        asset!.Url.Should().StartWith("/media-files/");
+
+        var fileResponse = await _client.GetAsync(asset.Url);
+        fileResponse.StatusCode.Should().Be(HttpStatusCode.OK);
+        fileResponse.Content.Headers.ContentType?.MediaType.Should().Be("text/plain");
+        (await fileResponse.Content.ReadAsByteArrayAsync()).Should().Equal(payload);
+    }
+
+    [Fact]
     public async Task UploadMedia_WithPathTraversalFileName_Returns422()
     {
         var token = await ApiTestHelper.LoginAsync(

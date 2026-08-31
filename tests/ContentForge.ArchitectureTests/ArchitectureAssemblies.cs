@@ -60,6 +60,7 @@ internal static class ArchitectureRules
     [
         "ContentForge.Application",
         "ContentForge.Infrastructure",
+        "ContentForge.Infrastructure.SqlServer", // EF migrations assembly for Azure SQL deploy only
     ];
 
     internal static readonly string[] ApplicationAllowedContentForgeReferences =

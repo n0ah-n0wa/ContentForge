@@ -43,7 +43,7 @@ public sealed class DesignTimeDbContextFactory : IDesignTimeDbContextFactory<App
         {
             optionsBuilder.UseSqlServer(
                 databaseOptions.ConnectionString,
-                builder => builder.MigrationsAssembly(typeof(AppDbContext).Assembly.FullName));
+                builder => builder.MigrationsAssembly("ContentForge.Infrastructure.SqlServer"));
             return;
         }
 

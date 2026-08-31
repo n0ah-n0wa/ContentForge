@@ -1,4 +1,4 @@
-
+﻿
 Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio Version 17
 VisualStudioVersion = 17.0.31903.59
@@ -20,6 +20,8 @@ EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ContentForge.IntegrationTests", "tests\ContentForge.IntegrationTests\ContentForge.IntegrationTests.csproj", "{B6C7D8E9-F0A1-2345-1234-678901234567}"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ContentForge.ArchitectureTests", "tests\ContentForge.ArchitectureTests\ContentForge.ArchitectureTests.csproj", "{C7D8E9F0-A1B2-3456-2345-789012345678}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ContentForge.Infrastructure.SqlServer", "src\ContentForge.Infrastructure.SqlServer\ContentForge.Infrastructure.SqlServer.csproj", "{66BF2822-5B71-431D-9355-9023E11844B7}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -55,6 +57,10 @@ Global
 		{C7D8E9F0-A1B2-3456-2345-789012345678}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{C7D8E9F0-A1B2-3456-2345-789012345678}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{C7D8E9F0-A1B2-3456-2345-789012345678}.Release|Any CPU.Build.0 = Release|Any CPU
+		{66BF2822-5B71-431D-9355-9023E11844B7}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{66BF2822-5B71-431D-9355-9023E11844B7}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{66BF2822-5B71-431D-9355-9023E11844B7}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{66BF2822-5B71-431D-9355-9023E11844B7}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
@@ -67,5 +73,6 @@ Global
 		{A5B6C7D8-E9F0-1234-0123-567890123456} = {B2C3D4E5-F6A7-8901-BCDE-F12345678901}
 		{B6C7D8E9-F0A1-2345-1234-678901234567} = {B2C3D4E5-F6A7-8901-BCDE-F12345678901}
 		{C7D8E9F0-A1B2-3456-2345-789012345678} = {B2C3D4E5-F6A7-8901-BCDE-F12345678901}
+		{66BF2822-5B71-431D-9355-9023E11844B7} = {A1B2C3D4-E5F6-7890-ABCD-EF1234567890}
 	EndGlobalSection
 EndGlobal

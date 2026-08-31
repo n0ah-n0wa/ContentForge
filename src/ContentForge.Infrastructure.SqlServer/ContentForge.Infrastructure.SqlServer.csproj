@@ -1,0 +1,31 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <RootNamespace>ContentForge.Infrastructure.SqlServer</RootNamespace>
+    <AssemblyName>ContentForge.Infrastructure.SqlServer</AssemblyName>
+    <Description>Azure SQL / SQL Server EF Core migrations for ContentForge.</Description>
+    <IsPackable>false</IsPackable>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.EntityFrameworkCore.Design">
+      <PrivateAssets>all</PrivateAssets>
+      <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+    </PackageReference>
+    <PackageReference Include="Microsoft.EntityFrameworkCore.SqlServer" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\ContentForge.Infrastructure\ContentForge.Infrastructure.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Compile Update="Migrations\20260831232552_InitialCreate.cs">
+      <NoWarn>$(NoWarn);CA1861</NoWarn>
+    </Compile>
+    <Compile Update="Migrations\*.cs">
+      <NoWarn>$(NoWarn);CA1861</NoWarn>
+    </Compile>
+  </ItemGroup>
+
+</Project>

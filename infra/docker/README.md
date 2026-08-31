@@ -35,6 +35,8 @@ Optional overrides: [`.env.development.example`](./.env.development.example)
 - Serves Vue SPA static assets; reverse-proxies `/api/` and `/media-files/` to the API
 - `VITE_API_BASE_URL` build arg (default empty = same-origin proxy)
 - `API_UPSTREAM` runtime env (default `api:8080`, host:port without scheme) for nginx template substitution
+- `API_UPSTREAM_SCHEME` (default `http`; set to `https` on Azure App Service)
+- `API_UPSTREAM_HOST` (default `api`; set to the API App Service hostname on Azure)
 - Health: Docker `HEALTHCHECK` → `GET /health` (nginx-only, independent of API)
 
 ## Build locally

@@ -3,6 +3,9 @@
 Deployment, backup, recovery, and runbook documentation will be maintained here.
 
 - [Docker deployment](./docker.md)
+- [Azure infrastructure (Bicep)](./azure-infrastructure.md)
+- [Azure deployment guide](./azure-deployment.md)
+- [Azure security model](./azure-security.md)
 - [Azure Blob Storage (media)](./azure-storage.md)
 - [Azure Observability (Application Insights)](./azure-observability.md)
 

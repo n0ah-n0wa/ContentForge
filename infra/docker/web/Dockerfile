@@ -30,6 +30,8 @@ RUN npm run build \
 FROM ${NGINX_IMAGE} AS final
 
 ENV API_UPSTREAM=api:8080 \
+    API_UPSTREAM_SCHEME=http \
+    API_UPSTREAM_HOST=api \
     NGINX_ENVSUBST_OUTPUT_DIR=/etc/nginx/conf.d
 
 COPY infra/docker/web/nginx.conf.template /etc/nginx/templates/default.conf.template

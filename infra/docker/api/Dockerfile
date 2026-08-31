@@ -15,6 +15,7 @@ COPY global.json Directory.Build.props Directory.Packages.props .editorconfig ./
 COPY src/ContentForge.Domain/ContentForge.Domain.csproj src/ContentForge.Domain/
 COPY src/ContentForge.Application/ContentForge.Application.csproj src/ContentForge.Application/
 COPY src/ContentForge.Infrastructure/ContentForge.Infrastructure.csproj src/ContentForge.Infrastructure/
+COPY src/ContentForge.Infrastructure.SqlServer/ContentForge.Infrastructure.SqlServer.csproj src/ContentForge.Infrastructure.SqlServer/
 COPY src/ContentForge.Api/ContentForge.Api.csproj src/ContentForge.Api/
 
 RUN --mount=type=cache,target=/root/.nuget/packages,id=contentforge-nuget \
@@ -23,6 +24,7 @@ RUN --mount=type=cache,target=/root/.nuget/packages,id=contentforge-nuget \
 COPY src/ContentForge.Domain/ src/ContentForge.Domain/
 COPY src/ContentForge.Application/ src/ContentForge.Application/
 COPY src/ContentForge.Infrastructure/ src/ContentForge.Infrastructure/
+COPY src/ContentForge.Infrastructure.SqlServer/ src/ContentForge.Infrastructure.SqlServer/
 COPY src/ContentForge.Api/ src/ContentForge.Api/
 
 RUN --mount=type=cache,target=/root/.nuget/packages,id=contentforge-nuget \
