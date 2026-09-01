@@ -158,10 +158,14 @@ jobs:
         with:
           clean: true
 
-      - name: Setup Bicep
-        uses: azure/setup-bicep@v2
-        with:
-          version: v0.32.4
+      - name: Install Bicep CLI
+        env:
+          BICEP_VERSION: v0.32.4
+        run: |
+          curl -fsSL "https://github.com/Azure/bicep/releases/download/${BICEP_VERSION}/bicep-linux-x64" -o bicep
+          chmod +x bicep
+          sudo mv bicep /usr/local/bin/bicep
+          bicep --version
 
       - name: Validate Bicep templates
         run: |

@@ -57,7 +57,7 @@ These checks must pass before merge. Any failure blocks the workflow.
 
 | Gate | Enforced by | Fails when |
 |------|-------------|------------|
-| Bicep compile | `bicep build` (v0.32.4) | Template or analyzer errors |
+| Bicep compile | `bicep build` (CLI **v0.32.4** installed from official GitHub release) | Template or analyzer errors |
 | Bicep parameters | `bicep build-params` (dev/staging/prod) | Invalid parameter files |
 | API Docker build | `infra/docker/api/Dockerfile` | Image build failure |
 | Web Docker build | `infra/docker/web/Dockerfile` | Image build failure |
@@ -73,7 +73,7 @@ These checks must pass before merge. Any failure blocks the workflow.
 - Every job uses `actions/checkout@v4` with **`clean: true`** — no leftover files from prior runs on self-hosted reuse (GitHub-hosted runners are ephemeral; this guards against future runner changes).
 - **.NET SDK** pinned to `8.0.424` (`global.json`, Docker API image).
 - **Node.js** pinned via `frontend/contentforge-web/.node-version` (`20.18.1`).
-- **Bicep** pinned to `v0.32.4`.
+- **Bicep** pinned to **v0.32.4** (downloaded from [Azure/bicep releases](https://github.com/Azure/bicep/releases) — no third-party setup action).
 - **PostgreSQL** service image pinned to `postgres:16-alpine`.
 - Backend builds **`ContentForge.sln`** explicitly so all projects (including `ContentForge.Infrastructure.SqlServer`) compile.
 
