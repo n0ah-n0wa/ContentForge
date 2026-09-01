@@ -81,21 +81,17 @@ describe('ContentEntryLifecycleActions', () => {
       },
     });
 
-    const publishButton = wrapper
-      .findAll('button')
-      .find((button) => button.text() === 'Publish');
+    const publishButton = wrapper.findAll('button').find((button) => button.text() === 'Publish');
     expect(publishButton).toBeDefined();
     await publishButton!.trigger('click');
     expect(wrapper.text()).toContain('Publish "hello-world"');
 
-    const confirmButton = wrapper
-      .findAll('button')
-      .find((button) => button.text() === 'Confirm');
+    const confirmButton = wrapper.findAll('button').find((button) => button.text() === 'Confirm');
     expect(confirmButton?.attributes('disabled')).toBeDefined();
 
-    await wrapper.find('input[placeholder="Describe why this action is being taken"]').setValue(
-      'Ready to go live',
-    );
+    await wrapper
+      .find('input[placeholder="Describe why this action is being taken"]')
+      .setValue('Ready to go live');
     await confirmButton!.trigger('click');
     await flushPromises();
 

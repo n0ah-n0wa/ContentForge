@@ -46,7 +46,13 @@ function close(): void {
 </script>
 
 <template>
-  <div v-if="open" class="media-picker-overlay" role="dialog" aria-modal="true" aria-label="Select media">
+  <div
+    v-if="open"
+    class="media-picker-overlay"
+    role="dialog"
+    aria-modal="true"
+    aria-label="Select media"
+  >
     <section class="media-picker-dialog page-card">
       <header class="page-header">
         <div>

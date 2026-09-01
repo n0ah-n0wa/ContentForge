@@ -38,7 +38,11 @@ async function onSubmit(): Promise<void> {
     });
     await router.push({ name: 'user-edit', params: { id: created.id } });
   } catch (error) {
-    if (error instanceof ApiError && error.isValidationError && isValidationProblem(error.problem)) {
+    if (
+      error instanceof ApiError &&
+      error.isValidationError &&
+      isValidationProblem(error.problem)
+    ) {
       errorMessage.value = getValidationMessages(error.problem).join(' ');
     } else if (error instanceof ApiError && error.isForbidden) {
       errorMessage.value = 'You do not have permission to create users.';
@@ -61,7 +65,8 @@ async function onSubmit(): Promise<void> {
       <div>
         <h2>Create user</h2>
         <p class="page-card__lead">
-          Add a new CMS account with an initial role. The backend validates credentials and permissions.
+          Add a new CMS account with an initial role. The backend validates credentials and
+          permissions.
         </p>
       </div>
     </header>
@@ -73,12 +78,7 @@ async function onSubmit(): Promise<void> {
       message="You need the user.create permission to create users."
     />
 
-    <AppAlert
-      v-if="errorMessage"
-      kind="error"
-      title="Create failed"
-      :message="errorMessage"
-    />
+    <AppAlert v-if="errorMessage" kind="error" title="Create failed" :message="errorMessage" />
 
     <form class="stack-form" @submit.prevent="onSubmit">
       <UserFormFields
@@ -94,9 +94,7 @@ async function onSubmit(): Promise<void> {
         <AppButton variant="secondary" type="button" @click="router.push({ name: 'users' })">
           Cancel
         </AppButton>
-        <AppButton type="submit" :loading="saving" :disabled="!canCreate">
-          Create user
-        </AppButton>
+        <AppButton type="submit" :loading="saving" :disabled="!canCreate"> Create user </AppButton>
       </div>
     </form>
   </section>

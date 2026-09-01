@@ -151,8 +151,7 @@ async function deactivate(): Promise<void> {
 
 async function requestDeleteType(): Promise<void> {
   pendingAction.value = { kind: 'delete-type', confirmedSafeDeletion: false };
-  pendingMessage.value =
-    'Deleting a content type removes its schema. Confirm to proceed.';
+  pendingMessage.value = 'Deleting a content type removes its schema. Confirm to proceed.';
 }
 
 async function executeDeleteType(confirmedSafeDeletion: boolean): Promise<void> {
@@ -233,10 +232,14 @@ async function handleUpdateField(
   fieldErrorMessage.value = null;
 
   try {
-    contentType.value = await updateContentTypeField(contentType.value.id, selectedField.value.name, {
-      ...payload,
-      confirmedDestructiveChange,
-    });
+    contentType.value = await updateContentTypeField(
+      contentType.value.id,
+      selectedField.value.name,
+      {
+        ...payload,
+        confirmedDestructiveChange,
+      },
+    );
     fieldPanel.value = 'none';
     pendingAction.value = null;
   } catch (error) {
@@ -465,7 +468,9 @@ onMounted(() => {
         <header class="section-header">
           <div>
             <h3>Metadata</h3>
-            <p>System name <code>{{ contentType.name }}</code> · Version {{ contentType.version }}</p>
+            <p>
+              System name <code>{{ contentType.name }}</code> · Version {{ contentType.version }}
+            </p>
           </div>
         </header>
 

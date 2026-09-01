@@ -162,9 +162,7 @@ onMounted(() => {
     <header class="page-header">
       <div>
         <h2>{{ contentType?.displayName ?? 'Content entries' }}</h2>
-        <p class="page-card__lead">
-          Browse, filter, and manage entries for this content type.
-        </p>
+        <p class="page-card__lead">Browse, filter, and manage entries for this content type.</p>
       </div>
       <AppButton
         v-if="canCreate && contentType"
@@ -221,12 +219,7 @@ onMounted(() => {
       </div>
     </form>
 
-    <AppAlert
-      v-if="errorMessage"
-      kind="error"
-      title="Load failed"
-      :message="errorMessage"
-    />
+    <AppAlert v-if="errorMessage" kind="error" title="Load failed" :message="errorMessage" />
 
     <div v-if="loading" class="inline-loading">
       <AppSpinner label="Loading content entries" />

@@ -39,7 +39,9 @@ function sanitizeValue(value: unknown): unknown {
   if (value && typeof value === 'object') {
     const result: Record<string, unknown> = {};
     for (const [key, nested] of Object.entries(value)) {
-      result[key] = SENSITIVE_METADATA_KEYS.has(key.toLowerCase()) ? '[REDACTED]' : sanitizeValue(nested);
+      result[key] = SENSITIVE_METADATA_KEYS.has(key.toLowerCase())
+        ? '[REDACTED]'
+        : sanitizeValue(nested);
     }
     return result;
   }

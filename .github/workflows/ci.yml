@@ -4,11 +4,24 @@ on:
   push:
     branches: [main]
   pull_request:
-    branches: [main]
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+env:
+  DOTNET_NOLOGO: true
+  DOTNET_CLI_TELEMETRY_OPTOUT: true
 
 jobs:
   backend:
+    name: Backend
     runs-on: ubuntu-latest
+    timeout-minutes: 30
+
     services:
       postgres:
         image: postgres:16-alpine
@@ -23,57 +36,204 @@ jobs:
           --health-interval=5s
           --health-timeout=3s
           --health-retries=10
+
     env:
+      ASPNETCORE_ENVIRONMENT: Testing
       CONTENTFORGE_TEST_DB_CONNECTION: Host=localhost;Port=5432;Database=contentforge_test;Username=contentforge;Password=contentforge
+
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          clean: true
 
       - name: Setup .NET
         uses: actions/setup-dotnet@v4
         with:
-          dotnet-version: "8.0.x"
+          dotnet-version: "8.0.424"
+          cache: true
+          cache-dependency-path: |
+            **/*.csproj
+            **/Directory.Packages.props
+            global.json
 
       - name: Restore
-        run: dotnet restore
+        run: dotnet restore ContentForge.sln
 
       - name: NuGet vulnerability audit
-        run: dotnet list package --vulnerable --include-transitive
-
-      - name: Build
-        run: dotnet build --no-restore --configuration Release
+        run: dotnet list ContentForge.sln package --vulnerable --include-transitive
 
       - name: Format check
-        run: dotnet format --verify-no-changes
+        run: dotnet format ContentForge.sln --verify-no-changes
 
-      - name: Test
-        run: dotnet test --no-build --configuration Release --verbosity normal
+      - name: Build (includes Roslyn and NetAnalyzers)
+        run: dotnet build ContentForge.sln --no-restore --configuration Release
+
+      - name: Unit tests
+        run: >
+          dotnet test tests/ContentForge.UnitTests/ContentForge.UnitTests.csproj
+          --no-build --configuration Release --verbosity normal
+          --blame-hang-timeout 3m --blame-crash
+          --logger "trx;LogFileName=unit-tests.trx"
+          --results-directory "${{ runner.temp }}/test-results"
+
+      - name: Architecture tests
+        run: >
+          dotnet test tests/ContentForge.ArchitectureTests/ContentForge.ArchitectureTests.csproj
+          --no-build --configuration Release --verbosity normal
+          --blame-hang-timeout 3m --blame-crash
+          --logger "trx;LogFileName=architecture-tests.trx"
+          --results-directory "${{ runner.temp }}/test-results"
+
+      - name: Integration tests
+        run: >
+          dotnet test tests/ContentForge.IntegrationTests/ContentForge.IntegrationTests.csproj
+          --no-build --configuration Release --verbosity normal
+          --blame-hang-timeout 5m --blame-crash
+          --logger "trx;LogFileName=integration-tests.trx"
+          --results-directory "${{ runner.temp }}/test-results"
+
+      - name: Upload backend test results
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: backend-test-results
+          path: ${{ runner.temp }}/test-results/**/*.trx
+          if-no-files-found: ignore
 
   frontend:
+    name: Frontend
     runs-on: ubuntu-latest
+    timeout-minutes: 20
+
     defaults:
       run:
         working-directory: frontend/contentforge-web
+
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          clean: true
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: "20"
+          node-version-file: frontend/contentforge-web/.node-version
           cache: npm
           cache-dependency-path: frontend/contentforge-web/package-lock.json
 
-      - name: Install
+      - name: Install dependencies
         run: npm ci
 
-      - name: Audit
+      - name: npm vulnerability audit
         run: npm audit --audit-level=moderate
+
+      - name: Prettier check
+        run: npm run format:check
 
       - name: Lint
         run: npm run lint
 
-      - name: Test
+      - name: Typecheck
+        run: npm run typecheck
+
+      - name: Unit and component tests
         run: npm run test
 
-      - name: Build
-        run: npm run build
+      - name: Production build
+        run: npm run build:vite
+
+  infrastructure:
+    name: Infrastructure
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    permissions:
+      contents: read
+      actions: write
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          clean: true
+
+      - name: Setup Bicep
+        uses: azure/setup-bicep@v2
+        with:
+          version: v0.32.4
+
+      - name: Validate Bicep templates
+        run: |
+          bicep build --file infra/azure/bicep/main.bicep
+          bicep build-params --file infra/azure/bicep/parameters/dev.bicepparam
+          bicep build-params --file infra/azure/bicep/parameters/staging.bicepparam
+          bicep build-params --file infra/azure/bicep/parameters/prod.bicepparam
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build API container image
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: infra/docker/api/Dockerfile
+          push: false
+          pull: true
+          provenance: false
+          tags: contentforge-api:ci
+          cache-from: type=gha,scope=contentforge-api
+          cache-to: type=gha,mode=max,scope=contentforge-api
+
+      - name: Build Web container image
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: infra/docker/web/Dockerfile
+          build-args: |
+            VITE_API_BASE_URL=
+          push: false
+          pull: true
+          provenance: false
+          tags: contentforge-web:ci
+          cache-from: type=gha,scope=contentforge-web
+          cache-to: type=gha,mode=max,scope=contentforge-web
+
+      - name: Smoke test API container (liveness)
+        run: |
+          docker run -d --name cf-api-smoke -p 18080:8080 \
+            -e ASPNETCORE_ENVIRONMENT=Testing \
+            -e Database__Provider=PostgreSQL \
+            -e Database__ConnectionString="Host=localhost;Port=5432;Database=contentforge_test;Username=contentforge;Password=contentforge" \
+            -e Jwt__Issuer=ContentForge.Test \
+            -e Jwt__Audience=ContentForge.Test.Admin \
+            -e Jwt__SigningKey="TEST_ONLY_SIGNING_KEY_32_CHARS_MINIMUM_VALUE" \
+            contentforge-api:ci
+          for i in $(seq 1 30); do
+            if wget -qO- http://127.0.0.1:18080/health/live >/dev/null 2>&1; then
+              echo "API liveness probe succeeded"
+              docker rm -f cf-api-smoke
+              exit 0
+            fi
+            sleep 2
+          done
+          echo "API container failed liveness probe"
+          docker logs cf-api-smoke
+          docker rm -f cf-api-smoke
+          exit 1
+
+      - name: Smoke test Web container (health)
+        run: |
+          docker run -d --name cf-web-smoke -p 18081:8080 contentforge-web:ci
+          for i in $(seq 1 15); do
+            if wget -qO- http://127.0.0.1:18081/health >/dev/null 2>&1; then
+              echo "Web health probe succeeded"
+              docker rm -f cf-web-smoke
+              exit 0
+            fi
+            sleep 2
+          done
+          echo "Web container failed health probe"
+          docker logs cf-web-smoke
+          docker rm -f cf-web-smoke
+          exit 1

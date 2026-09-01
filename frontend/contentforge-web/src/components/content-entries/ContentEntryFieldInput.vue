@@ -25,7 +25,8 @@ const richTextMode = ref<'edit' | 'preview'>('edit');
 const richTextEditor = ref<HTMLElement | null>(null);
 
 const stringValue = computed({
-  get: () => (typeof model.value === 'string' ? model.value : model.value == null ? '' : String(model.value)),
+  get: () =>
+    typeof model.value === 'string' ? model.value : model.value == null ? '' : String(model.value),
   set: (value: string) => {
     model.value = value;
   },
@@ -183,9 +184,17 @@ watch(
 
       <div v-else-if="field.fieldType === FieldType.RichText" class="rich-text-field">
         <div class="rich-text-field__toolbar">
-          <button type="button" :disabled="disabled" @click="applyRichTextCommand('bold')">Bold</button>
-          <button type="button" :disabled="disabled" @click="applyRichTextCommand('italic')">Italic</button>
-          <button type="button" :disabled="disabled" @click="applyRichTextCommand('insertUnorderedList')">
+          <button type="button" :disabled="disabled" @click="applyRichTextCommand('bold')">
+            Bold
+          </button>
+          <button type="button" :disabled="disabled" @click="applyRichTextCommand('italic')">
+            Italic
+          </button>
+          <button
+            type="button"
+            :disabled="disabled"
+            @click="applyRichTextCommand('insertUnorderedList')"
+          >
             List
           </button>
           <button
@@ -278,11 +287,7 @@ watch(
       </select>
 
       <div v-else-if="field.fieldType === FieldType.MultiSelect" class="entry-field__options">
-        <label
-          v-for="option in selectOptions"
-          :key="option"
-          class="form-field form-field--inline"
-        >
+        <label v-for="option in selectOptions" :key="option" class="form-field form-field--inline">
           <input
             type="checkbox"
             :checked="multiSelectValue.includes(option)"

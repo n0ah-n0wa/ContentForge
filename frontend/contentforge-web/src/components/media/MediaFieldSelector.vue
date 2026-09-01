@@ -68,9 +68,13 @@ function clearSelection(): void {
   model.value = props.multiple ? [] : '';
 }
 
-watch(selectedIds, (ids) => {
-  void loadAssets(ids);
-}, { immediate: true });
+watch(
+  selectedIds,
+  (ids) => {
+    void loadAssets(ids);
+  },
+  { immediate: true },
+);
 </script>
 
 <template>

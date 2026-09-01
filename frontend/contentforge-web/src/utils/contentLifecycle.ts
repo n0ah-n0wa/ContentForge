@@ -1,13 +1,7 @@
 import { ContentStatus } from '@/types/contentEntries';
 
 export type LifecycleAction =
-  | 'submit'
-  | 'withdraw'
-  | 'publish'
-  | 'unpublish'
-  | 'archive'
-  | 'restore'
-  | 'delete';
+  'submit' | 'withdraw' | 'publish' | 'unpublish' | 'archive' | 'restore' | 'delete';
 
 export const LIFECYCLE_ACTION_LABELS: Record<LifecycleAction, string> = {
   submit: 'Submit for review',
@@ -39,7 +33,9 @@ export function isDestructiveLifecycleAction(action: LifecycleAction): boolean {
 }
 
 export function lifecycleActionRequiresChangeSummary(action: LifecycleAction): boolean {
-  return action === 'publish' || action === 'unpublish' || action === 'archive' || action === 'restore';
+  return (
+    action === 'publish' || action === 'unpublish' || action === 'archive' || action === 'restore'
+  );
 }
 
 export function getLifecycleConfirmationMessage(action: LifecycleAction, slug: string): string {

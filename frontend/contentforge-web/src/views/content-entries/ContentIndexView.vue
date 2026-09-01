@@ -55,12 +55,7 @@ onMounted(() => {
       </div>
     </header>
 
-    <AppAlert
-      v-if="errorMessage"
-      kind="error"
-      title="Load failed"
-      :message="errorMessage"
-    />
+    <AppAlert v-if="errorMessage" kind="error" title="Load failed" :message="errorMessage" />
 
     <div v-if="loading" class="inline-loading">
       <AppSpinner label="Loading content types" />
@@ -89,7 +84,9 @@ onMounted(() => {
             <td>
               <AppButton
                 variant="secondary"
-                @click="router.push({ name: 'content-by-type', params: { contentTypeSlug: item.slug } })"
+                @click="
+                  router.push({ name: 'content-by-type', params: { contentTypeSlug: item.slug } })
+                "
               >
                 Open entries
               </AppButton>

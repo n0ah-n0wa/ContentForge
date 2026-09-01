@@ -393,25 +393,39 @@ PRs must not merge when required CI checks fail.
 
 ## 13. CI Verification Commands
 
-Before declaring any phase or feature complete, run:
+GitHub Actions runs the full pipeline on pull requests and pushes to `main`. See **[docs/operations/ci.md](./operations/ci.md)** for job layout, quality gates, and local reproduction commands.
+
+Before declaring any phase or feature complete, run the same checks locally:
 
 **Backend:**
 
 ```bash
-dotnet build
-dotnet test
+dotnet restore
+dotnet build --configuration Release
 dotnet format --verify-no-changes
+dotnet test --configuration Release --no-build
 ```
 
 **Frontend:**
 
 ```bash
-npm run build
-npm run test
+cd frontend/contentforge-web
+npm ci
+npm audit --audit-level=moderate
+npm run format:check
 npm run lint
+npm run typecheck
+npm run test
+npm run build:vite
 ```
 
-Exact commands may evolve; update this document when they change.
+**Infrastructure (when touching Bicep or Dockerfiles):**
+
+```bash
+bicep build --file infra/azure/bicep/main.bicep
+docker build -f infra/docker/api/Dockerfile .
+docker build -f infra/docker/web/Dockerfile .
+```
 
 ---
 

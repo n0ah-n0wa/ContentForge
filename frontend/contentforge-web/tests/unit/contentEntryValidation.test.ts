@@ -46,7 +46,10 @@ describe('contentEntryValidation', () => {
 
   it('validates required fields and json shape without enforcing backend rules', () => {
     const fields = [
-      buildField({ name: 'title', configuration: { ...createDefaultFieldConfiguration(FieldType.Text), isRequired: true } }),
+      buildField({
+        name: 'title',
+        configuration: { ...createDefaultFieldConfiguration(FieldType.Text), isRequired: true },
+      }),
       buildField({
         name: 'payload',
         fieldType: FieldType.Json,

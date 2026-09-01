@@ -143,9 +143,9 @@ describe('ContentEntryEditView integration', () => {
 
     await flushPromises();
 
-    await wrapper.find('input[placeholder="Describe what changed in this draft save"]').setValue(
-      'Updated title',
-    );
+    await wrapper
+      .find('input[placeholder="Describe what changed in this draft save"]')
+      .setValue('Updated title');
 
     const titleInput = wrapper
       .findAll('input[type="text"]')
@@ -153,9 +153,7 @@ describe('ContentEntryEditView integration', () => {
     expect(titleInput).toBeDefined();
     await titleInput!.setValue('Updated');
 
-    const saveButton = wrapper
-      .findAll('button')
-      .find((button) => button.text() === 'Save draft');
+    const saveButton = wrapper.findAll('button').find((button) => button.text() === 'Save draft');
     expect(saveButton).toBeDefined();
     await saveButton!.trigger('click');
 

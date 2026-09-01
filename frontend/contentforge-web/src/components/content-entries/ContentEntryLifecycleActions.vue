@@ -32,13 +32,7 @@ const entryRef = computed(() => props.entry);
 const pendingAction = ref<LifecycleAction | null>(null);
 const confirmChangeSummary = ref('');
 
-const {
-  canReview,
-  canPublish,
-  canArchive,
-  canRestore,
-  canDelete,
-} = useContentPermissions();
+const { canReview, canPublish, canArchive, canRestore, canDelete } = useContentPermissions();
 
 const { actionLoading, runLifecycleAction } = useContentEntryActions(
   entryRef,

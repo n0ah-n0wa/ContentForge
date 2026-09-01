@@ -147,10 +147,7 @@ export function listContentVersions(entryId: string): Promise<ContentVersion[]> 
   return apiRequest<ContentVersion[]>(`${BASE}/${entryId}/versions`);
 }
 
-export function getContentVersion(
-  entryId: string,
-  versionNumber: number,
-): Promise<ContentVersion> {
+export function getContentVersion(entryId: string, versionNumber: number): Promise<ContentVersion> {
   return apiRequest<ContentVersion>(`${BASE}/${entryId}/versions/${versionNumber}`);
 }
 

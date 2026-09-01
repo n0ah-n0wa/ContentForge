@@ -40,11 +40,7 @@ const optionsText = computed({
 <template>
   <div class="field-config-form">
     <label v-if="capabilities.required" class="form-field form-field--inline">
-      <input
-        v-model="configuration.isRequired"
-        type="checkbox"
-        :disabled="disabled"
-      />
+      <input v-model="configuration.isRequired" type="checkbox" :disabled="disabled" />
       <span>Required field</span>
     </label>
 
@@ -142,11 +138,7 @@ const optionsText = computed({
 
       <label class="form-field">
         <span>Relation cardinality</span>
-        <select
-          v-model="configuration.relationCardinality"
-          :disabled="disabled"
-          required
-        >
+        <select v-model="configuration.relationCardinality" :disabled="disabled" required>
           <option :value="null" disabled>Select cardinality</option>
           <option v-for="option in cardinalityOptions" :key="option.value" :value="option.value">
             {{ option.label }}

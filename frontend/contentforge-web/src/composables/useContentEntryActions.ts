@@ -78,7 +78,11 @@ export function useContentEntryActions(
       onEntryUpdated(updated);
       return true;
     } catch (error) {
-      if (error instanceof ApiError && error.isConcurrencyConflict && isConcurrencyConflict(error.problem)) {
+      if (
+        error instanceof ApiError &&
+        error.isConcurrencyConflict &&
+        isConcurrencyConflict(error.problem)
+      ) {
         onConflict(error.problem);
         return false;
       }
@@ -109,7 +113,11 @@ export function useContentEntryActions(
       onEntryUpdated(updated);
       return true;
     } catch (error) {
-      if (error instanceof ApiError && error.isConcurrencyConflict && isConcurrencyConflict(error.problem)) {
+      if (
+        error instanceof ApiError &&
+        error.isConcurrencyConflict &&
+        isConcurrencyConflict(error.problem)
+      ) {
         onConflict(error.problem);
         return false;
       }

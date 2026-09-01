@@ -49,11 +49,7 @@ function canMoveDown(index: number, fields: ContentTypeField[]): boolean {
         class="field-list__item"
         :class="{ 'field-list__item--selected': selectedFieldName === field.name }"
       >
-        <button
-          type="button"
-          class="field-list__summary"
-          @click="emit('select', field.name)"
-        >
+        <button type="button" class="field-list__summary" @click="emit('select', field.name)">
           <strong>{{ field.displayName }}</strong>
           <span>{{ field.name }} · {{ getFieldTypeLabel(field.fieldType) }}</span>
           <span>Order {{ field.sortOrder }}</span>

@@ -47,8 +47,7 @@ async function loadUsers(): Promise<void> {
       sortBy: 'email',
       sortDirection: 'asc',
       search: search.value.trim() || undefined,
-      isActive:
-        activeFilter.value === 'all' ? undefined : activeFilter.value === 'active',
+      isActive: activeFilter.value === 'all' ? undefined : activeFilter.value === 'active',
       role: roleFilter.value || undefined,
     });
     items.value = response.items;
@@ -78,7 +77,8 @@ watch([page, pageSize], () => {
       <div>
         <h2>Users</h2>
         <p class="page-card__lead">
-          Manage CMS user accounts, roles, and access. Authorization is enforced by the backend on every request.
+          Manage CMS user accounts, roles, and access. Authorization is enforced by the backend on
+          every request.
         </p>
       </div>
       <AppButton v-if="canCreate" @click="router.push({ name: 'user-create' })">
@@ -119,12 +119,7 @@ watch([page, pageSize], () => {
         <AppButton type="submit" variant="secondary">Apply</AppButton>
       </form>
 
-      <AppAlert
-        v-if="errorMessage"
-        kind="error"
-        title="Load failed"
-        :message="errorMessage"
-      />
+      <AppAlert v-if="errorMessage" kind="error" title="Load failed" :message="errorMessage" />
 
       <div v-if="loading" class="inline-loading">
         <AppSpinner label="Loading users" />

@@ -196,13 +196,21 @@ defineExpose({
       <label class="form-field">
         <span>Type</span>
         <select v-model="contentTypeFilter">
-          <option v-for="option in MEDIA_CONTENT_TYPE_FILTERS" :key="option.value" :value="option.value">
+          <option
+            v-for="option in MEDIA_CONTENT_TYPE_FILTERS"
+            :key="option.value"
+            :value="option.value"
+          >
             {{ option.label }}
           </option>
         </select>
       </label>
       <div class="content-list-toolbar__actions">
-        <AppButton variant="secondary" type="button" @click="viewMode = viewMode === 'grid' ? 'list' : 'grid'">
+        <AppButton
+          variant="secondary"
+          type="button"
+          @click="viewMode = viewMode === 'grid' ? 'list' : 'grid'"
+        >
           {{ viewMode === 'grid' ? 'List view' : 'Grid view' }}
         </AppButton>
         <AppButton type="submit" variant="secondary">Apply</AppButton>
@@ -269,7 +277,10 @@ defineExpose({
           </AppButton>
         </header>
 
-        <div v-if="isImageMedia(selectedAsset.contentType) && resolveMediaUrl(selectedAsset.url)" class="media-library__preview">
+        <div
+          v-if="isImageMedia(selectedAsset.contentType) && resolveMediaUrl(selectedAsset.url)"
+          class="media-library__preview"
+        >
           <img
             :src="resolveMediaUrl(selectedAsset.url)!"
             :alt="selectedAsset.altText ?? selectedAsset.originalFileName"
@@ -296,7 +307,11 @@ defineExpose({
 
     <div v-if="selectionMode" class="media-picker__actions">
       <AppButton variant="secondary" type="button" @click="emit('cancel')">Cancel</AppButton>
-      <AppButton type="button" :disabled="pendingSelection.length === 0" @click="confirmPickerSelection">
+      <AppButton
+        type="button"
+        :disabled="pendingSelection.length === 0"
+        @click="confirmPickerSelection"
+      >
         Use selected
       </AppButton>
     </div>

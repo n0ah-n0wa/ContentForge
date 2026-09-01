@@ -230,7 +230,9 @@ onBeforeRouteLeave((_to, _from, next) => {
     <header class="page-header">
       <div>
         <h2>{{ contentType?.displayName ?? 'Content entry' }}</h2>
-        <p class="page-card__lead">Edit draft content, manage lifecycle actions, and review versions.</p>
+        <p class="page-card__lead">
+          Edit draft content, manage lifecycle actions, and review versions.
+        </p>
       </div>
       <div class="entry-editor__actions">
         <AppButton

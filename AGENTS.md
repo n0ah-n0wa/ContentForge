@@ -17,13 +17,20 @@ This repository is developed primarily with AI coding agents. Read these documen
 
 ## Verification Commands
 
+Matches the [CI pipeline](docs/operations/ci.md) (`/.github/workflows/ci.yml`):
+
 ```bash
-dotnet build
-dotnet test
+dotnet restore
+dotnet build --configuration Release
 dotnet format --verify-no-changes
+dotnet test --configuration Release --no-build
 
 cd frontend/contentforge-web
+npm ci
+npm audit --audit-level=moderate
+npm run format:check
 npm run lint
+npm run typecheck
 npm run test
-npm run build
+npm run build:vite
 ```

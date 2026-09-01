@@ -30,8 +30,7 @@ async function loadContentTypes(): Promise<void> {
       sortBy: 'name',
       sortDirection: 'asc',
       search: search.value.trim() || undefined,
-      isActive:
-        activeFilter.value === 'all' ? undefined : activeFilter.value === 'active',
+      isActive: activeFilter.value === 'all' ? undefined : activeFilter.value === 'active',
     });
     items.value = response.items;
   } catch (error) {
@@ -77,12 +76,7 @@ onMounted(() => {
       <AppButton type="submit" variant="secondary">Apply</AppButton>
     </form>
 
-    <AppAlert
-      v-if="errorMessage"
-      kind="error"
-      title="Load failed"
-      :message="errorMessage"
-    />
+    <AppAlert v-if="errorMessage" kind="error" title="Load failed" :message="errorMessage" />
 
     <div v-if="loading" class="inline-loading">
       <AppSpinner label="Loading content types" />
@@ -109,7 +103,9 @@ onMounted(() => {
         <tbody>
           <tr v-for="item in items" :key="item.id">
             <td>{{ item.displayName }}</td>
-            <td><code>{{ item.name }}</code></td>
+            <td>
+              <code>{{ item.name }}</code>
+            </td>
             <td>{{ item.slug }}</td>
             <td>{{ item.fieldCount ?? item.fields.length }}</td>
             <td>

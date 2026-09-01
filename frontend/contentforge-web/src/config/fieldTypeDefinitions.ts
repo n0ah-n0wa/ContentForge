@@ -200,7 +200,9 @@ export const FIELD_TYPE_DEFINITIONS: FieldTypeDefinition[] = [
   },
 ];
 
-const definitionByType = new Map(FIELD_TYPE_DEFINITIONS.map((definition) => [definition.type, definition]));
+const definitionByType = new Map(
+  FIELD_TYPE_DEFINITIONS.map((definition) => [definition.type, definition]),
+);
 
 export function getFieldTypeDefinition(fieldType: FieldType): FieldTypeDefinition {
   const definition = definitionByType.get(fieldType);

@@ -90,7 +90,12 @@ async function uploadSelectedFile(): Promise<void> {
         <h3>Upload media</h3>
         <p>Select a file to upload. Storage paths and credentials are never exposed in the UI.</p>
       </div>
-      <AppButton type="button" variant="secondary" :disabled="disabled || uploading" @click="openFilePicker">
+      <AppButton
+        type="button"
+        variant="secondary"
+        :disabled="disabled || uploading"
+        @click="openFilePicker"
+      >
         Choose file
       </AppButton>
     </header>
@@ -107,7 +112,12 @@ async function uploadSelectedFile(): Promise<void> {
       Selected: {{ selectedFile.name }} ({{ formatMediaSize(selectedFile.size) }})
     </p>
 
-    <div v-if="uploading" class="media-upload-panel__progress" role="progressbar" :aria-valuenow="progress">
+    <div
+      v-if="uploading"
+      class="media-upload-panel__progress"
+      role="progressbar"
+      :aria-valuenow="progress"
+    >
       <div class="media-upload-panel__progress-bar" :style="{ width: `${progress}%` }" />
       <span>{{ progress }}%</span>
     </div>
@@ -130,11 +140,6 @@ async function uploadSelectedFile(): Promise<void> {
       </AppButton>
     </form>
 
-    <AppAlert
-      v-if="errorMessage"
-      kind="error"
-      title="Upload failed"
-      :message="errorMessage"
-    />
+    <AppAlert v-if="errorMessage" kind="error" title="Upload failed" :message="errorMessage" />
   </section>
 </template>

@@ -24,6 +24,10 @@ export default tseslint.config(
       'vue/singleline-html-element-content-newline': 'off',
       'vue/html-self-closing': 'off',
       'vue/require-default-prop': 'off',
+      // Prettier owns HTML formatting (see npm run format:check in CI).
+      'vue/html-closing-bracket-newline': 'off',
+      'vue/html-indent': 'off',
+      'vue/first-attribute-linebreak': 'off',
     },
   },
 );

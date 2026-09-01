@@ -58,10 +58,7 @@ async function loadUser(): Promise<void> {
   errorMessage.value = null;
 
   try {
-    const [loadedUser, loadedRoles] = await Promise.all([
-      getUser(userId.value),
-      listRoles(),
-    ]);
+    const [loadedUser, loadedRoles] = await Promise.all([getUser(userId.value), listRoles()]);
     user.value = loadedUser;
     roles.value = loadedRoles;
     displayName.value = loadedUser.displayName;
@@ -90,7 +87,11 @@ async function saveChanges(): Promise<void> {
     displayName.value = user.value.displayName;
     role.value = user.value.role;
   } catch (error) {
-    if (error instanceof ApiError && error.isValidationError && isValidationProblem(error.problem)) {
+    if (
+      error instanceof ApiError &&
+      error.isValidationError &&
+      isValidationProblem(error.problem)
+    ) {
       errorMessage.value = getValidationMessages(error.problem).join(' ');
     } else if (error instanceof ApiError && error.isForbidden) {
       errorMessage.value = 'You do not have permission to update this user.';
@@ -177,12 +178,7 @@ onMounted(() => {
         message="This user cannot sign in until the account is reactivated."
       />
 
-      <AppAlert
-        v-if="errorMessage"
-        kind="error"
-        title="Action failed"
-        :message="errorMessage"
-      />
+      <AppAlert v-if="errorMessage" kind="error" title="Action failed" :message="errorMessage" />
 
       <div class="user-detail-grid">
         <section class="panel-card">
@@ -251,7 +247,8 @@ onMounted(() => {
         <section class="panel-card">
           <h3>Role permissions</h3>
           <p class="page-card__lead">
-            Permissions granted by the selected role. Effective access is always verified by the backend.
+            Permissions granted by the selected role. Effective access is always verified by the
+            backend.
           </p>
           <RolePermissionsPanel :roles="roles" :selected-role="role" />
         </section>

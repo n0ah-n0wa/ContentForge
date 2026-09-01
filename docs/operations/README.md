@@ -2,6 +2,7 @@
 
 Deployment, backup, recovery, and runbook documentation will be maintained here.
 
+- [Continuous Integration (CI)](./ci.md)
 - [Docker deployment](./docker.md)
 - [Azure infrastructure (Bicep)](./azure-infrastructure.md)
 - [Azure deployment guide](./azure-deployment.md)

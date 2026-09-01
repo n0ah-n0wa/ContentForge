@@ -7,7 +7,9 @@ describe('mediaUrl', () => {
   });
 
   it('returns absolute urls unchanged', () => {
-    expect(resolveMediaUrl('https://cdn.example.com/file.png')).toBe('https://cdn.example.com/file.png');
+    expect(resolveMediaUrl('https://cdn.example.com/file.png')).toBe(
+      'https://cdn.example.com/file.png',
+    );
   });
 
   it('formats file sizes and detects image content types', () => {

@@ -126,7 +126,8 @@ watch([page, pageSize], () => {
       <div>
         <h2>Audit log</h2>
         <p class="page-card__lead">
-          Read-only history of security-sensitive and content-management actions. Sensitive values in metadata are redacted.
+          Read-only history of security-sensitive and content-management actions. Sensitive values
+          in metadata are redacted.
         </p>
       </div>
     </header>
@@ -142,13 +143,21 @@ watch([page, pageSize], () => {
       <form class="toolbar audit-toolbar" @submit.prevent="applyFilters">
         <label class="form-field">
           <span>Actor (user ID)</span>
-          <input v-model="actorFilter" type="text" placeholder="11111111-1111-1111-1111-111111111111" />
+          <input
+            v-model="actorFilter"
+            type="text"
+            placeholder="11111111-1111-1111-1111-111111111111"
+          />
         </label>
         <label class="form-field">
           <span>Action</span>
           <select v-model="actionFilter">
             <option value="">All actions</option>
-            <option v-for="option in AUDIT_ACTION_OPTIONS" :key="option.value" :value="option.value">
+            <option
+              v-for="option in AUDIT_ACTION_OPTIONS"
+              :key="option.value"
+              :value="option.value"
+            >
               {{ option.label }}
             </option>
           </select>
@@ -156,7 +165,11 @@ watch([page, pageSize], () => {
         <label class="form-field">
           <span>Entity type</span>
           <select v-model="entityTypeFilter">
-            <option v-for="option in AUDIT_ENTITY_TYPE_OPTIONS" :key="option.value" :value="option.value">
+            <option
+              v-for="option in AUDIT_ENTITY_TYPE_OPTIONS"
+              :key="option.value"
+              :value="option.value"
+            >
               {{ option.label }}
             </option>
           </select>
@@ -179,12 +192,7 @@ watch([page, pageSize], () => {
         </div>
       </form>
 
-      <AppAlert
-        v-if="errorMessage"
-        kind="error"
-        title="Load failed"
-        :message="errorMessage"
-      />
+      <AppAlert v-if="errorMessage" kind="error" title="Load failed" :message="errorMessage" />
 
       <div class="audit-log-grid">
         <section class="panel-card audit-log-list">
@@ -216,7 +224,11 @@ watch([page, pageSize], () => {
                     :class="{ 'audit-log-row--selected': selectedEntryId === item.id }"
                   >
                     <td>
-                      <button type="button" class="audit-log-row__button" @click="selectEntry(item)">
+                      <button
+                        type="button"
+                        class="audit-log-row__button"
+                        @click="selectEntry(item)"
+                      >
                         {{ formatAuditTimestamp(item.timestamp) }}
                       </button>
                     </td>

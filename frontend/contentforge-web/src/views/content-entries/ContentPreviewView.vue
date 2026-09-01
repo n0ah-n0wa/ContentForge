@@ -94,7 +94,12 @@ onMounted(() => {
 
       <AppSpinner v-if="loading" />
 
-      <AppAlert v-else-if="errorMessage" kind="error" title="Preview unavailable" :message="errorMessage" />
+      <AppAlert
+        v-else-if="errorMessage"
+        kind="error"
+        title="Preview unavailable"
+        :message="errorMessage"
+      />
 
       <section v-else-if="preview" class="content-preview-page__body">
         <ContentEntryReadOnlyDisplay :fields="displayFields" :data="preview.data" />

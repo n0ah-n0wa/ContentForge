@@ -25,7 +25,8 @@ onMounted(() => {
       <div>
         <h2>Media library</h2>
         <p class="page-card__lead">
-          Upload, search, and manage media assets. Public URLs are shown; internal storage paths are never exposed.
+          Upload, search, and manage media assets. Public URLs are shown; internal storage paths are
+          never exposed.
         </p>
       </div>
     </header>

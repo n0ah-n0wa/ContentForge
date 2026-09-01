@@ -37,11 +37,7 @@ function formatDate(value: string | null): string {
     <div class="entry-metadata__grid">
       <div>
         <span class="entry-metadata__label">Status</span>
-        <span
-          v-if="entry"
-          class="entry-status"
-          :class="statusClass(entry.status)"
-        >
+        <span v-if="entry" class="entry-status" :class="statusClass(entry.status)">
           {{ CONTENT_STATUS_LABELS[entry.status] }}
         </span>
         <span v-else>—</span>

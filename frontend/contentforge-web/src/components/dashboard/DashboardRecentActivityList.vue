@@ -23,11 +23,7 @@ function actionLabel(action: number): string {
         <h3 id="recent-activity-heading">Recent activity</h3>
         <p>Latest auditable actions recorded by the platform.</p>
       </div>
-      <AppButton
-        v-if="canReadAudit"
-        variant="secondary"
-        @click="router.push({ name: 'audit' })"
-      >
+      <AppButton v-if="canReadAudit" variant="secondary" @click="router.push({ name: 'audit' })">
         Open audit log
       </AppButton>
     </header>

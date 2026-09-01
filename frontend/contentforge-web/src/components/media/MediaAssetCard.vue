@@ -18,10 +18,7 @@ const isImage = computed(() => isImageMedia(props.asset.contentType));
 </script>
 
 <template>
-  <article
-    class="media-asset-card"
-    :class="{ 'media-asset-card--selected': selected }"
-  >
+  <article class="media-asset-card" :class="{ 'media-asset-card--selected': selected }">
     <button
       type="button"
       class="media-asset-card__button"

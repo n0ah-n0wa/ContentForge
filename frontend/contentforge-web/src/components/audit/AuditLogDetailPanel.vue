@@ -10,7 +10,9 @@ const props = defineProps<{
   loading?: boolean;
 }>();
 
-const displayMetadata = computed(() => sanitizeAuditMetadataForDisplay(props.entry?.metadata ?? null));
+const displayMetadata = computed(() =>
+  sanitizeAuditMetadataForDisplay(props.entry?.metadata ?? null),
+);
 const displayUserAgent = computed(() => truncateAuditUserAgent(props.entry?.userAgent ?? null));
 </script>
 
@@ -47,7 +49,9 @@ const displayUserAgent = computed(() => truncateAuditUserAgent(props.entry?.user
         </div>
         <div v-if="entry.correlationId">
           <dt>Correlation ID</dt>
-          <dd><code>{{ entry.correlationId }}</code></dd>
+          <dd>
+            <code>{{ entry.correlationId }}</code>
+          </dd>
         </div>
         <div v-if="entry.ipAddress">
           <dt>IP address</dt>

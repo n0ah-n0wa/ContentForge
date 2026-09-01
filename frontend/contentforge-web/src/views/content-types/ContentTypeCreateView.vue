@@ -39,7 +39,11 @@ async function onSubmit(): Promise<void> {
     });
     await router.push({ name: 'content-type-edit', params: { id: created.id } });
   } catch (error) {
-    if (error instanceof ApiError && error.isValidationError && isValidationProblem(error.problem)) {
+    if (
+      error instanceof ApiError &&
+      error.isValidationError &&
+      isValidationProblem(error.problem)
+    ) {
       errorMessage.value = getValidationMessages(error.problem).join(' ');
     } else if (error instanceof Error) {
       errorMessage.value = error.message;
@@ -71,12 +75,7 @@ async function onSubmit(): Promise<void> {
       message="You need the contentType.create permission to create content types."
     />
 
-    <AppAlert
-      v-if="errorMessage"
-      kind="error"
-      title="Create failed"
-      :message="errorMessage"
-    />
+    <AppAlert v-if="errorMessage" kind="error" title="Create failed" :message="errorMessage" />
 
     <form class="stack-form" @submit.prevent="onSubmit">
       <ContentTypeMetadataForm v-model="metadata" mode="create" :disabled="!canCreate || saving" />

@@ -87,7 +87,10 @@ describe('authStore', () => {
 
   it('clears invalid sessions during initialization', async () => {
     sessionStorage.setItem('contentforge.accessToken', 'stale-token');
-    sessionStorage.setItem('contentforge.accessTokenExpiresAt', new Date(Date.now() + 3600000).toISOString());
+    sessionStorage.setItem(
+      'contentforge.accessTokenExpiresAt',
+      new Date(Date.now() + 3600000).toISOString(),
+    );
     vi.mocked(authApi.getCurrentUser).mockRejectedValue(new Error('401'));
 
     const store = useAuthStore();

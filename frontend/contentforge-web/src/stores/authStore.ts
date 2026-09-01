@@ -1,10 +1,7 @@
 import * as authApi from '@/api/auth';
 import { ApiError, getValidationMessages, isValidationProblem } from '@/api/errors';
 import type { AuthenticatedUser, LoginResult } from '@/types/auth';
-import {
-  extractPermissionsFromToken,
-  isAccessTokenExpired,
-} from '@/utils/jwt';
+import { extractPermissionsFromToken, isAccessTokenExpired } from '@/utils/jwt';
 import { clearStoredTokens, readStoredTokens, writeStoredTokens } from '@/utils/tokenStorage';
 import { defineStore } from 'pinia';
 import { computed, ref } from 'vue';

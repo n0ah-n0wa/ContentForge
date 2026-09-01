@@ -136,16 +136,9 @@ defineExpose({
       <span>Loading versions…</span>
     </div>
 
-    <AppAlert
-      v-else-if="errorMessage"
-      kind="error"
-      title="Load failed"
-      :message="errorMessage"
-    />
+    <AppAlert v-else-if="errorMessage" kind="error" title="Load failed" :message="errorMessage" />
 
-    <div v-else-if="sortedVersions.length === 0" class="empty-state">
-      No versions recorded yet.
-    </div>
+    <div v-else-if="sortedVersions.length === 0" class="empty-state">No versions recorded yet.</div>
 
     <div v-else class="version-history__layout">
       <ul class="version-history__list">
@@ -153,7 +146,9 @@ defineExpose({
           <button
             type="button"
             class="version-history__summary"
-            :class="{ 'version-history__summary--selected': selectedVersionNumber === version.versionNumber }"
+            :class="{
+              'version-history__summary--selected': selectedVersionNumber === version.versionNumber,
+            }"
             @click="inspectVersion(version.versionNumber)"
           >
             <strong>Version {{ version.versionNumber }}</strong>
@@ -181,7 +176,9 @@ defineExpose({
         <template v-else-if="selectedVersion">
           <h4>Version {{ selectedVersion.versionNumber }}</h4>
           <p v-if="comparisonSummary">{{ comparisonSummary }}</p>
-          <pre class="version-history__json">{{ JSON.stringify(selectedVersion.data, null, 2) }}</pre>
+          <pre class="version-history__json">{{
+            JSON.stringify(selectedVersion.data, null, 2)
+          }}</pre>
         </template>
       </div>
     </div>

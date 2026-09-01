@@ -38,7 +38,9 @@ function formatValue(field: ContentTypeField, value: ContentFieldValue): string 
         <small>{{ getFieldTypeLabel(field.fieldType) }}</small>
       </dt>
       <dd>
-        <pre v-if="field.fieldType === FieldType.Json">{{ formatValue(field, data[field.name]) }}</pre>
+        <pre v-if="field.fieldType === FieldType.Json">{{
+          formatValue(field, data[field.name])
+        }}</pre>
         <span v-else>{{ formatValue(field, data[field.name]) }}</span>
       </dd>
     </div>

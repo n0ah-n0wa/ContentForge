@@ -2,8 +2,7 @@ import { FieldType, type ContentTypeField } from '@/types/contentTypes';
 import type { ContentFieldValue } from '@/types/contentEntries';
 import { sanitizeRichText } from '@/utils/richTextSanitizer';
 
-const GUID_PATTERN =
-  /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+const GUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
 export function isEmptyFieldValue(value: ContentFieldValue, fieldType: FieldType): boolean {
   if (value === null || value === undefined) {
@@ -71,7 +70,9 @@ function coerceDefaultValue(fieldType: FieldType, raw: string): ContentFieldValu
   }
 }
 
-export function createEmptyEntryData(fields: ContentTypeField[]): Record<string, ContentFieldValue> {
+export function createEmptyEntryData(
+  fields: ContentTypeField[],
+): Record<string, ContentFieldValue> {
   return Object.fromEntries(fields.map((field) => [field.name, createDefaultFieldValue(field)]));
 }
 
@@ -208,7 +209,9 @@ function getFieldShapeErrors(field: ContentTypeField, value: ContentFieldValue):
     case FieldType.MediaMultiple:
     case FieldType.RelationMultiple:
       if (Array.isArray(value)) {
-        const invalid = value.some((item) => typeof item === 'string' && item && !GUID_PATTERN.test(item));
+        const invalid = value.some(
+          (item) => typeof item === 'string' && item && !GUID_PATTERN.test(item),
+        );
         if (invalid) {
           return [`${field.displayName} contains an invalid identifier.`];
         }

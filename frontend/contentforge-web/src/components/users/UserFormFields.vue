@@ -16,13 +16,7 @@ defineProps<{
   <div class="stack-form">
     <label v-if="mode === 'create'" class="form-field">
       <span>Email</span>
-      <input
-        v-model="email"
-        type="email"
-        autocomplete="off"
-        required
-        :disabled="disabled"
-      />
+      <input v-model="email" type="email" autocomplete="off" required :disabled="disabled" />
     </label>
 
     <label class="form-field">
@@ -40,7 +34,9 @@ defineProps<{
         minlength="12"
         :disabled="disabled"
       />
-      <span class="entry-field__hint">Minimum 12 characters with upper, lower, digit, and symbol.</span>
+      <span class="entry-field__hint"
+        >Minimum 12 characters with upper, lower, digit, and symbol.</span
+      >
     </label>
 
     <label class="form-field">

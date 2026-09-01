@@ -8,7 +8,9 @@
   },
   "scripts": {
     "dev": "vite",
-    "build": "vue-tsc --noEmit -p tsconfig.app.json && vite build",
+    "typecheck": "vue-tsc --noEmit -p tsconfig.app.json",
+    "build": "npm run typecheck && vite build",
+    "build:vite": "vite build",
     "preview": "vite preview",
     "test": "vitest run",
     "test:watch": "vitest",

@@ -11,7 +11,8 @@ describe('destructiveChanges utils', () => {
     const error = new ApiError(422, {
       status: 422,
       title: 'Unprocessable Entity',
-      detail: "Removing field 'summary' requires explicit confirmation because existing content may retain legacy values.",
+      detail:
+        "Removing field 'summary' requires explicit confirmation because existing content may retain legacy values.",
     });
 
     expect(isConfirmationRequiredError(error)).toBe(true);

@@ -88,7 +88,13 @@ const fieldTypeOptions = FIELD_TYPE_DEFINITIONS;
 
     <label v-if="mode === 'add'" class="form-field">
       <span>Field name</span>
-      <input v-model="form.name" type="text" required pattern="[A-Za-z][A-Za-z0-9]*" :disabled="disabled" />
+      <input
+        v-model="form.name"
+        type="text"
+        required
+        pattern="[A-Za-z][A-Za-z0-9]*"
+        :disabled="disabled"
+      />
     </label>
 
     <label v-if="mode === 'add'" class="form-field">

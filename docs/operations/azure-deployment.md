@@ -363,12 +363,13 @@ See [azure-security.md](./azure-security.md) — verify API direct access blocke
 
 ## CI/CD notes
 
-Current repository CI (`.github/workflows/ci.yml`) validates:
+GitHub Actions CI ([`.github/workflows/ci.yml`](../../.github/workflows/ci.yml), documented in [ci.md](./ci.md)) validates on pull requests and pushes to `main`:
 
-- .NET build, format, tests against **PostgreSQL**
-- Frontend lint, test, build
+- **Backend:** restore, build (analyzers), format, unit/architecture/integration tests (PostgreSQL)
+- **Frontend:** lint, typecheck, Vitest, production build
+- **Infrastructure:** Bicep compile + parameter validation, API and Web Docker builds
 
-Azure SQL migrations live in `ContentForge.Infrastructure.SqlServer` and are applied explicitly during deployment — not in CI. When schema changes, update **both** migration sets:
+Azure SQL migrations live in `ContentForge.Infrastructure.SqlServer` and are **compiled** in the backend build; they are applied explicitly during deployment, not in CI. When schema changes, update **both** migration sets:
 
 ```bash
 # PostgreSQL (local/CI)

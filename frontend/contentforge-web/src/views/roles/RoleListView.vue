@@ -45,7 +45,8 @@ onMounted(() => {
       <div>
         <h2>Roles &amp; permissions</h2>
         <p class="page-card__lead">
-          Inspect the permission sets assigned to each CMS role. Role assignment is managed on user accounts.
+          Inspect the permission sets assigned to each CMS role. Role assignment is managed on user
+          accounts.
         </p>
       </div>
     </header>
@@ -57,12 +58,7 @@ onMounted(() => {
       message="You do not have permission to inspect roles."
     />
 
-    <AppAlert
-      v-if="errorMessage"
-      kind="error"
-      title="Load failed"
-      :message="errorMessage"
-    />
+    <AppAlert v-if="errorMessage" kind="error" title="Load failed" :message="errorMessage" />
 
     <div v-if="loading" class="inline-loading">
       <AppSpinner label="Loading roles" />

@@ -37,7 +37,10 @@ export function createContentType(request: CreateContentTypeRequest): Promise<Co
   });
 }
 
-export function updateContentType(id: string, request: UpdateContentTypeRequest): Promise<ContentType> {
+export function updateContentType(
+  id: string,
+  request: UpdateContentTypeRequest,
+): Promise<ContentType> {
   return apiRequest<ContentType>(`${BASE}/${id}`, {
     method: 'PUT',
     body: request,
@@ -72,10 +75,13 @@ export function updateContentTypeField(
   fieldName: string,
   request: UpdateContentTypeFieldRequest,
 ): Promise<ContentType> {
-  return apiRequest<ContentType>(`${BASE}/${contentTypeId}/fields/${encodeURIComponent(fieldName)}`, {
-    method: 'PUT',
-    body: request,
-  });
+  return apiRequest<ContentType>(
+    `${BASE}/${contentTypeId}/fields/${encodeURIComponent(fieldName)}`,
+    {
+      method: 'PUT',
+      body: request,
+    },
+  );
 }
 
 export function removeContentTypeField(
@@ -83,10 +89,13 @@ export function removeContentTypeField(
   fieldName: string,
   confirmed: boolean,
 ): Promise<ContentType> {
-  return apiRequest<ContentType>(`${BASE}/${contentTypeId}/fields/${encodeURIComponent(fieldName)}`, {
-    method: 'DELETE',
-    body: { confirmed },
-  });
+  return apiRequest<ContentType>(
+    `${BASE}/${contentTypeId}/fields/${encodeURIComponent(fieldName)}`,
+    {
+      method: 'DELETE',
+      body: { confirmed },
+    },
+  );
 }
 
 export function renameContentTypeField(

@@ -2,25 +2,7 @@ import type { PaginatedResponse } from '@/types/api';
 
 /** Audit action values returned by the API (numeric enum serialization). */
 export type AuditAction =
-  | 0
-  | 1
-  | 2
-  | 3
-  | 4
-  | 5
-  | 6
-  | 7
-  | 8
-  | 9
-  | 10
-  | 11
-  | 12
-  | 13
-  | 14
-  | 15
-  | 16
-  | 17
-  | 18;
+  0 | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10 | 11 | 12 | 13 | 14 | 15 | 16 | 17 | 18;
 
 export interface AuditLogEntry {
   id: string;
@@ -94,7 +76,11 @@ export const AUDIT_ACTION_LABELS: Record<AuditAction, string> = {
   18: 'User enabled',
 };
 
-export const AUDIT_ACTION_OPTIONS: { value: AuditActionName; label: string; action: AuditAction }[] = [
+export const AUDIT_ACTION_OPTIONS: {
+  value: AuditActionName;
+  label: string;
+  action: AuditAction;
+}[] = [
   { value: 'UserCreated', label: AUDIT_ACTION_LABELS[0], action: 0 },
   { value: 'UserDisabled', label: AUDIT_ACTION_LABELS[1], action: 1 },
   { value: 'UserRoleChanged', label: AUDIT_ACTION_LABELS[2], action: 2 },
