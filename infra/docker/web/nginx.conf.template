@@ -21,6 +21,33 @@ server {
         return 200 "ok\n";
     }
 
+    # API health probes via proxy (minimal JSON; verifies DB and blob readiness externally)
+    location = /health/live {
+        set $api_upstream ${API_UPSTREAM};
+        set $api_scheme ${API_UPSTREAM_SCHEME};
+        set $api_host ${API_UPSTREAM_HOST};
+        proxy_pass $api_scheme://$api_upstream/health/live;
+        proxy_http_version 1.1;
+        proxy_ssl_server_name on;
+        proxy_set_header Host $api_host;
+        proxy_connect_timeout 10s;
+        proxy_read_timeout 30s;
+        access_log off;
+    }
+
+    location = /health/ready {
+        set $api_upstream ${API_UPSTREAM};
+        set $api_scheme ${API_UPSTREAM_SCHEME};
+        set $api_host ${API_UPSTREAM_HOST};
+        proxy_pass $api_scheme://$api_upstream/health/ready;
+        proxy_http_version 1.1;
+        proxy_ssl_server_name on;
+        proxy_set_header Host $api_host;
+        proxy_connect_timeout 10s;
+        proxy_read_timeout 60s;
+        access_log off;
+    }
+
     # API reverse proxy — scheme/host/port supplied at runtime
     location /api/ {
         set $api_upstream ${API_UPSTREAM};

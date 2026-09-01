@@ -591,6 +591,19 @@ jobs:
           WEB_HOST="${{ needs.deploy.outputs.web_host }}"
           curl -fsS "https://${WEB_HOST}/" | head -c 4096 | grep -qi "<!doctype html"
 
+      - name: Health check — API readiness (database + blob storage)
+        run: |
+          WEB_HOST="${{ needs.deploy.outputs.web_host }}"
+          for i in $(seq 1 30); do
+            if curl -fsS "https://${WEB_HOST}/health/ready" | grep -qi '"status"[[:space:]]*:[[:space:]]*"Healthy"'; then
+              echo "API /health/ready succeeded (database + storage)"
+              exit 0
+            fi
+            sleep 10
+          done
+          echo "API readiness check failed for https://${WEB_HOST}/health/ready" >&2
+          exit 1
+
       - name: Health check — API via Web proxy
         run: |
           WEB_HOST="${{ needs.deploy.outputs.web_host }}"

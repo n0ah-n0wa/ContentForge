@@ -73,15 +73,21 @@ Test-Eventually "Web /health" {
 
 # API liveness via Web proxy (API blocks direct public access in staging/production)
 Test-Eventually "API /health/live via proxy" {
-    $response = Invoke-WebRequest -Uri "$baseUrl/api/health/live" -UseBasicParsing -TimeoutSec 30 -SkipHttpErrorCheck
+    $response = Invoke-WebRequest -Uri "$baseUrl/health/live" -UseBasicParsing -TimeoutSec 30 -SkipHttpErrorCheck
     return $response.StatusCode -eq 200
 } | Out-Null
 
-# API readiness (DB connectivity, migrations applied, dependencies)
-Test-Eventually "API /health/ready via proxy" {
-    $response = Invoke-WebRequest -Uri "$baseUrl/api/health/ready" -UseBasicParsing -TimeoutSec 60 -SkipHttpErrorCheck
+# API readiness (DB connectivity, migrations applied, blob storage)
+Test-Eventually "API /health/ready via proxy (database + storage)" {
+    $response = Invoke-WebRequest -Uri "$baseUrl/health/ready" -UseBasicParsing -TimeoutSec 60 -SkipHttpErrorCheck
     if ($response.StatusCode -ne 200) {
         Write-Host "  ready body: $($response.Content)"
+        return $false
+    }
+
+    $payload = $response.Content | ConvertFrom-Json
+    if ($payload.status -ne "Healthy") {
+        Write-Host "  ready status: $($payload.status)"
         return $false
     }
 
