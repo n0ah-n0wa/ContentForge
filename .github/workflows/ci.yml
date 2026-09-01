@@ -69,6 +69,12 @@ jobs:
       - name: Build (includes Roslyn and NetAnalyzers)
         run: dotnet build ContentForge.sln --no-restore --configuration Release
 
+      - name: Validate EF Core migrations
+        run: |
+          dotnet tool install --global dotnet-ef --version 8.0.11
+          chmod +x infra/azure/scripts/validate-migrations.sh
+          infra/azure/scripts/validate-migrations.sh
+
       - name: Unit tests
         run: >
           dotnet test tests/ContentForge.UnitTests/ContentForge.UnitTests.csproj

@@ -1,0 +1,8 @@
+# Destructive operations in migration Up() methods require an explicit entry here.
+# Format: <MigrationFileName>:<reason>
+#
+# Example:
+# 20260830115122_AddAuditLogCorrelationId.cs:Renamed column with data backfill in same migration
+#
+# DropTable, DropColumn, DeleteData, or raw SQL containing DROP/TRUNCATE in Up() will fail
+# CI validation unless listed in this file.

@@ -245,10 +245,10 @@ Use structured logging (Serilog or built-in JSON):
 
 ### 7.3 Deployment
 
-- Production migrations applied via **documented, controlled pipeline step** (SPEC §78)
+- Production migrations applied via **documented, controlled pipeline step** (SPEC §78) — see [database-migrations.md](./operations/database-migrations.md)
 - Do not rely on automatic `Database.Migrate()` on app startup in Production unless explicitly approved in ADR
 - Staging must receive migrations before Production
-- Rollback strategy documented in `docs/operations/`
+- Rollback strategy documented in [database-migrations.md](./operations/database-migrations.md) and [azure-cd.md](./operations/azure-cd.md)
 
 ### 7.4 Provider Compatibility
 

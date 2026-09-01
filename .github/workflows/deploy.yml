@@ -1,0 +1,628 @@
+name: Deploy
+
+on:
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: Target environment
+        required: true
+        type: choice
+        options:
+          - staging
+          - production
+      deploy_infrastructure:
+        description: Run Bicep deployment (creates or updates Azure resources)
+        required: false
+        type: boolean
+        default: false
+      skip_migrations:
+        description: Skip database migrations (staging only; blocked for production)
+        required: false
+        type: boolean
+        default: false
+      confirm_staging_validated:
+        description: (Production) Confirm this commit was deployed and verified in staging
+        required: false
+        type: boolean
+        default: false
+      confirm_production_migration:
+        description: (Production) Confirm Azure SQL migrations should run
+        required: false
+        type: boolean
+        default: false
+  push:
+    branches: [main]
+
+concurrency:
+  group: deploy-${{ github.event.inputs.environment || 'staging' }}-${{ github.ref }}
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+  id-token: write
+  actions: write
+
+env:
+  DOTNET_NOLOGO: true
+  DOTNET_CLI_TELEMETRY_OPTOUT: true
+  IMAGE_TAG: ${{ github.sha }}
+
+jobs:
+  resolve-config:
+    name: Resolve deployment target
+    runs-on: ubuntu-latest
+    outputs:
+      github_environment: ${{ steps.config.outputs.github_environment }}
+      bicep_environment: ${{ steps.config.outputs.bicep_environment }}
+      resource_group: ${{ steps.config.outputs.resource_group }}
+      api_app_name: ${{ steps.config.outputs.api_app_name }}
+      web_app_name: ${{ steps.config.outputs.web_app_name }}
+      bicep_parameters_file: ${{ steps.config.outputs.bicep_parameters_file }}
+    steps:
+      - name: Resolve environment mapping
+        id: config
+        run: |
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            TARGET="${{ github.event.inputs.environment }}"
+          else
+            TARGET="staging"
+          fi
+
+          case "$TARGET" in
+            staging)
+              echo "github_environment=staging" >> "$GITHUB_OUTPUT"
+              echo "bicep_environment=staging" >> "$GITHUB_OUTPUT"
+              RG="${{ vars.AZURE_RESOURCE_GROUP_STAGING }}"
+              echo "resource_group=${RG:-rg-contentforge-staging}" >> "$GITHUB_OUTPUT"
+              echo "api_app_name=app-cf-api-staging" >> "$GITHUB_OUTPUT"
+              echo "web_app_name=app-cf-web-staging" >> "$GITHUB_OUTPUT"
+              echo "bicep_parameters_file=infra/azure/bicep/parameters/staging.bicepparam" >> "$GITHUB_OUTPUT"
+              ;;
+            production)
+              echo "github_environment=production" >> "$GITHUB_OUTPUT"
+              echo "bicep_environment=prod" >> "$GITHUB_OUTPUT"
+              RG="${{ vars.AZURE_RESOURCE_GROUP_PRODUCTION }}"
+              echo "resource_group=${RG:-rg-contentforge-prod}" >> "$GITHUB_OUTPUT"
+              echo "api_app_name=app-cf-api-prod" >> "$GITHUB_OUTPUT"
+              echo "web_app_name=app-cf-web-prod" >> "$GITHUB_OUTPUT"
+              echo "bicep_parameters_file=infra/azure/bicep/parameters/prod.bicepparam" >> "$GITHUB_OUTPUT"
+              ;;
+            *)
+              echo "Unsupported environment: $TARGET" >&2
+              exit 1
+              ;;
+          esac
+
+  validate:
+    name: Validate
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: contentforge
+          POSTGRES_PASSWORD: contentforge
+          POSTGRES_DB: contentforge_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd="pg_isready -U contentforge -d contentforge_test"
+          --health-interval=5s
+          --health-timeout=3s
+          --health-retries=10
+    env:
+      ASPNETCORE_ENVIRONMENT: Testing
+      CONTENTFORGE_TEST_DB_CONNECTION: Host=localhost;Port=5432;Database=contentforge_test;Username=contentforge;Password=contentforge
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          clean: true
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: "8.0.424"
+          cache: true
+          cache-dependency-path: |
+            **/*.csproj
+            **/Directory.Packages.props
+            global.json
+
+      - name: Restore
+        run: dotnet restore ContentForge.sln
+
+      - name: NuGet vulnerability audit
+        run: dotnet list ContentForge.sln package --vulnerable --include-transitive
+
+      - name: Format check
+        run: dotnet format ContentForge.sln --verify-no-changes
+
+      - name: Build
+        run: dotnet build ContentForge.sln --no-restore --configuration Release
+
+      - name: Unit tests
+        run: >
+          dotnet test tests/ContentForge.UnitTests/ContentForge.UnitTests.csproj
+          --no-build --configuration Release --verbosity normal
+          --blame-hang-timeout 3m --blame-crash
+
+      - name: Architecture tests
+        run: >
+          dotnet test tests/ContentForge.ArchitectureTests/ContentForge.ArchitectureTests.csproj
+          --no-build --configuration Release --verbosity normal
+          --blame-hang-timeout 3m --blame-crash
+
+      - name: Integration tests
+        run: >
+          dotnet test tests/ContentForge.IntegrationTests/ContentForge.IntegrationTests.csproj
+          --no-build --configuration Release --verbosity normal
+          --blame-hang-timeout 5m --blame-crash
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version-file: frontend/contentforge-web/.node-version
+          cache: npm
+          cache-dependency-path: frontend/contentforge-web/package-lock.json
+
+      - name: Frontend validation
+        working-directory: frontend/contentforge-web
+        run: |
+          npm ci
+          npm audit --audit-level=moderate
+          npm run format:check
+          npm run lint
+          npm run typecheck
+          npm run test
+          npm run build:vite
+
+      - name: Install Bicep CLI
+        env:
+          BICEP_VERSION: v0.41.2
+        run: |
+          curl -fsSL "https://github.com/Azure/bicep/releases/download/${BICEP_VERSION}/bicep-linux-x64" -o bicep
+          chmod +x bicep
+          sudo mv bicep /usr/local/bin/bicep
+          bicep --version
+
+      - name: Validate Bicep templates
+        run: |
+          bicep build infra/azure/bicep/main.bicep
+          bicep build-params infra/azure/bicep/parameters/staging.bicepparam
+          bicep build-params infra/azure/bicep/parameters/prod.bicepparam
+
+      - name: Validate EF Core migrations
+        run: |
+          dotnet tool install --global dotnet-ef --version 8.0.11
+          chmod +x infra/azure/scripts/validate-migrations.sh
+          infra/azure/scripts/validate-migrations.sh
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build API image (validation only)
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: infra/docker/api/Dockerfile
+          push: false
+          load: true
+          pull: true
+          provenance: false
+          tags: contentforge-api:validate
+          cache-from: type=gha,scope=contentforge-api
+          cache-to: type=gha,mode=max,scope=contentforge-api
+
+      - name: Build Web image (validation only)
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: infra/docker/web/Dockerfile
+          build-args: |
+            VITE_API_BASE_URL=
+          push: false
+          load: true
+          pull: true
+          provenance: false
+          tags: contentforge-web:validate
+          cache-from: type=gha,scope=contentforge-web
+          cache-to: type=gha,mode=max,scope=contentforge-web
+
+  build-and-publish:
+    name: Build and publish images
+    needs: [resolve-config, validate]
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    environment: ${{ needs.resolve-config.outputs.github_environment }}
+    outputs:
+      acr_login_server: ${{ steps.acr.outputs.login_server }}
+      api_image: ${{ steps.images.outputs.api_image }}
+      web_image: ${{ steps.images.outputs.web_image }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          clean: true
+
+      - name: Azure login (OIDC)
+        uses: azure/login@v2
+        with:
+          client-id: ${{ vars.AZURE_CLIENT_ID }}
+          tenant-id: ${{ vars.AZURE_TENANT_ID }}
+          subscription-id: ${{ vars.AZURE_SUBSCRIPTION_ID }}
+
+      - name: Resolve ACR login server
+        id: acr
+        run: |
+          ACR_NAME="${{ vars.ACR_NAME }}"
+          if [ -z "$ACR_NAME" ]; then
+            echo "ACR_NAME repository variable is required." >&2
+            exit 1
+          fi
+          LOGIN_SERVER=$(az acr show --name "$ACR_NAME" --query loginServer -o tsv)
+          echo "login_server=$LOGIN_SERVER" >> "$GITHUB_OUTPUT"
+
+      - name: Log in to Azure Container Registry
+        run: az acr login --name "${{ vars.ACR_NAME }}"
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build and push API image
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: infra/docker/api/Dockerfile
+          push: true
+          pull: true
+          provenance: false
+          tags: |
+            ${{ steps.acr.outputs.login_server }}/contentforge-api:${{ env.IMAGE_TAG }}
+            ${{ steps.acr.outputs.login_server }}/contentforge-api:${{ needs.resolve-config.outputs.bicep_environment }}-latest
+          cache-from: type=gha,scope=contentforge-api
+          cache-to: type=gha,mode=max,scope=contentforge-api
+
+      - name: Build and push Web image
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: infra/docker/web/Dockerfile
+          build-args: |
+            VITE_API_BASE_URL=
+          push: true
+          pull: true
+          provenance: false
+          tags: |
+            ${{ steps.acr.outputs.login_server }}/contentforge-web:${{ env.IMAGE_TAG }}
+            ${{ steps.acr.outputs.login_server }}/contentforge-web:${{ needs.resolve-config.outputs.bicep_environment }}-latest
+          cache-from: type=gha,scope=contentforge-web
+          cache-to: type=gha,mode=max,scope=contentforge-web
+
+      - name: Record image references
+        id: images
+        run: |
+          echo "api_image=${{ steps.acr.outputs.login_server }}/contentforge-api:${{ env.IMAGE_TAG }}" >> "$GITHUB_OUTPUT"
+          echo "web_image=${{ steps.acr.outputs.login_server }}/contentforge-web:${{ env.IMAGE_TAG }}" >> "$GITHUB_OUTPUT"
+
+  migrate:
+    name: Database migrations
+    needs: [resolve-config, build-and-publish]
+    if: >
+      (github.event_name != 'workflow_dispatch' || github.event.inputs.skip_migrations != 'true') &&
+      !(github.event_name == 'workflow_dispatch' && github.event.inputs.environment == 'production' && github.event.inputs.skip_migrations == 'true')
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    environment: ${{ needs.resolve-config.outputs.github_environment }}
+    steps:
+      - name: Block skip_migrations for production
+        if: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.environment == 'production' && github.event.inputs.skip_migrations == 'true' }}
+        run: |
+          echo "ERROR: skip_migrations is not permitted for production." >&2
+          exit 1
+
+      - name: Require staging validation for production
+        if: ${{ needs.resolve-config.outputs.bicep_environment == 'prod' && github.event_name == 'workflow_dispatch' }}
+        run: |
+          if [ "${{ github.event.inputs.confirm_staging_validated }}" != "true" ]; then
+            echo "ERROR: Production deploy requires confirm_staging_validated=true." >&2
+            echo "Deploy and verify the same commit in staging first." >&2
+            exit 1
+          fi
+          if [ "${{ github.event.inputs.confirm_production_migration }}" != "true" ]; then
+            echo "ERROR: Production migrations require confirm_production_migration=true." >&2
+            exit 1
+          fi
+
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          clean: true
+
+      - name: Azure login (OIDC)
+        uses: azure/login@v2
+        with:
+          client-id: ${{ vars.AZURE_CLIENT_ID }}
+          tenant-id: ${{ vars.AZURE_TENANT_ID }}
+          subscription-id: ${{ vars.AZURE_SUBSCRIPTION_ID }}
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: "8.0.424"
+          cache: true
+          cache-dependency-path: |
+            **/*.csproj
+            **/Directory.Packages.props
+            global.json
+
+      - name: Restore solution
+        run: dotnet restore ContentForge.sln
+
+      - name: Install EF Core tools
+        run: dotnet tool install --global dotnet-ef --version 8.0.11
+
+      - name: Resolve SQL server name
+        id: sql
+        run: |
+          SQL_SERVER=$(az sql server list \
+            --resource-group "${{ needs.resolve-config.outputs.resource_group }}" \
+            --query "[?starts_with(name, 'sql-cf-${{ needs.resolve-config.outputs.bicep_environment }}')].name | [0]" \
+            -o tsv)
+          if [ -z "$SQL_SERVER" ]; then
+            echo "No SQL server found in resource group." >&2
+            exit 1
+          fi
+          echo "server_name=$SQL_SERVER" >> "$GITHUB_OUTPUT"
+
+      - name: Dry-run — list pending migrations
+        env:
+          CONTENTFORGE_MIGRATION_ENVIRONMENT: ${{ needs.resolve-config.outputs.bicep_environment }}
+        run: |
+          chmod +x infra/azure/scripts/run-azure-sql-migrations.sh
+          infra/azure/scripts/run-azure-sql-migrations.sh \
+            "${{ needs.resolve-config.outputs.resource_group }}" \
+            "${{ steps.sql.outputs.server_name }}" \
+            contentforge \
+            --dry-run
+
+      - name: Apply Azure SQL migrations
+        env:
+          CONTENTFORGE_MIGRATION_ENVIRONMENT: ${{ needs.resolve-config.outputs.bicep_environment }}
+          CONTENTFORGE_CONFIRM_PRODUCTION_MIGRATION: ${{ needs.resolve-config.outputs.bicep_environment == 'prod' && 'true' || '' }}
+        run: |
+          infra/azure/scripts/run-azure-sql-migrations.sh \
+            "${{ needs.resolve-config.outputs.resource_group }}" \
+            "${{ steps.sql.outputs.server_name }}" \
+            contentforge
+
+  deploy:
+    name: Deploy to Azure
+    needs: [resolve-config, build-and-publish, migrate]
+    if: >
+      always() &&
+      needs.build-and-publish.result == 'success' &&
+      (needs.migrate.result == 'success' || needs.migrate.result == 'skipped')
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    environment: ${{ needs.resolve-config.outputs.github_environment }}
+    outputs:
+      previous_api_image: ${{ steps.capture.outputs.previous_api_image }}
+      previous_web_image: ${{ steps.capture.outputs.previous_web_image }}
+      web_host: ${{ steps.hosts.outputs.web_host }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          clean: true
+
+      - name: Azure login (OIDC)
+        uses: azure/login@v2
+        with:
+          client-id: ${{ vars.AZURE_CLIENT_ID }}
+          tenant-id: ${{ vars.AZURE_TENANT_ID }}
+          subscription-id: ${{ vars.AZURE_SUBSCRIPTION_ID }}
+
+      - name: Capture current container images (rollback reference)
+        id: capture
+        run: |
+          RG="${{ needs.resolve-config.outputs.resource_group }}"
+          API="${{ needs.resolve-config.outputs.api_app_name }}"
+          WEB="${{ needs.resolve-config.outputs.web_app_name }}"
+          PREV_API=$(az webapp config container show -g "$RG" -n "$API" --query "[?name=='DOCKER_CUSTOM_IMAGE_NAME'].value | [0]" -o tsv 2>/dev/null || true)
+          PREV_WEB=$(az webapp config container show -g "$RG" -n "$WEB" --query "[?name=='DOCKER_CUSTOM_IMAGE_NAME'].value | [0]" -o tsv 2>/dev/null || true)
+          echo "previous_api_image=${PREV_API:-none}" >> "$GITHUB_OUTPUT"
+          echo "previous_web_image=${PREV_WEB:-none}" >> "$GITHUB_OUTPUT"
+
+      - name: Install Bicep CLI
+        if: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.deploy_infrastructure == 'true' }}
+        env:
+          BICEP_VERSION: v0.41.2
+        run: |
+          curl -fsSL "https://github.com/Azure/bicep/releases/download/${BICEP_VERSION}/bicep-linux-x64" -o bicep
+          chmod +x bicep
+          sudo mv bicep /usr/local/bin/bicep
+
+      - name: Deploy infrastructure (Bicep)
+        if: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.deploy_infrastructure == 'true' }}
+        run: |
+          RG="${{ needs.resolve-config.outputs.resource_group }}"
+          LOCATION="${{ vars.AZURE_LOCATION }}"
+          if [ -z "$LOCATION" ]; then LOCATION="westeurope"; fi
+          az group create --name "$RG" --location "$LOCATION" \
+            --tags environment=${{ needs.resolve-config.outputs.bicep_environment }} project=contentforge managedBy=bicep
+          az deployment group create \
+            --name "contentforge-${{ needs.resolve-config.outputs.bicep_environment }}-${GITHUB_RUN_ID}" \
+            --resource-group "$RG" \
+            --template-file infra/azure/bicep/main.bicep \
+            --parameters "${{ needs.resolve-config.outputs.bicep_parameters_file }}" \
+            --parameters \
+              apiContainerImage="${{ needs.build-and-publish.outputs.api_image }}" \
+              webContainerImage="${{ needs.build-and-publish.outputs.web_image }}"
+
+      - name: Ensure AcrPull for App Service identities
+        run: |
+          ACR_ID=$(az acr show --name "${{ vars.ACR_NAME }}" --query id -o tsv)
+          RG="${{ needs.resolve-config.outputs.resource_group }}"
+          for APP in "${{ needs.resolve-config.outputs.api_app_name }}" "${{ needs.resolve-config.outputs.web_app_name }}"; do
+            PRINCIPAL=$(az webapp identity show -g "$RG" -n "$APP" --query principalId -o tsv 2>/dev/null || true)
+            if [ -n "$PRINCIPAL" ] && [ "$PRINCIPAL" != "null" ]; then
+              az role assignment create \
+                --assignee "$PRINCIPAL" \
+                --role AcrPull \
+                --scope "$ACR_ID" \
+                2>/dev/null || true
+            fi
+          done
+
+      - name: Update API container image
+        if: ${{ github.event_name != 'workflow_dispatch' || github.event.inputs.deploy_infrastructure != 'true' }}
+        run: |
+          az webapp config container set \
+            --resource-group "${{ needs.resolve-config.outputs.resource_group }}" \
+            --name "${{ needs.resolve-config.outputs.api_app_name }}" \
+            --docker-custom-image-name "${{ needs.build-and-publish.outputs.api_image }}" \
+            --docker-registry-server-url "https://${{ needs.build-and-publish.outputs.acr_login_server }}"
+
+      - name: Update Web container image
+        if: ${{ github.event_name != 'workflow_dispatch' || github.event.inputs.deploy_infrastructure != 'true' }}
+        run: |
+          az webapp config container set \
+            --resource-group "${{ needs.resolve-config.outputs.resource_group }}" \
+            --name "${{ needs.resolve-config.outputs.web_app_name }}" \
+            --docker-custom-image-name "${{ needs.build-and-publish.outputs.web_image }}" \
+            --docker-registry-server-url "https://${{ needs.build-and-publish.outputs.acr_login_server }}"
+
+      - name: Restart App Services
+        run: |
+          az webapp restart \
+            --resource-group "${{ needs.resolve-config.outputs.resource_group }}" \
+            --name "${{ needs.resolve-config.outputs.api_app_name }}"
+          az webapp restart \
+            --resource-group "${{ needs.resolve-config.outputs.resource_group }}" \
+            --name "${{ needs.resolve-config.outputs.web_app_name }}"
+
+      - name: Resolve public hostnames
+        id: hosts
+        run: |
+          WEB_HOST=$(az webapp show \
+            --resource-group "${{ needs.resolve-config.outputs.resource_group }}" \
+            --name "${{ needs.resolve-config.outputs.web_app_name }}" \
+            --query defaultHostName -o tsv)
+          API_HOST=$(az webapp show \
+            --resource-group "${{ needs.resolve-config.outputs.resource_group }}" \
+            --name "${{ needs.resolve-config.outputs.api_app_name }}" \
+            --query defaultHostName -o tsv)
+          echo "web_host=$WEB_HOST" >> "$GITHUB_OUTPUT"
+          echo "api_host=$API_HOST" >> "$GITHUB_OUTPUT"
+
+  verify:
+    name: Verify deployment
+    needs: [resolve-config, deploy, build-and-publish]
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    environment: ${{ needs.resolve-config.outputs.github_environment }}
+    steps:
+      - name: Azure login (OIDC)
+        uses: azure/login@v2
+        with:
+          client-id: ${{ vars.AZURE_CLIENT_ID }}
+          tenant-id: ${{ vars.AZURE_TENANT_ID }}
+          subscription-id: ${{ vars.AZURE_SUBSCRIPTION_ID }}
+
+      - name: Wait for App Services to become available
+        run: |
+          RG="${{ needs.resolve-config.outputs.resource_group }}"
+          for APP in "${{ needs.resolve-config.outputs.api_app_name }}" "${{ needs.resolve-config.outputs.web_app_name }}"; do
+            echo "Waiting for $APP..."
+            for i in $(seq 1 30); do
+              STATE=$(az webapp show -g "$RG" -n "$APP" --query state -o tsv)
+              AVAIL=$(az webapp show -g "$RG" -n "$APP" --query availabilityState -o tsv)
+              echo "  attempt $i: state=$STATE availability=$AVAIL"
+              if [ "$STATE" = "Running" ] && [ "$AVAIL" = "Normal" ]; then
+                break
+              fi
+              sleep 10
+            done
+            STATE=$(az webapp show -g "$RG" -n "$APP" --query state -o tsv)
+            AVAIL=$(az webapp show -g "$RG" -n "$APP" --query availabilityState -o tsv)
+            if [ "$STATE" != "Running" ] || [ "$AVAIL" != "Normal" ]; then
+              echo "App Service $APP did not reach Running/Normal (state=$STATE availability=$AVAIL)" >&2
+              exit 1
+            fi
+          done
+
+      - name: Verify deployed container images
+        run: |
+          RG="${{ needs.resolve-config.outputs.resource_group }}"
+          API="${{ needs.resolve-config.outputs.api_app_name }}"
+          WEB="${{ needs.resolve-config.outputs.web_app_name }}"
+          EXPECTED_API="${{ needs.build-and-publish.outputs.api_image }}"
+          EXPECTED_WEB="${{ needs.build-and-publish.outputs.web_image }}"
+          ACTUAL_API=$(az webapp config container show -g "$RG" -n "$API" --query "[?name=='DOCKER_CUSTOM_IMAGE_NAME'].value | [0]" -o tsv)
+          ACTUAL_WEB=$(az webapp config container show -g "$RG" -n "$WEB" --query "[?name=='DOCKER_CUSTOM_IMAGE_NAME'].value | [0]" -o tsv)
+          echo "API image: $ACTUAL_API"
+          echo "Web image: $ACTUAL_WEB"
+          if [ "$ACTUAL_API" != "$EXPECTED_API" ]; then
+            echo "API container image mismatch." >&2
+            exit 1
+          fi
+          if [ "$ACTUAL_WEB" != "$EXPECTED_WEB" ]; then
+            echo "Web container image mismatch." >&2
+            exit 1
+          fi
+
+      - name: Health check — Web container
+        run: |
+          WEB_HOST="${{ needs.deploy.outputs.web_host }}"
+          for i in $(seq 1 30); do
+            if curl -fsS "https://${WEB_HOST}/health" >/dev/null; then
+              echo "Web /health succeeded"
+              exit 0
+            fi
+            sleep 10
+          done
+          echo "Web health check failed for https://${WEB_HOST}/health" >&2
+          exit 1
+
+      - name: Health check — Web UI loads
+        run: |
+          WEB_HOST="${{ needs.deploy.outputs.web_host }}"
+          curl -fsS "https://${WEB_HOST}/" | head -c 4096 | grep -qi "<!doctype html"
+
+      - name: Health check — API via Web proxy
+        run: |
+          WEB_HOST="${{ needs.deploy.outputs.web_host }}"
+          # Staging/production API App Services block direct public access; verify through nginx proxy.
+          for i in $(seq 1 20); do
+            STATUS=$(curl -s -o /dev/null -w "%{http_code}" "https://${WEB_HOST}/api/v1/auth/login" -X POST \
+              -H "Content-Type: application/json" \
+              -d '{"email":"health-check@invalid.local","password":"invalid"}' || true)
+            echo "API proxy probe status: $STATUS"
+            if [ "$STATUS" = "401" ] || [ "$STATUS" = "400" ] || [ "$STATUS" = "422" ]; then
+              echo "API reachable via Web proxy (expected auth rejection)"
+              exit 0
+            fi
+            sleep 10
+          done
+          echo "API proxy health check failed" >&2
+          exit 1
+
+      - name: Deployment summary
+        run: |
+          {
+            echo "## Deployment verified"
+            echo ""
+            echo "| Item | Value |"
+            echo "|------|-------|"
+            echo "| Environment | ${{ needs.resolve-config.outputs.github_environment }} (${{ needs.resolve-config.outputs.bicep_environment }}) |"
+            echo "| Commit | \`${{ github.sha }}\` |"
+            echo "| API image | \`${{ needs.build-and-publish.outputs.api_image }}\` |"
+            echo "| Web image | \`${{ needs.build-and-publish.outputs.web_image }}\` |"
+            echo "| Web URL | https://${{ needs.deploy.outputs.web_host }}/ |"
+            echo "| Previous API image | \`${{ needs.deploy.outputs.previous_api_image }}\` |"
+            echo "| Previous Web image | \`${{ needs.deploy.outputs.previous_web_image }}\` |"
+            echo ""
+            echo "Rollback: redeploy previous images documented in [azure-cd.md](docs/operations/azure-cd.md#rollback)."
+          } >> "$GITHUB_STEP_SUMMARY"

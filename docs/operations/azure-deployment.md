@@ -200,7 +200,9 @@ This grants `db_datareader` and `db_datawriter` only (least privilege).
 
 ## Phase 5 — Database migrations
 
-ContentForge maintains **separate EF Core migration assemblies**:
+See **[database-migrations.md](./database-migrations.md)** for the production migration strategy, validation tooling, pipeline behavior, failure handling, and rollback limitations.
+
+Summary:
 
 | Provider | Migrations project | Used by |
 |----------|-------------------|---------|
@@ -363,13 +365,22 @@ See [azure-security.md](./azure-security.md) — verify API direct access blocke
 
 ## CI/CD notes
 
-GitHub Actions CI ([`.github/workflows/ci.yml`](../../.github/workflows/ci.yml), documented in [ci.md](./ci.md)) validates on pull requests and pushes to `main`:
+GitHub Actions provides two workflows:
+
+| Workflow | File | Purpose |
+|----------|------|---------|
+| **CI** | [`.github/workflows/ci.yml`](../../.github/workflows/ci.yml) | Validates pull requests and pushes ([ci.md](./ci.md)) |
+| **Deploy** | [`.github/workflows/deploy.yml`](../../.github/workflows/deploy.yml) | Builds, publishes, migrates, deploys, and verifies Azure environments ([azure-cd.md](./azure-cd.md)) |
+
+**CI** validates on pull requests and pushes to `main`:
 
 - **Backend:** restore, build (analyzers), format, unit/architecture/integration tests (PostgreSQL)
 - **Frontend:** lint, typecheck, Vitest, production build
 - **Infrastructure:** Bicep compile + parameter validation, API and Web Docker builds
 
-Azure SQL migrations live in `ContentForge.Infrastructure.SqlServer` and are **compiled** in the backend build; they are applied explicitly during deployment, not in CI. When schema changes, update **both** migration sets:
+**Deploy** runs on push to `main` (staging) or manual dispatch (staging/production). It repeats validation, pushes images to ACR via OIDC, applies Azure SQL migrations explicitly, updates App Service containers, and verifies health. Production requires GitHub environment approval.
+
+Azure SQL migrations live in `ContentForge.Infrastructure.SqlServer` and are **compiled** in CI; they are **applied** during deployment, not on API startup. When schema changes, update **both** migration sets:
 
 ```bash
 # PostgreSQL (local/CI)

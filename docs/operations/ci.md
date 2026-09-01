@@ -37,8 +37,9 @@ These checks must pass before merge. Any failure blocks the workflow.
 | Vulnerable packages | `dotnet list package --vulnerable` + `NuGetAudit` | Known vulnerable dependencies |
 | Formatting | `dotnet format --verify-no-changes` (before build) | C# style drift from `.editorconfig` |
 | Compile + analyzers | `dotnet build ContentForge.sln -c Release` | Errors, warnings (`TreatWarningsAsErrors`), NetAnalyzers |
+| Migration validation | `infra/azure/scripts/validate-migrations.sh` | Pending model changes, destructive Up() ops, PG/SqlServer table parity |
 | Unit tests | `ContentForge.UnitTests` (166 tests) | Any unit test failure |
-| Architecture tests | `ContentForge.ArchitectureTests` (27 tests) | Layer boundary or project reference violations |
+| Architecture tests | `ContentForge.ArchitectureTests` (31 tests) | Layer boundaries, migration safety, schema parity |
 | Integration tests | `ContentForge.IntegrationTests` (~244 tests) | API/auth/persistence failures against PostgreSQL 16 |
 
 ### Frontend
@@ -63,6 +64,15 @@ These checks must pass before merge. Any failure blocks the workflow.
 | Web Docker build | `infra/docker/web/Dockerfile` | Image build failure |
 | API container smoke | `GET /health/live` on built image | Container fails to start or respond |
 | Web container smoke | `GET /health` on built image | nginx fails to start or respond |
+
+## Related workflows
+
+| Workflow | Trigger | Purpose |
+|----------|---------|---------|
+| [CI](../../.github/workflows/ci.yml) | PR + push to `main` | Validation only — no Azure changes |
+| [Deploy](../../.github/workflows/deploy.yml) | Push to `main` (staging) + manual | Build, publish, migrate, deploy, verify — see [azure-cd.md](./azure-cd.md) |
+
+Pull requests run **CI** only. Merging to `main` runs **CI** and **Deploy** (staging) concurrently.
 
 ---
 

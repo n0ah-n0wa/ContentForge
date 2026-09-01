@@ -87,7 +87,7 @@ Override SKUs via `appServicePlanSku` and `sqlDatabaseSku` parameters in `parame
    - Build and push images from `infra/docker/` (see [infra/docker/README.md](../docker/README.md))
    - Grant API/Web App Service **AcrPull** on the registry (post-deploy step below)
 
-6. **Optional — Azure DevOps / GitHub Actions** service principal with deployment rights for CI/CD (not configured in this repo yet).
+6. **Optional — Azure DevOps / GitHub Actions** service principal with deployment rights — see [docs/operations/azure-cd.md](../../docs/operations/azure-cd.md) for OIDC setup and the [Deploy workflow](../../.github/workflows/deploy.yml).
 
 ## Repository layout
 
@@ -193,7 +193,7 @@ az webapp restart --resource-group rg-contentforge-dev --name app-cf-api-dev
 Connect as the Azure AD SQL administrator:
 
 1. **Runtime** (required): run `scripts/grant-api-sql-access.sql` — grants `db_datareader` and `db_datawriter` only.
-2. **Migrations** (pipeline): run `scripts/grant-api-sql-migration.sql` only when the deployment pipeline uses the API managed identity for EF Core migrations. Prefer a separate migration runner identity in production.
+2. **Migrations** (pipeline): see [docs/operations/database-migrations.md](../../docs/operations/database-migrations.md). Use `scripts/run-azure-sql-migrations.sh` in CI/CD. Prefer a dedicated migration runner identity in production — not the API managed identity.
 
 Replace the placeholder managed identity name (`app-cf-api-dev`) with deployment output `apiAppName`.
 
