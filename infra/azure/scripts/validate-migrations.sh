@@ -44,6 +44,7 @@ check_pending_model_changes() {
       --project "$project" \
       --startup-project src/ContentForge.Api \
       --context AppDbContext \
+      --configuration Release \
       --no-build; then
     echo "OK: ${label} model matches committed migrations."
   else
