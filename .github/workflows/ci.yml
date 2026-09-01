@@ -183,6 +183,7 @@ jobs:
           context: .
           file: infra/docker/api/Dockerfile
           push: false
+          load: true
           pull: true
           provenance: false
           tags: contentforge-api:ci
@@ -197,6 +198,7 @@ jobs:
           build-args: |
             VITE_API_BASE_URL=
           push: false
+          load: true
           pull: true
           provenance: false
           tags: contentforge-web:ci

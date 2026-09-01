@@ -1,5 +1,3 @@
-# syntax=docker/dockerfile:1.7
-
 # Production multi-stage image for the ContentForge admin SPA (static + nginx reverse proxy)
 # Build context: repository root (see infra/docker/README.md)
 

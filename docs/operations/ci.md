@@ -117,6 +117,8 @@ Caches speed up runs; they do **not** skip validation steps. Docker builds use `
 ### Docker builds
 
 - Multi-stage Dockerfiles build from **repository root** context (same as production).
+- Dockerfiles do **not** use `# syntax=docker/dockerfile:…` — BuildKit on GitHub-hosted runners already supports cache mounts; pulling the syntax image from Docker Hub is an unnecessary external dependency that has caused CI failures when Hub returns errors.
+- `docker/build-push-action` sets **`load: true`** so built images are available to subsequent `docker run` smoke-test steps (required with the default `docker-container` Buildx driver).
 - API image includes `ContentForge.Infrastructure.SqlServer` in the publish output.
 - Post-build **smoke tests** verify containers start and respond to health endpoints (liveness only for API — no database required for `/health/live`).
 
