@@ -294,7 +294,7 @@ var apiAppSettings = [
   }
   {
     name: 'ApplicationInsights__SamplingRatio'
-    value: string(appInsightsSampling / 100.0)
+    value: string(appInsightsSampling / 100)
   }
   {
     name: 'Jwt__SigningKey'

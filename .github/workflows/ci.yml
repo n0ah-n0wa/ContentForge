@@ -160,7 +160,7 @@ jobs:
 
       - name: Install Bicep CLI
         env:
-          BICEP_VERSION: v0.32.4
+          BICEP_VERSION: v0.41.2
         run: |
           curl -fsSL "https://github.com/Azure/bicep/releases/download/${BICEP_VERSION}/bicep-linux-x64" -o bicep
           chmod +x bicep
@@ -169,10 +169,10 @@ jobs:
 
       - name: Validate Bicep templates
         run: |
-          bicep build --file infra/azure/bicep/main.bicep
-          bicep build-params --file infra/azure/bicep/parameters/dev.bicepparam
-          bicep build-params --file infra/azure/bicep/parameters/staging.bicepparam
-          bicep build-params --file infra/azure/bicep/parameters/prod.bicepparam
+          bicep build infra/azure/bicep/main.bicep
+          bicep build-params infra/azure/bicep/parameters/dev.bicepparam
+          bicep build-params infra/azure/bicep/parameters/staging.bicepparam
+          bicep build-params infra/azure/bicep/parameters/prod.bicepparam
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3

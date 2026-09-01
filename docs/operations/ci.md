@@ -57,8 +57,8 @@ These checks must pass before merge. Any failure blocks the workflow.
 
 | Gate | Enforced by | Fails when |
 |------|-------------|------------|
-| Bicep compile | `bicep build` (CLI **v0.32.4** installed from official GitHub release) | Template or analyzer errors |
-| Bicep parameters | `bicep build-params` (dev/staging/prod) | Invalid parameter files |
+| Bicep compile | `bicep build infra/azure/bicep/main.bicep` (CLI **v0.41.2** from official GitHub release) | Template or analyzer errors |
+| Bicep parameters | `bicep build-params infra/azure/bicep/parameters/*.bicepparam` (dev/staging/prod) | Invalid parameter files |
 | API Docker build | `infra/docker/api/Dockerfile` | Image build failure |
 | Web Docker build | `infra/docker/web/Dockerfile` | Image build failure |
 | API container smoke | `GET /health/live` on built image | Container fails to start or respond |
@@ -73,7 +73,7 @@ These checks must pass before merge. Any failure blocks the workflow.
 - Every job uses `actions/checkout@v4` with **`clean: true`** — no leftover files from prior runs on self-hosted reuse (GitHub-hosted runners are ephemeral; this guards against future runner changes).
 - **.NET SDK** pinned to `8.0.424` (`global.json`, Docker API image).
 - **Node.js** pinned via `frontend/contentforge-web/.node-version` (`20.18.1`).
-- **Bicep** pinned to **v0.32.4** (downloaded from [Azure/bicep releases](https://github.com/Azure/bicep/releases) — no third-party setup action).
+- **Bicep** pinned to **v0.41.2** (downloaded from [Azure/bicep releases](https://github.com/Azure/bicep/releases) — no third-party setup action). Standalone CLI uses positional file paths (`bicep build <file>`); `az bicep build --file <file>` is Azure CLI syntax only.
 - **PostgreSQL** service image pinned to `postgres:16-alpine`.
 - Backend builds **`ContentForge.sln`** explicitly so all projects (including `ContentForge.Infrastructure.SqlServer`) compile.
 
@@ -196,8 +196,8 @@ npm run build:vite
 **Infrastructure:**
 
 ```bash
-bicep build --file infra/azure/bicep/main.bicep
-bicep build-params --file infra/azure/bicep/parameters/dev.bicepparam
+bicep build infra/azure/bicep/main.bicep
+bicep build-params infra/azure/bicep/parameters/dev.bicepparam
 docker build -f infra/docker/api/Dockerfile -t contentforge-api:local .
 docker build -f infra/docker/web/Dockerfile -t contentforge-web:local .
 ```

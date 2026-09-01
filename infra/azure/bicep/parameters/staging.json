@@ -1,0 +1,39 @@
+{
+  "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentParameters.json#",
+  "contentVersion": "1.0.0.0",
+  "parameters": {
+    "environment": {
+      "value": "staging"
+    },
+    "location": {
+      "value": "westeurope"
+    },
+    "azureAdAdminObjectId": {
+      "value": "00000000-0000-0000-0000-000000000000"
+    },
+    "azureAdAdminLogin": {
+      "value": "contentforge-sql-admins@contoso.com"
+    },
+    "azureAdAdminPrincipalType": {
+      "value": "Group"
+    },
+    "apiContainerImage": {
+      "value": "contentforge.azurecr.io/contentforge-api:latest"
+    },
+    "webContainerImage": {
+      "value": "contentforge.azurecr.io/contentforge-web:latest"
+    },
+    "containerRegistryUrl": {
+      "value": "contentforge.azurecr.io"
+    },
+    "allowedAdminIpAddresses": {
+      "value": []
+    },
+    "tags": {
+      "value": {
+        "costCenter": "engineering",
+        "owner": "platform-team"
+      }
+    }
+  }
+}

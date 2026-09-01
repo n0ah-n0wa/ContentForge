@@ -422,7 +422,7 @@ npm run build:vite
 **Infrastructure (when touching Bicep or Dockerfiles):**
 
 ```bash
-bicep build --file infra/azure/bicep/main.bicep
+bicep build infra/azure/bicep/main.bicep
 docker build -f infra/docker/api/Dockerfile .
 docker build -f infra/docker/web/Dockerfile .
 ```
