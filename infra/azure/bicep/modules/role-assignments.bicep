@@ -11,7 +11,7 @@ param mediaContainerName string = 'media'
 param keyVaultName string
 
 var storageBlobDataContributorRoleId = 'ba92f5b4-2d11-453d-a403-e96b002271c9'
-var keyVaultSecretsUserRoleId = '4633458b-17de-408a-b874-0445c86b69d6'
+var keyVaultSecretsUserRoleId = '4633458b-17de-408a-b874-0445c86b69e6'
 
 resource storageAccount 'Microsoft.Storage/storageAccounts@2023-05-01' existing = {
   name: storageAccountName
