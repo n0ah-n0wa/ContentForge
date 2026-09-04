@@ -1,7 +1,7 @@
 using '../main.bicep'
 
 param environment = 'staging'
-param location = 'westeurope'
+param location = 'germanywestcentral'
 
 param azureAdAdminObjectId = '43414934-5072-4fb0-8fe1-f6759fca1569'
 param azureAdAdminLogin = 'dmytro.kyselov99_gmail.com#EXT#@dmytrokyselov99gmail.onmicrosoft.com'
