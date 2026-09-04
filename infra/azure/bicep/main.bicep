@@ -55,7 +55,7 @@ param restrictApiPublicAccess bool?
 // ---------------------------------------------------------------------------
 
 var env = toLower(environment)
-var resourceToken = uniqueString(subscription().id, resourceGroup().id, projectName, env)
+var resourceToken = uniqueString(subscription().id, resourceGroup().id, projectName, env, location)
 
 var defaultTags = union(tags, {
   environment: env
