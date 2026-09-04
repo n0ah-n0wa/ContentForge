@@ -128,6 +128,7 @@ Caches speed up runs; they do **not** skip validation steps. Docker builds use `
 
 - Multi-stage Dockerfiles build from **repository root** context (same as production).
 - Dockerfiles do **not** use `# syntax=docker/dockerfile:…` — BuildKit on GitHub-hosted runners already supports cache mounts; pulling the syntax image from Docker Hub is an unnecessary external dependency that has caused CI failures when Hub returns errors.
+- API `dotnet publish` must **not** use `--no-restore` with a NuGet cache mount: BuildKit can reuse a cached restore layer while the package mount is incomplete (`NETSDK1064`). Bump the mount `id` (e.g. `contentforge-nuget-v2`) if the GHA NuGet cache is corrupted.
 - `docker/build-push-action` sets **`load: true`** so built images are available to subsequent `docker run` smoke-test steps (required with the default `docker-container` Buildx driver).
 - API image includes `ContentForge.Infrastructure.SqlServer` in the publish output.
 - Post-build **smoke tests** verify containers start and respond to health endpoints (liveness only for API — no database required for `/health/live`).

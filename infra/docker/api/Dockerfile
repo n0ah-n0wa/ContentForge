@@ -16,7 +16,10 @@ COPY src/ContentForge.Infrastructure/ContentForge.Infrastructure.csproj src/Cont
 COPY src/ContentForge.Infrastructure.SqlServer/ContentForge.Infrastructure.SqlServer.csproj src/ContentForge.Infrastructure.SqlServer/
 COPY src/ContentForge.Api/ContentForge.Api.csproj src/ContentForge.Api/
 
-RUN --mount=type=cache,target=/root/.nuget/packages,id=contentforge-nuget \
+# Cache mount id is versioned so a corrupt/partial GHA NuGet cache can be busted.
+# Do not use --no-restore on publish: BuildKit may reuse a cached restore *layer*
+# while the NuGet package mount is cold/incomplete (NETSDK1064).
+RUN --mount=type=cache,target=/root/.nuget/packages,id=contentforge-nuget-v2,sharing=locked \
     dotnet restore src/ContentForge.Api/ContentForge.Api.csproj
 
 COPY src/ContentForge.Domain/ src/ContentForge.Domain/
@@ -25,11 +28,10 @@ COPY src/ContentForge.Infrastructure/ src/ContentForge.Infrastructure/
 COPY src/ContentForge.Infrastructure.SqlServer/ src/ContentForge.Infrastructure.SqlServer/
 COPY src/ContentForge.Api/ src/ContentForge.Api/
 
-RUN --mount=type=cache,target=/root/.nuget/packages,id=contentforge-nuget \
+RUN --mount=type=cache,target=/root/.nuget/packages,id=contentforge-nuget-v2,sharing=locked \
     dotnet publish src/ContentForge.Api/ContentForge.Api.csproj \
     -c Release \
     -o /app/publish \
-    --no-restore \
     /p:UseAppHost=false \
     /p:Deterministic=true \
     && rm -f /app/publish/appsettings.Development.json /app/publish/appsettings.Testing.json
