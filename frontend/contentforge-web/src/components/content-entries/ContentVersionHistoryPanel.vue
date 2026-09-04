@@ -142,13 +142,19 @@ defineExpose({
 
     <div v-else class="version-history__layout">
       <ul class="version-history__list">
-        <li v-for="version in sortedVersions" :key="version.id" class="version-history__item">
+        <li
+          v-for="version in sortedVersions"
+          :key="version.id"
+          class="version-history__item"
+          :data-testid="`version-item-${version.versionNumber}`"
+        >
           <button
             type="button"
             class="version-history__summary"
             :class="{
               'version-history__summary--selected': selectedVersionNumber === version.versionNumber,
             }"
+            :data-testid="`version-summary-${version.versionNumber}`"
             @click="inspectVersion(version.versionNumber)"
           >
             <strong>Version {{ version.versionNumber }}</strong>
@@ -168,15 +174,19 @@ defineExpose({
         </li>
       </ul>
 
-      <div v-if="selectedVersionNumber !== null" class="version-history__detail">
+      <div
+        v-if="selectedVersionNumber !== null"
+        class="version-history__detail"
+        data-testid="version-detail"
+      >
         <div v-if="detailLoading" class="inline-loading">
           <AppSpinner label="Loading version detail" />
           <span>Loading version detail…</span>
         </div>
         <template v-else-if="selectedVersion">
           <h4>Version {{ selectedVersion.versionNumber }}</h4>
-          <p v-if="comparisonSummary">{{ comparisonSummary }}</p>
-          <pre class="version-history__json">{{
+          <p v-if="comparisonSummary" data-testid="version-comparison">{{ comparisonSummary }}</p>
+          <pre class="version-history__json" data-testid="version-json">{{
             JSON.stringify(selectedVersion.data, null, 2)
           }}</pre>
         </template>

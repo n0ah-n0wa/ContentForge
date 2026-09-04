@@ -4,12 +4,13 @@ import globals from 'globals';
 import tseslint from 'typescript-eslint';
 
 export default tseslint.config(
-  { ignores: ['dist', 'node_modules', 'coverage'] },
+  { ignores: ['dist', 'node_modules', 'coverage', 'playwright-report', 'test-results'] },
   js.configs.recommended,
   ...tseslint.configs.recommended,
   ...pluginVue.configs['flat/recommended'],
   {
     files: ['**/*.{ts,vue}'],
+    ignores: ['e2e/**', 'playwright.config.ts'],
     languageOptions: {
       ecmaVersion: 'latest',
       sourceType: 'module',
@@ -28,6 +29,17 @@ export default tseslint.config(
       'vue/html-closing-bracket-newline': 'off',
       'vue/html-indent': 'off',
       'vue/first-attribute-linebreak': 'off',
+    },
+  },
+  {
+    files: ['e2e/**/*.ts', 'playwright.config.ts'],
+    languageOptions: {
+      ecmaVersion: 'latest',
+      sourceType: 'module',
+      globals: globals.node,
+      parserOptions: {
+        parser: tseslint.parser,
+      },
     },
   },
 );

@@ -310,6 +310,7 @@ defineExpose({
       <AppButton
         type="button"
         :disabled="pendingSelection.length === 0"
+        aria-label="Use selected"
         @click="confirmPickerSelection"
       >
         Use selected

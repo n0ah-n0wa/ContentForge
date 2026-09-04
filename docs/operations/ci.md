@@ -17,10 +17,16 @@ Concurrent runs for the same PR or branch are cancelled when a newer commit is p
 ┌─────────────┐  ┌──────────────┐  ┌──────────────────┐
 │   Backend   │  │   Frontend   │  │ Infrastructure   │
 │  (parallel) │  │  (parallel)  │  │   (parallel)     │
-└─────────────┘  └──────────────┘  └──────────────────┘
+└─────────────┘  └──────┬───────┘  └──────────────────┘
+                        │
+                        ▼
+                 ┌──────────────┐
+                 │     E2E      │
+                 │ (Playwright) │
+                 └──────────────┘
 ```
 
-All three jobs run in parallel. The workflow **fails if any job fails**. Steps do not use `continue-on-error` and failures are not suppressed.
+Backend, Frontend, and Infrastructure run in parallel. **E2E** starts after Frontend succeeds (uses the same Node lockfile). The workflow **fails if any job fails**. Steps do not use `continue-on-error` and failures are not suppressed.
 
 ---
 
@@ -64,6 +70,13 @@ These checks must pass before merge. Any failure blocks the workflow.
 | Web Docker build | `infra/docker/web/Dockerfile` | Image build failure |
 | API container smoke | `GET /health/live` on built image | Container fails to start or respond |
 | Web container smoke | `GET /health` on built image | nginx fails to start or respond |
+
+### E2E
+
+| Gate | Enforced by | Fails when |
+|------|-------------|------------|
+| Isolated stack | `docker-compose.e2e.yml` | Compose build/health failure |
+| Playwright Chromium | `npm run test:e2e` | Critical journey failure (auth, content/public API, versioning, authorization, media, concurrency) |
 
 ## Related workflows
 
@@ -143,7 +156,6 @@ These are documented bypass vectors — broken changes could pass CI if they onl
 |-----|------|------------------------|
 | **Azure SQL runtime** | SqlServer migrations compile but are not applied to a real Azure SQL instance | Apply migrations in staging; integration test against Azure SQL in release pipeline |
 | **Azurite / Azure Blob** | Blob integration tests skip when Azurite is unavailable | Run Azurite tests locally or in optional nightly job |
-| **E2E / browser tests** | No Playwright/Cypress | Manual or future E2E job |
 | **API `/health/ready`** | Smoke test uses liveness only | Staging deploy verification |
 | **Cross-job Docker compose** | CI does not run full `docker-compose.prod.yml` stack | Staging environment smoke test |
 | **Secret / Key Vault references** | No Azure deployment in CI | Deployment checklist in [azure-deployment.md](./azure-deployment.md) |
@@ -175,6 +187,14 @@ Bicep validation compiles templates locally — **no Azure subscription or deplo
 
 Azure SQL migrations are **compiled** in the Backend job; they are **applied** during deployment (see [azure-deployment.md](./azure-deployment.md)).
 
+## E2E job details
+
+**Depends on:** Frontend  
+**Stack:** `docker-compose.e2e.yml` (isolated Postgres + API + Web on ports 25432/25080/28080)  
+**Browser:** Playwright Chromium  
+
+Journeys cover SPEC §64: authentication (including protected/forbidden routes), content lifecycle with public API visibility, versioning, authorization, media, and concurrency conflicts. Failures upload the Playwright HTML report as a CI artifact.
+
 ---
 
 ## Running CI locally
@@ -204,6 +224,19 @@ npm run lint
 npm run typecheck
 npm run test
 npm run build:vite
+```
+
+**E2E** (see [`frontend/contentforge-web/e2e/README.md`](../../frontend/contentforge-web/e2e/README.md)):
+
+```bash
+docker compose -f docker-compose.e2e.yml up -d --build
+cd frontend/contentforge-web
+npm ci
+npm run e2e:install
+npm run test:e2e
+# optional flake check:
+npm run test:e2e:repeat
+docker compose -f docker-compose.e2e.yml down -v
 ```
 
 **Infrastructure:**

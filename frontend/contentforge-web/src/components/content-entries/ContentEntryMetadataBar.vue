@@ -37,14 +37,19 @@ function formatDate(value: string | null): string {
     <div class="entry-metadata__grid">
       <div>
         <span class="entry-metadata__label">Status</span>
-        <span v-if="entry" class="entry-status" :class="statusClass(entry.status)">
+        <span
+          v-if="entry"
+          class="entry-status"
+          :class="statusClass(entry.status)"
+          data-testid="entry-status"
+        >
           {{ CONTENT_STATUS_LABELS[entry.status] }}
         </span>
         <span v-else>—</span>
       </div>
       <div>
         <span class="entry-metadata__label">Current version</span>
-        <strong>{{ entry?.currentVersion ?? '—' }}</strong>
+        <strong data-testid="entry-current-version">{{ entry?.currentVersion ?? '—' }}</strong>
       </div>
       <div>
         <span class="entry-metadata__label">Last updated</span>
@@ -56,7 +61,10 @@ function formatDate(value: string | null): string {
       </div>
       <div>
         <span class="entry-metadata__label">Validation</span>
-        <strong :class="{ 'entry-metadata__warning': validationMessage }">
+        <strong
+          data-testid="entry-validation"
+          :class="{ 'entry-metadata__warning': validationMessage }"
+        >
           {{ validationMessage ?? (isDirty ? 'Unsaved changes' : 'Saved') }}
         </strong>
       </div>

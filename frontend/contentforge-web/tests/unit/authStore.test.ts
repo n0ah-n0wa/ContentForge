@@ -116,6 +116,19 @@ describe('authStore', () => {
     expect(authApi.refresh).toHaveBeenCalledOnce();
   });
 
+  it('treats a non-expired access token as a valid session before initialize completes', async () => {
+    sessionStorage.setItem('contentforge.accessToken', loginResult.accessToken);
+    sessionStorage.setItem('contentforge.refreshToken', loginResult.refreshToken);
+    sessionStorage.setItem('contentforge.accessTokenExpiresAt', loginResult.accessTokenExpiresAt);
+
+    const store = useAuthStore();
+
+    expect(store.sessionStatus).toBe('anonymous');
+    expect(store.user).toBeNull();
+    await expect(store.ensureSession()).resolves.toBe(true);
+    expect(authApi.refresh).not.toHaveBeenCalled();
+  });
+
   it('denies routes when required permissions are missing from the token', () => {
     const store = useAuthStore();
     store.applyLoginResult({

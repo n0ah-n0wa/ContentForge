@@ -1,0 +1,98 @@
+# Isolated end-to-end stack — do not reuse the local-dev compose project/volumes.
+#
+# From repository root:
+#   docker compose -f docker-compose.e2e.yml up -d --build
+#   cd frontend/contentforge-web && npm run test:e2e
+#   docker compose -f docker-compose.e2e.yml down -v
+#
+# Admin UI: http://localhost:28080
+# API:      http://localhost:25080
+# Default admin (Development seed): admin@contentforge.local / AdminPassword123!
+
+name: contentforge-e2e
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: contentforge
+      POSTGRES_PASSWORD: contentforge
+      POSTGRES_DB: contentforge_e2e
+    ports:
+      - "25432:5432"
+    volumes:
+      - e2e_postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U contentforge -d contentforge_e2e"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+      start_period: 10s
+
+  api:
+    build:
+      context: .
+      dockerfile: infra/docker/api/Dockerfile
+    image: contentforge-api:e2e
+    environment:
+      ASPNETCORE_ENVIRONMENT: Development
+      Database__Provider: PostgreSQL
+      Database__ConnectionString: Host=postgres;Port=5432;Database=contentforge_e2e;Username=contentforge;Password=contentforge
+      Jwt__Issuer: ContentForge
+      Jwt__Audience: ContentForge.Admin
+      Jwt__SigningKey: E2E_ONLY_CHANGE_ME_32_CHARS_MINIMUM_KEY!!
+      # Rate limiting stays registered; raise limits so suite/API logins never 429.
+      RateLimiting__Enabled: "false"
+      RateLimiting__DisabledPermitLimit: "100000"
+      RateLimiting__AuthLogin__PermitLimit: "100000"
+      RateLimiting__AuthRefresh__PermitLimit: "100000"
+      RateLimiting__PublicApi__PermitLimit: "100000"
+      RateLimiting__MediaUpload__PermitLimit: "100000"
+      RateLimiting__ContentPreview__PermitLimit: "100000"
+      RateLimiting__PasswordResetRequest__PermitLimit: "100000"
+      RateLimiting__PasswordResetConfirm__PermitLimit: "100000"
+      Media__Provider: Local
+      Media__LocalRoot: /app/App_Data/media
+      Media__PublicBaseUrl: /media-files
+      Cors__AllowedOrigins__0: http://localhost:28080
+      Cors__AllowedOrigins__1: http://127.0.0.1:28080
+    volumes:
+      - e2e_api_media:/app/App_Data/media
+    ports:
+      - "25080:8080"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://127.0.0.1:8080/health/ready >/dev/null 2>&1 || exit 1"]
+      interval: 10s
+      timeout: 5s
+      start_period: 120s
+      retries: 18
+
+  web:
+    build:
+      context: .
+      dockerfile: infra/docker/web/Dockerfile
+      args:
+        VITE_API_BASE_URL: ""
+    image: contentforge-web:e2e
+    environment:
+      API_UPSTREAM: api:8080
+      API_UPSTREAM_SCHEME: http
+      API_UPSTREAM_HOST: api
+    ports:
+      - "28080:8080"
+    depends_on:
+      api:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://127.0.0.1:8080/health >/dev/null 2>&1 || exit 1"]
+      interval: 10s
+      timeout: 5s
+      start_period: 30s
+      retries: 10
+
+volumes:
+  e2e_postgres_data:
+  e2e_api_media:

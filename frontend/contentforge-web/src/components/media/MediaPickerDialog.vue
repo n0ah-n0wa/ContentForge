@@ -37,7 +37,10 @@ function onSelect(asset: MediaAsset): void {
 
 function onConfirm(ids: string[]): void {
   emit('confirm', ids, selectedAssets.value);
-  open.value = false;
+  // Close after the confirming click finishes so it cannot activate controls under the overlay.
+  window.setTimeout(() => {
+    open.value = false;
+  }, 0);
 }
 
 function close(): void {

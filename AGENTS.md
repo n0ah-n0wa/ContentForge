@@ -33,4 +33,8 @@ npm run lint
 npm run typecheck
 npm run test
 npm run build:vite
+
+# E2E (requires docker-compose.e2e.yml stack — see frontend/contentforge-web/e2e/README.md)
+# docker compose -f docker-compose.e2e.yml up -d --build
+# npm run e2e:install && npm run test:e2e
 ```

@@ -33,6 +33,8 @@ frontend/contentforge-web/.env
 frontend/contentforge-web/.env.local
 frontend/contentforge-web/.env.*.local
 frontend/contentforge-web/coverage/
+frontend/contentforge-web/playwright-report/
+frontend/contentforge-web/test-results/
 
 ## Docker
 .docker/

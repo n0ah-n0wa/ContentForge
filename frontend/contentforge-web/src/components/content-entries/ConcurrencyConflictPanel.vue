@@ -15,7 +15,7 @@ const emit = defineEmits<{
 </script>
 
 <template>
-  <section class="confirm-panel concurrency-panel">
+  <section class="confirm-panel concurrency-panel" data-testid="concurrency-conflict">
     <div>
       <h3>Concurrency conflict</h3>
       <p>{{ describeConcurrencyConflict(conflict) }}</p>

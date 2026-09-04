@@ -116,8 +116,11 @@ export const useAuthStore = defineStore('auth', () => {
       return false;
     }
 
+    // A non-expired access token is sufficient for API calls. On full page reload,
+    // sessionStatus is still "anonymous" until initialize() finishes loading /me —
+    // requiring "authenticated" here falsely expires valid sessions.
     if (!isAccessTokenExpired(accessTokenExpiresAt.value)) {
-      return sessionStatus.value === 'authenticated' && user.value !== null;
+      return true;
     }
 
     return refreshSession();

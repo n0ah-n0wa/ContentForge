@@ -81,7 +81,11 @@ watch(
   <div class="media-field-selector">
     <div v-if="loadingAssets" class="entry-field__hint">Loading selected media…</div>
 
-    <ul v-else-if="loadedAssets.length" class="media-field-selector__selected">
+    <ul
+      v-else-if="loadedAssets.length"
+      class="media-field-selector__selected"
+      data-testid="media-field-selected"
+    >
       <li v-for="asset in loadedAssets" :key="asset.id" class="media-field-selector__item">
         <div class="media-field-selector__preview">
           <img
@@ -92,23 +96,32 @@ watch(
           <span v-else>{{ asset.originalFileName }}</span>
         </div>
         <div>
-          <strong>{{ asset.title ?? asset.originalFileName }}</strong>
+          <strong data-testid="media-field-selected-title">{{
+            asset.title ?? asset.originalFileName
+          }}</strong>
           <span>{{ formatMediaSize(asset.size) }}</span>
         </div>
       </li>
     </ul>
 
-    <p v-else class="empty-state">No media selected.</p>
+    <p v-else class="empty-state" data-testid="media-field-empty">No media selected.</p>
 
     <div class="media-field-selector__actions">
-      <AppButton variant="secondary" type="button" :disabled="disabled" @click="pickerOpen = true">
+      <AppButton
+        variant="secondary"
+        type="button"
+        :disabled="disabled || pickerOpen"
+        :aria-label="multiple ? 'Choose media' : 'Choose media asset'"
+        @click="pickerOpen = true"
+      >
         {{ multiple ? 'Choose media' : 'Choose media asset' }}
       </AppButton>
       <AppButton
         v-if="selectedIds.length"
         variant="ghost"
         type="button"
-        :disabled="disabled"
+        :disabled="disabled || pickerOpen"
+        aria-label="Clear selected media"
         @click="clearSelection"
       >
         Clear

@@ -6,7 +6,7 @@ import AppButton from '@/components/common/AppButton.vue';
 import AppSpinner from '@/components/common/AppSpinner.vue';
 import ContentEntryForm from '@/components/content-entries/ContentEntryForm.vue';
 import { createContentEntry } from '@/api/content';
-import { listContentTypes } from '@/api/contentTypes';
+import { getContentType, listContentTypes } from '@/api/contentTypes';
 import { ApiError } from '@/api/errors';
 import { useApiErrorHandling } from '@/composables/useApiErrorHandling';
 import { useContentEntryForm } from '@/composables/useContentEntryForm';
@@ -58,6 +58,9 @@ async function loadContentType(): Promise<void> {
       pageErrorMessage.value = 'Content type not found.';
       return;
     }
+
+    // List payloads omit field definitions (fieldCount only) — load the full type for the form.
+    contentType.value = await getContentType(contentType.value.id);
 
     initializeForCreate(contentType.value);
   } catch (error) {
