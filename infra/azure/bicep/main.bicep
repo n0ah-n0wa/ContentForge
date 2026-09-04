@@ -137,7 +137,7 @@ var apiInboundRestrictions = resolvedRestrictApiPublicAccess ? [
     action: 'Allow'
     priority: 100
     name: 'Allow Azure PaaS'
-    description: 'Allow Web App proxy and Azure services; deny direct public API access'
+    description: 'Allow Azure PaaS / Web App proxy only'
   }
 ] : []
 
@@ -148,7 +148,7 @@ var scmInboundRestrictions = env == 'prod' ? [
     action: 'Allow'
     priority: 100
     name: 'Allow Azure PaaS SCM'
-    description: 'Restrict Kudu/SCM to Azure PaaS sources'
+    description: 'Restrict SCM to Azure PaaS'
   }
 ] : []
 
