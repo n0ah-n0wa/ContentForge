@@ -3,13 +3,13 @@ using '../main.bicep'
 param environment = 'staging'
 param location = 'westeurope'
 
-param azureAdAdminObjectId = '00000000-0000-0000-0000-000000000000'
-param azureAdAdminLogin = 'contentforge-sql-admins@contoso.com'
-param azureAdAdminPrincipalType = 'Group'
+param azureAdAdminObjectId = '43414934-5072-4fb0-8fe1-f6759fca1569'
+param azureAdAdminLogin = 'dmytro.kyselov99_gmail.com#EXT#@dmytrokyselov99gmail.onmicrosoft.com'
+param azureAdAdminPrincipalType = 'User'
 
-param apiContainerImage = 'contentforge.azurecr.io/contentforge-api:latest'
-param webContainerImage = 'contentforge.azurecr.io/contentforge-web:latest'
-param containerRegistryUrl = 'contentforge.azurecr.io'
+param apiContainerImage = 'contentforgeacr.azurecr.io/contentforge-api:latest'
+param webContainerImage = 'contentforgeacr.azurecr.io/contentforge-web:latest'
+param containerRegistryUrl = 'contentforgeacr.azurecr.io'
 
 param allowedAdminIpAddresses = []
 
