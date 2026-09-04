@@ -432,6 +432,8 @@ jobs:
           WEB="${{ needs.resolve-config.outputs.web_app_name }}"
           PREV_API=$(az webapp config container show -g "$RG" -n "$API" --query "[?name=='DOCKER_CUSTOM_IMAGE_NAME'].value | [0]" -o tsv 2>/dev/null || true)
           PREV_WEB=$(az webapp config container show -g "$RG" -n "$WEB" --query "[?name=='DOCKER_CUSTOM_IMAGE_NAME'].value | [0]" -o tsv 2>/dev/null || true)
+          PREV_API="${PREV_API#DOCKER|}"
+          PREV_WEB="${PREV_WEB#DOCKER|}"
           echo "previous_api_image=${PREV_API:-none}" >> "$GITHUB_OUTPUT"
           echo "previous_web_image=${PREV_WEB:-none}" >> "$GITHUB_OUTPUT"
 
@@ -560,10 +562,11 @@ jobs:
           WEB="${{ needs.resolve-config.outputs.web_app_name }}"
           EXPECTED_API="${{ needs.build-and-publish.outputs.api_image }}"
           EXPECTED_WEB="${{ needs.build-and-publish.outputs.web_image }}"
-          ACTUAL_API=$(az webapp config container show -g "$RG" -n "$API" --query "[?name=='DOCKER_CUSTOM_IMAGE_NAME'].value | [0]" -o tsv)
-          ACTUAL_WEB=$(az webapp config container show -g "$RG" -n "$WEB" --query "[?name=='DOCKER_CUSTOM_IMAGE_NAME'].value | [0]" -o tsv)
-          echo "API image: $ACTUAL_API"
-          echo "Web image: $ACTUAL_WEB"
+          # App Service may return DOCKER|<image> — normalize before compare.
+          ACTUAL_API=$(az webapp config container show -g "$RG" -n "$API" --query "[?name=='DOCKER_CUSTOM_IMAGE_NAME'].value | [0]" -o tsv | sed 's/^DOCKER|//')
+          ACTUAL_WEB=$(az webapp config container show -g "$RG" -n "$WEB" --query "[?name=='DOCKER_CUSTOM_IMAGE_NAME'].value | [0]" -o tsv | sed 's/^DOCKER|//')
+          echo "API image: $ACTUAL_API (expected: $EXPECTED_API)"
+          echo "Web image: $ACTUAL_WEB (expected: $EXPECTED_WEB)"
           if [ "$ACTUAL_API" != "$EXPECTED_API" ]; then
             echo "API container image mismatch." >&2
             exit 1

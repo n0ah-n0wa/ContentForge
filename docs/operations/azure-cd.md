@@ -91,12 +91,17 @@ These are identifiers, not credentials. Do **not** store client secrets.
 ### Federated credential (OIDC)
 
 1. Create an **App registration** (or reuse one) for GitHub Actions deployment.
-2. Add **Federated credentials**:
+2. Add **Federated credentials** (issuer `https://token.actions.githubusercontent.com`, audience `api://AzureADTokenExchange`).
 
-   | Environment | Subject |
-   |-------------|---------|
-   | Staging | `repo:<org>/<repo>:environment:staging` |
-   | Production | `repo:<org>/<repo>:environment:production` |
+   Prefer the **repo-id subject format** GitHub Actions currently issues (copy the exact `subject claim` from a failed `azure/login` log if unsure):
+
+   | Purpose | Subject |
+   |---------|---------|
+   | Staging environment jobs | `repo:<owner>@<ownerId>/<repo>@<repoId>:environment:staging` |
+   | Production environment jobs | `repo:<owner>@<ownerId>/<repo>@<repoId>:environment:production` |
+   | Optional: pushes to `main` (non-environment jobs) | `repo:<owner>@<ownerId>/<repo>@<repoId>:ref:refs/heads/main` |
+
+   Older subjects without IDs (`repo:<org>/<repo>:environment:staging`) no longer match tokens from this repository and will fail with `AADSTS700213`.
 
 3. Grant Azure RBAC on each resource group (and ACR):
 
@@ -281,7 +286,7 @@ Local usage (after `az login`):
 | App pull image failure | Missing AcrPull on MI | Workflow assigns; verify manually |
 | API 403 from verify | Direct API access restricted | Expected; verify uses Web proxy |
 | JWT errors after deploy | Key Vault secret missing | Create `jwt-signing-key`, restart API |
-| Container mismatch | Deploy step failed partially | Re-run deploy or rollback images |
+| Container mismatch | Deploy step failed partially, or verify compared against App Service's `DOCKER\|` prefix | Re-run deploy or rollback images; verify step strips `DOCKER\|` |
 
 ---
 
