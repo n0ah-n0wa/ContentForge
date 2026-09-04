@@ -118,3 +118,5 @@ output webAppId string = webApp.id
 output webAppName string = webApp.name
 output defaultHostName string = webApp.properties.defaultHostName
 output principalId string = enableManagedIdentity ? webApp.identity.principalId : ''
+output outboundIpAddresses string = webApp.properties.outboundIpAddresses
+output possibleOutboundIpAddresses string = webApp.properties.possibleOutboundIpAddresses

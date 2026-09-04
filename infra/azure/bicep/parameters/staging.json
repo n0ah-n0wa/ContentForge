@@ -6,28 +6,36 @@
       "value": "staging"
     },
     "location": {
-      "value": "westeurope"
+      "value": "germanywestcentral"
     },
     "azureAdAdminObjectId": {
-      "value": "00000000-0000-0000-0000-000000000000"
+      "value": "43414934-5072-4fb0-8fe1-f6759fca1569"
     },
     "azureAdAdminLogin": {
-      "value": "contentforge-sql-admins@contoso.com"
+      "value": "dmytro.kyselov99_gmail.com#EXT#@dmytrokyselov99gmail.onmicrosoft.com"
     },
     "azureAdAdminPrincipalType": {
-      "value": "Group"
+      "value": "User"
     },
     "apiContainerImage": {
-      "value": "contentforge.azurecr.io/contentforge-api:latest"
+      "value": "contentforgeacr.azurecr.io/contentforge-api:latest"
     },
     "webContainerImage": {
-      "value": "contentforge.azurecr.io/contentforge-web:latest"
+      "value": "contentforgeacr.azurecr.io/contentforge-web:latest"
     },
     "containerRegistryUrl": {
-      "value": "contentforge.azurecr.io"
+      "value": "contentforgeacr.azurecr.io"
     },
     "allowedAdminIpAddresses": {
       "value": []
+    },
+    "appServicePlanSku": {
+      "value": {
+        "name": "B1",
+        "tier": "Basic",
+        "size": "B1",
+        "capacity": 1
+      }
     },
     "tags": {
       "value": {

@@ -371,6 +371,22 @@ module webApp 'modules/app-service.bicep' = {
   }
 }
 
+// App Service → Storage data plane is not covered by AzureServices bypass; allow API outbound IPs.
+module storageNetworkAccess 'modules/storage.bicep' = if (restrictBackendPublicNetwork) {
+  name: 'storage-network-${env}'
+  params: {
+    location: location
+    storageAccountName: storageAccountName
+    tags: defaultTags
+    skuName: storageSku
+    enableBlobProtection: enableBlobProtection
+    restrictPublicNetworkAccess: true
+    allowedIpAddresses: split(apiApp.outputs.possibleOutboundIpAddresses, ',')
+    requireInfrastructureEncryption: requireStorageInfrastructureEncryption
+    logAnalyticsWorkspaceId: logAnalytics.outputs.workspaceId
+  }
+}
+
 module roleAssignments 'modules/role-assignments.bicep' = {
   name: 'role-assignments-${env}'
   params: {

@@ -19,11 +19,21 @@ param enableBlobProtection bool = false
 @description('When true, denies public internet access; Azure PaaS bypass remains enabled.')
 param restrictPublicNetworkAccess bool = true
 
+@description('IPv4 addresses allowed through the storage firewall (App Service outbound IPs). AzureServices bypass alone does not cover App Service blob data-plane access.')
+param allowedIpAddresses array = []
+
 @description('When true, enables double encryption at the storage service level (production).')
 param requireInfrastructureEncryption bool = false
 
 @description('Log Analytics workspace ID for audit diagnostic logs.')
 param logAnalyticsWorkspaceId string = ''
+
+var storageIpRules = [
+  for ip in allowedIpAddresses: {
+    action: 'Allow'
+    value: ip
+  }
+]
 
 resource storageAccount 'Microsoft.Storage/storageAccounts@2023-05-01' = {
   name: storageAccountName
@@ -44,9 +54,11 @@ resource storageAccount 'Microsoft.Storage/storageAccounts@2023-05-01' = {
     networkAcls: restrictPublicNetworkAccess ? {
       defaultAction: 'Deny'
       bypass: 'AzureServices'
+      ipRules: storageIpRules
     } : {
       defaultAction: 'Allow'
       bypass: 'AzureServices'
+      ipRules: []
     }
     encryption: {
       requireInfrastructureEncryption: requireInfrastructureEncryption

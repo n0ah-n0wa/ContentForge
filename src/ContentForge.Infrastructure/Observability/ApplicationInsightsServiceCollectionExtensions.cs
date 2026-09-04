@@ -39,14 +39,25 @@ public static class ApplicationInsightsServiceCollectionExtensions
             {
                 monitorOptions.ConnectionString = connectionString;
                 monitorOptions.SamplingRatio = (float)Math.Clamp(options.SamplingRatio, 0d, 1d);
+            })
+            .WithTracing(tracerBuilder =>
+            {
+                // Must register EF instrumentation during service configuration (not after
+                // ServiceProvider creation) or OpenTelemetry throws NotSupportedException.
+                tracerBuilder.AddEntityFrameworkCoreInstrumentation(efOptions =>
+                {
+                    efOptions.SetDbStatementForText = false;
+                    efOptions.SetDbStatementForStoredProcedure = false;
+                });
+                tracerBuilder.AddProcessor(new SensitiveTelemetryActivityProcessor());
             });
 
-        ConfigureTracing(builder.Services);
+        ConfigureAspNetCoreAndHttpInstrumentation(builder.Services);
         ConfigureLogging(builder.Services);
         return builder;
     }
 
-    private static void ConfigureTracing(IServiceCollection services)
+    private static void ConfigureAspNetCoreAndHttpInstrumentation(IServiceCollection services)
     {
         services.Configure<AspNetCoreTraceInstrumentationOptions>(instrumentationOptions =>
         {
@@ -78,16 +89,6 @@ public static class ApplicationInsightsServiceCollectionExtensions
                     activity.SetTag("http.url", SensitiveTelemetryRedactor.Redact(request.RequestUri.ToString()));
                 }
             };
-        });
-
-        services.ConfigureOpenTelemetryTracerProvider((_, tracerBuilder) =>
-        {
-            tracerBuilder.AddEntityFrameworkCoreInstrumentation(efOptions =>
-            {
-                efOptions.SetDbStatementForText = false;
-                efOptions.SetDbStatementForStoredProcedure = false;
-            });
-            tracerBuilder.AddProcessor(new SensitiveTelemetryActivityProcessor());
         });
     }
 

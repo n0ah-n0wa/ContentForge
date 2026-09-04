@@ -45,7 +45,7 @@ Internet
 | Issue | Fix |
 |-------|-----|
 | API directly reachable from the internet | IP restrictions: default **Deny**, allow **AzureCloud** (staging/prod) |
-| Storage/Key Vault open to the internet | Network ACL `defaultAction: Deny`, `bypass: AzureServices` |
+| Storage/Key Vault open to the internet | Network ACL `defaultAction: Deny`, `bypass: AzureServices`; Storage also allows App Service outbound IPs (AzureServices bypass alone does not cover blob data-plane from App Service) |
 | Blob RBAC scoped to entire storage account | RBAC scoped to **`media` container** only |
 | API runtime granted `db_ddladmin` | Split scripts: runtime (`db_datareader`/`db_datawriter`) vs migration (`db_ddladmin`) |
 | Web → API over HTTP to port 443 | nginx uses `API_UPSTREAM_SCHEME=https` with TLS SNI |
@@ -129,7 +129,7 @@ Prefer a **dedicated migration runner identity** in production instead of granti
 
 - **Public blob access:** Disabled at account and container level
 - **Shared key access:** Disabled — only RBAC via managed identity
-- **Network:** Default deny from internet (staging/prod); AzureServices bypass for App Service
+- **Network:** Default deny from internet (staging/prod); AzureServices bypass plus App Service outbound IP allowlist (required for MI blob access without VNet/private endpoints)
 - **Encryption:** Microsoft-managed keys; infrastructure encryption (double encryption) in production
 - **Recovery:** Soft delete + versioning (staging/prod); GRS replication in production
 

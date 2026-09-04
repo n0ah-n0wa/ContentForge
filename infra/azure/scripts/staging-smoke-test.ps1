@@ -26,6 +26,54 @@ if ([string]::IsNullOrWhiteSpace($WebHost)) {
 $baseUrl = "https://$WebHost"
 $failures = New-Object System.Collections.Generic.List[string]
 
+function Invoke-SmokeRequest {
+    param(
+        [Parameter(Mandatory = $true)][string]$Uri,
+        [string]$Method = "GET",
+        [hashtable]$Headers = $null,
+        [string]$ContentType = $null,
+        [string]$Body = $null,
+        [int]$TimeoutSec = 30
+    )
+
+    # Windows PowerShell 5.1 has no -SkipHttpErrorCheck; capture HTTP error responses instead.
+    # Note: [string]$Body = $null becomes "" — never attach Body for GET/HEAD.
+    try {
+        $params = @{
+            Uri             = $Uri
+            Method          = $Method
+            UseBasicParsing = $true
+            TimeoutSec      = $TimeoutSec
+        }
+        if ($null -ne $Headers) { $params.Headers = $Headers }
+        if (-not [string]::IsNullOrWhiteSpace($ContentType)) { $params.ContentType = $ContentType }
+        if (-not [string]::IsNullOrEmpty($Body)) { $params.Body = $Body }
+
+        return Invoke-WebRequest @params
+    }
+    catch [System.Net.WebException] {
+        $response = $_.Exception.Response
+        if ($null -eq $response) {
+            throw
+        }
+
+        $statusCode = [int]$response.StatusCode
+        $stream = $response.GetResponseStream()
+        $reader = New-Object System.IO.StreamReader($stream)
+        try {
+            $content = $reader.ReadToEnd()
+        }
+        finally {
+            $reader.Dispose()
+        }
+
+        return [pscustomobject]@{
+            StatusCode = $statusCode
+            Content    = $content
+        }
+    }
+}
+
 function Test-Eventually {
     param(
         [string]$Name,
@@ -41,12 +89,13 @@ function Test-Eventually {
                 Write-Host "PASS: $Name (attempt $i)"
                 return $true
             }
+
+            Write-Host "WAIT: $Name (attempt $i/$Attempts) - probe returned false"
         }
         catch {
-            # retry
+            Write-Host "WAIT: $Name (attempt $i/$Attempts) - $($_.Exception.Message)"
         }
 
-        Write-Host "WAIT: $Name (attempt $i/$Attempts)"
         Start-Sleep -Seconds $DelaySeconds
     }
 
@@ -61,25 +110,25 @@ Write-Host ""
 
 # Frontend shell
 Test-Eventually "Frontend (HTML shell)" {
-    $response = Invoke-WebRequest -Uri "$baseUrl/" -UseBasicParsing -TimeoutSec 30
+    $response = Invoke-SmokeRequest -Uri "$baseUrl/"
     return ($response.StatusCode -eq 200 -and $response.Content -match "(?i)<!doctype html>")
 } | Out-Null
 
 # Web nginx health
 Test-Eventually "Web /health" {
-    $response = Invoke-WebRequest -Uri "$baseUrl/health" -UseBasicParsing -TimeoutSec 30
+    $response = Invoke-SmokeRequest -Uri "$baseUrl/health"
     return $response.StatusCode -eq 200
 } | Out-Null
 
 # API liveness via Web proxy (API blocks direct public access in staging/production)
 Test-Eventually "API /health/live via proxy" {
-    $response = Invoke-WebRequest -Uri "$baseUrl/health/live" -UseBasicParsing -TimeoutSec 30 -SkipHttpErrorCheck
+    $response = Invoke-SmokeRequest -Uri "$baseUrl/health/live"
     return $response.StatusCode -eq 200
 } | Out-Null
 
 # API readiness (DB connectivity, migrations applied, blob storage)
 Test-Eventually "API /health/ready via proxy (database + storage)" {
-    $response = Invoke-WebRequest -Uri "$baseUrl/health/ready" -UseBasicParsing -TimeoutSec 60 -SkipHttpErrorCheck
+    $response = Invoke-SmokeRequest -Uri "$baseUrl/health/ready" -TimeoutSec 60
     if ($response.StatusCode -ne 200) {
         Write-Host "  ready body: $($response.Content)"
         return $false
@@ -97,25 +146,23 @@ Test-Eventually "API /health/ready via proxy (database + storage)" {
 # Authentication endpoint (expect rejection without credentials)
 Test-Eventually "Authentication login endpoint" {
     $body = '{"email":"smoke-check@invalid.local","password":"invalid-password"}'
-    $response = Invoke-WebRequest -Uri "$baseUrl/api/v1/auth/login" -Method POST `
-        -ContentType "application/json" -Body $body -UseBasicParsing -TimeoutSec 30 -SkipHttpErrorCheck
-    return @("400", "401", "422") -contains "$($response.StatusCode)"
+    $response = Invoke-SmokeRequest -Uri "$baseUrl/api/v1/auth/login" -Method POST `
+        -ContentType "application/json" -Body $body
+    return @(400, 401, 422) -contains [int]$response.StatusCode
 } | Out-Null
 
 # Administrative API (requires auth)
 if (-not [string]::IsNullOrWhiteSpace($AdminEmail) -and -not [string]::IsNullOrWhiteSpace($AdminPassword)) {
-    $token = $null
     Test-Eventually "Administrative API (authenticated)" {
         $loginBody = @{ email = $AdminEmail; password = $AdminPassword } | ConvertTo-Json
-        $login = Invoke-WebRequest -Uri "$baseUrl/api/v1/auth/login" -Method POST `
-            -ContentType "application/json" -Body $loginBody -UseBasicParsing -TimeoutSec 30
+        $login = Invoke-SmokeRequest -Uri "$baseUrl/api/v1/auth/login" -Method POST `
+            -ContentType "application/json" -Body $loginBody
         $payload = $login.Content | ConvertFrom-Json
         $token = $payload.accessToken
         if ([string]::IsNullOrWhiteSpace($token)) { return $false }
 
         $headers = @{ Authorization = "Bearer $token" }
-        $dashboard = Invoke-WebRequest -Uri "$baseUrl/api/v1/admin/dashboard" -Headers $headers `
-            -UseBasicParsing -TimeoutSec 30 -SkipHttpErrorCheck
+        $dashboard = Invoke-SmokeRequest -Uri "$baseUrl/api/v1/admin/dashboard" -Headers $headers
         return $dashboard.StatusCode -eq 200
     } | Out-Null
 }
@@ -126,9 +173,8 @@ else {
 # Public API
 if (-not [string]::IsNullOrWhiteSpace($PublicSlug)) {
     Test-Eventually "Public API content by slug" {
-        $response = Invoke-WebRequest -Uri "$baseUrl/api/v1/public/content/$PublicSlug" `
-            -UseBasicParsing -TimeoutSec 30 -SkipHttpErrorCheck
-        return @("200", "404") -contains "$($response.StatusCode)"
+        $response = Invoke-SmokeRequest -Uri "$baseUrl/api/v1/public/content/$PublicSlug"
+        return @(200, 404) -contains [int]$response.StatusCode
     } | Out-Null
 }
 else {
