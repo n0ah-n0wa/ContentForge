@@ -92,9 +92,11 @@ resource mediaContainer 'Microsoft.Storage/storageAccounts/blobServices/containe
   }
 }
 
-resource diagnostics 'Microsoft.Insights/diagnosticSettings@2021-05-01-preview' = if (!empty(logAnalyticsWorkspaceId)) {
-  name: 'send-to-log-analytics'
-  scope: storageAccount
+// StorageRead/Write/Delete categories are only valid on blob/file/queue/table services,
+// not on the parent storage account resource.
+resource blobDiagnostics 'Microsoft.Insights/diagnosticSettings@2021-05-01-preview' = if (!empty(logAnalyticsWorkspaceId)) {
+  name: 'send-blob-to-log-analytics'
+  scope: blobService
   properties: {
     workspaceId: logAnalyticsWorkspaceId
     logs: [
@@ -111,6 +113,20 @@ resource diagnostics 'Microsoft.Insights/diagnosticSettings@2021-05-01-preview' 
         enabled: true
       }
     ]
+    metrics: [
+      {
+        category: 'Transaction'
+        enabled: true
+      }
+    ]
+  }
+}
+
+resource accountMetrics 'Microsoft.Insights/diagnosticSettings@2021-05-01-preview' = if (!empty(logAnalyticsWorkspaceId)) {
+  name: 'send-account-metrics-to-log-analytics'
+  scope: storageAccount
+  properties: {
+    workspaceId: logAnalyticsWorkspaceId
     metrics: [
       {
         category: 'Transaction'

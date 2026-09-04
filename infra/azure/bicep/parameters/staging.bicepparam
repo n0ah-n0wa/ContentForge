@@ -13,6 +13,14 @@ param containerRegistryUrl = 'contentforgeacr.azurecr.io'
 
 param allowedAdminIpAddresses = []
 
+// B2 Basic quota is often 0 on new subscriptions; B1 is sufficient for staging.
+param appServicePlanSku = {
+  name: 'B1'
+  tier: 'Basic'
+  size: 'B1'
+  capacity: 1
+}
+
 param tags = {
   costCenter: 'engineering'
   owner: 'platform-team'
