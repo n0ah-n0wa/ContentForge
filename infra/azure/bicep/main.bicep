@@ -85,19 +85,13 @@ var defaultAppServicePlanSku = env == 'prod'
       size: 'P1v3'
       capacity: 1
     }
-  : env == 'staging'
-      ? {
-          name: 'B2'
-          tier: 'Basic'
-          size: 'B2'
-          capacity: 1
-        }
-      : {
-          name: 'B1'
-          tier: 'Basic'
-          size: 'B1'
-          capacity: 1
-        }
+  : {
+      // staging and dev: B1 (B2 Basic quota is often 0 on new subscriptions)
+      name: 'B1'
+      tier: 'Basic'
+      size: 'B1'
+      capacity: 1
+    }
 
 var defaultSqlDatabaseSku = env == 'prod'
   ? {
