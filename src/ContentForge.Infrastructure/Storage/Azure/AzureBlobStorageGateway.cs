@@ -42,7 +42,11 @@ internal sealed class AzureBlobStorageGateway : IBlobStorageGateway
         };
 
         await using var limited = new LimitedReadStream(content, MediaUploadRules.MaxFileSizeBytes);
-        await blobClient.UploadAsync(limited, options, cancellationToken).ConfigureAwait(false);
+        // Buffer into memory so Azure.Storage.Blobs can use sync Read partitions safely.
+        await using var buffered = new MemoryStream(capacity: 64 * 1024);
+        await limited.CopyToAsync(buffered, cancellationToken).ConfigureAwait(false);
+        buffered.Position = 0;
+        await blobClient.UploadAsync(buffered, options, cancellationToken).ConfigureAwait(false);
     }
 
     public async Task<Stream?> OpenReadAsync(string blobName, CancellationToken cancellationToken = default)
@@ -107,8 +111,17 @@ internal sealed class AzureBlobStorageGateway : IBlobStorageGateway
             set => throw new NotSupportedException();
         }
 
-        public override int Read(byte[] buffer, int offset, int count) =>
-            throw new NotSupportedException("Synchronous reads are not supported for upload streams.");
+        public override int Read(byte[] buffer, int offset, int count)
+        {
+            // Azure.Storage.Blobs may call the synchronous Read path even from UploadAsync.
+            return ReadAsync(buffer.AsMemory(offset, count), CancellationToken.None)
+                .AsTask()
+                .GetAwaiter()
+                .GetResult();
+        }
+
+        public override Task<int> ReadAsync(byte[] buffer, int offset, int count, CancellationToken cancellationToken) =>
+            ReadAsync(buffer.AsMemory(offset, count), cancellationToken).AsTask();
 
         public override async ValueTask<int> ReadAsync(
             Memory<byte> buffer,

@@ -108,7 +108,9 @@ infra/azure/
     ├── grant-api-sql-migration.sql
     ├── run-azure-sql-migrations.sh
     ├── validate-migrations.sh
+    ├── validate-migrations.ps1
     ├── validate-azure-parameters.sh
+    ├── validate-azure-parameters.ps1
     ├── verify-backup-configuration.sh
     ├── deploy-preflight.sh
     ├── destructive-migration-allowlist.txt

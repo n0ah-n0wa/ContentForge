@@ -209,6 +209,20 @@ dotnet test --configuration Release --no-build
 Projects: `tests/ContentForge.UnitTests`, `ContentForge.IntegrationTests`, `ContentForge.ArchitectureTests`.  
 Integration tests expect PostgreSQL (CI service or `docker-compose.test.yml` on host port **5433**).
 
+Migration / Azure parameter validation (from repo root):
+
+```bash
+# Linux / macOS / Git Bash
+./infra/azure/scripts/validate-migrations.sh
+./infra/azure/scripts/validate-azure-parameters.sh
+
+# Windows PowerShell
+powershell -NoProfile -ExecutionPolicy Bypass -File infra/azure/scripts/validate-migrations.ps1
+powershell -NoProfile -ExecutionPolicy Bypass -File infra/azure/scripts/validate-azure-parameters.ps1
+```
+
+Clean-machine report: [docs/operations/CLEAN_ENVIRONMENT_VERIFICATION.md](./docs/operations/CLEAN_ENVIRONMENT_VERIFICATION.md).
+
 ### Frontend
 
 ```bash

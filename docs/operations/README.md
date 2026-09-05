@@ -17,6 +17,7 @@ Runbooks and deployment guides for ContentForge. All procedures below match scri
 | [docker.md](./docker.md) | Container deployment |
 | [backups-and-recovery.md](./backups-and-recovery.md) | Backups, PITR, media/Key Vault recovery |
 | [PRODUCTION_READINESS_REPORT.md](./PRODUCTION_READINESS_REPORT.md) | Independent production-readiness review (**does not certify readiness**) |
+| [CLEAN_ENVIRONMENT_VERIFICATION.md](./CLEAN_ENVIRONMENT_VERIFICATION.md) | Fresh-clone verification results and reproducibility notes |
 | [SPECIFICATION_COMPLIANCE.md](./SPECIFICATION_COMPLIANCE.md) | Line-by-line SPEC compliance checklist (IMPLEMENTED / PARTIAL / NOT) |
 
 ## Quick links
