@@ -57,7 +57,7 @@ Internet
 
 | Exposure | Why it remains | Mitigation |
 |----------|----------------|------------|
-| SQL public endpoint + `AllowAzureServices` | App Service MI connectivity without VNet/private endpoint | Azure AD-only authentication; no SQL logins; audit logging; **Bicep requires `acknowledgePublicDataPlaneRisks=true`** |
+| SQL public endpoint + `AllowAzureServices` | App Service MI connectivity without VNet/private endpoint | Azure AD-only authentication; no SQL logins; audit logging; **CI/`validate-azure-parameters.sh` requires `acknowledgePublicDataPlaneRisks=true` for staging/prod** |
 | AzureCloud service tag on API | Web App outbound IPs are not static on Basic tier | Narrow to Front Door ID header or private endpoints in hardened topology; acknowledgment required in parameters |
 | Web App public | Users must reach the admin UI | HTTPS-only; consider WAF (Front Door) in production |
 | App Insights ingestion public | App Service must send telemetry | RBAC on query side; sampling in prod |

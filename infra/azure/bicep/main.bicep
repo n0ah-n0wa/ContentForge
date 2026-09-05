@@ -65,6 +65,7 @@ var defaultTags = union(tags, {
   project: projectName
   managedBy: 'bicep'
   repository: 'ContentForge'
+  publicDataPlaneRisksAcknowledged: string(acknowledgePublicDataPlaneRisks)
 })
 
 var logAnalyticsName = 'log-cf-${env}'
@@ -132,13 +133,8 @@ var enableSqlLongTermRetention = env == 'prod'
 var sqlShortTermRetentionDays = env == 'prod' ? 35 : 7
 var requireStorageInfrastructureEncryption = env == 'prod'
 
-// Reject placeholder SQL admin identities for staging/prod (H2). Dev may still use example files for compile-only workflows.
-var placeholderAdminObjectId = azureAdAdminObjectId == '00000000-0000-0000-0000-000000000000'
-var placeholderAdminLogin = contains(toLower(azureAdAdminLogin), 'contoso.com')
-assert env == 'dev' || (!placeholderAdminObjectId && !placeholderAdminLogin): 'azureAdAdminObjectId/Login must be real Azure AD values for staging/prod — see prod.example.bicepparam.'
-
-// Force conscious acceptance of residual public data-plane exposure (H5) outside dev.
-assert env == 'dev' || acknowledgePublicDataPlaneRisks: 'Set acknowledgePublicDataPlaneRisks=true after reviewing docs/operations/azure-security.md residual exposure table.'
+// Placeholder SQL admin / public data-plane acknowledgements are enforced by
+// infra/azure/scripts/validate-azure-parameters.sh (Bicep assertions require experimental CLI features).
 
 // Blocks direct browser access to the API URL; Web App proxy egress uses AzureCloud.
 var apiInboundRestrictions = resolvedRestrictApiPublicAccess ? [
@@ -429,4 +425,5 @@ output appInsightsConnectionString string = appInsights.outputs.connectionString
 
 output apiManagedIdentityPrincipalId string = apiApp.outputs.principalId
 output restrictApiPublicAccess bool = resolvedRestrictApiPublicAccess
+output acknowledgePublicDataPlaneRisks bool = acknowledgePublicDataPlaneRisks
 output postDeployNotes string = 'Create jwt-signing-key in Key Vault, grant SQL access to API MI (runtime script), run migrations (migration script), configure ACR AcrPull. See infra/azure/README.md and docs/operations/azure-security.md.'

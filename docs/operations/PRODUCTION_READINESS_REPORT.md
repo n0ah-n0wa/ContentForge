@@ -75,8 +75,8 @@ This report **does not claim production readiness**.
 | | |
 |---|---|
 | **Root cause** | `prod.bicepparam` shipped nil GUID + Contoso login |
-| **Fix** | Real admin identity (aligned with staging); `prod.example.bicepparam` keeps placeholders; Bicep `assert` + `validate-azure-parameters.sh` in CI |
-| **Tests** | Script gate + Bicep asserts (CI) |
+| **Fix** | Real admin identity (aligned with staging); `prod.example.bicepparam` keeps placeholders; `validate-azure-parameters.sh` in CI |
+| **Tests** | Script gate in CI (`validate-azure-parameters.sh`) |
 
 ### H3 — DR documented but not proven — **PARTIALLY RESOLVED → MEDIUM (ops)**
 
