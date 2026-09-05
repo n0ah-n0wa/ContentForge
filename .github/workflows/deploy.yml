@@ -235,6 +235,9 @@ jobs:
     needs: [resolve-config, validate]
     runs-on: ubuntu-latest
     timeout-minutes: 30
+    permissions:
+      contents: read
+      id-token: write
     environment: ${{ needs.resolve-config.outputs.github_environment }}
     outputs:
       acr_login_server: ${{ steps.acr.outputs.login_server }}
@@ -247,7 +250,7 @@ jobs:
           clean: true
 
       - name: Azure login (OIDC)
-        uses: azure/login@v2
+        uses: ./.github/actions/azure-oidc-login
         with:
           client-id: ${{ vars.AZURE_CLIENT_ID }}
           tenant-id: ${{ vars.AZURE_TENANT_ID }}
@@ -314,6 +317,9 @@ jobs:
       !(github.event_name == 'workflow_dispatch' && github.event.inputs.environment == 'production' && github.event.inputs.skip_migrations == 'true')
     runs-on: ubuntu-latest
     timeout-minutes: 20
+    permissions:
+      contents: read
+      id-token: write
     environment: ${{ needs.resolve-config.outputs.github_environment }}
     steps:
       - name: Block skip_migrations for production
@@ -341,7 +347,7 @@ jobs:
           clean: true
 
       - name: Azure login (OIDC)
-        uses: azure/login@v2
+        uses: ./.github/actions/azure-oidc-login
         with:
           client-id: ${{ vars.AZURE_CLIENT_ID }}
           tenant-id: ${{ vars.AZURE_TENANT_ID }}
@@ -406,6 +412,9 @@ jobs:
       (needs.migrate.result == 'success' || needs.migrate.result == 'skipped')
     runs-on: ubuntu-latest
     timeout-minutes: 30
+    permissions:
+      contents: read
+      id-token: write
     environment: ${{ needs.resolve-config.outputs.github_environment }}
     outputs:
       previous_api_image: ${{ steps.capture.outputs.previous_api_image }}
@@ -418,7 +427,7 @@ jobs:
           clean: true
 
       - name: Azure login (OIDC)
-        uses: azure/login@v2
+        uses: ./.github/actions/azure-oidc-login
         with:
           client-id: ${{ vars.AZURE_CLIENT_ID }}
           tenant-id: ${{ vars.AZURE_TENANT_ID }}
@@ -524,10 +533,18 @@ jobs:
     needs: [resolve-config, deploy, build-and-publish]
     runs-on: ubuntu-latest
     timeout-minutes: 15
+    permissions:
+      contents: read
+      id-token: write
     environment: ${{ needs.resolve-config.outputs.github_environment }}
     steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          clean: true
+
       - name: Azure login (OIDC)
-        uses: azure/login@v2
+        uses: ./.github/actions/azure-oidc-login
         with:
           client-id: ${{ vars.AZURE_CLIENT_ID }}
           tenant-id: ${{ vars.AZURE_TENANT_ID }}

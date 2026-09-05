@@ -1,0 +1,83 @@
+name: Azure OIDC login
+description: Log in to Azure with GitHub OIDC, retrying transient federated-token fetch failures.
+
+inputs:
+  client-id:
+    description: Azure AD application (client) ID
+    required: true
+  tenant-id:
+    description: Azure AD tenant ID
+    required: true
+  subscription-id:
+    description: Azure subscription ID
+    required: true
+  audience:
+    description: OIDC token audience
+    required: false
+    default: api://AzureADTokenExchange
+  max-attempts:
+    description: Maximum federated-token fetch attempts
+    required: false
+    default: '5'
+
+runs:
+  using: composite
+  steps:
+    - name: Azure login (OIDC with retry)
+      shell: bash
+      env:
+        AZURE_CLIENT_ID: ${{ inputs.client-id }}
+        AZURE_TENANT_ID: ${{ inputs.tenant-id }}
+        AZURE_SUBSCRIPTION_ID: ${{ inputs.subscription-id }}
+        OIDC_AUDIENCE: ${{ inputs.audience }}
+        MAX_ATTEMPTS: ${{ inputs.max-attempts }}
+      run: |
+        set -euo pipefail
+
+        if [ -z "${ACTIONS_ID_TOKEN_REQUEST_URL:-}" ] || [ -z "${ACTIONS_ID_TOKEN_REQUEST_TOKEN:-}" ]; then
+          echo "::error::OIDC request URL/token missing. Ensure permissions.id-token is write."
+          exit 1
+        fi
+
+        REQUEST_URL="${ACTIONS_ID_TOKEN_REQUEST_URL}"
+        if [[ "$REQUEST_URL" == *"?"* ]]; then
+          REQUEST_URL="${REQUEST_URL}&audience=${OIDC_AUDIENCE}"
+        else
+          REQUEST_URL="${REQUEST_URL}?audience=${OIDC_AUDIENCE}"
+        fi
+
+        FEDERATED_TOKEN=""
+        for attempt in $(seq 1 "$MAX_ATTEMPTS"); do
+          echo "Fetching GitHub OIDC token (attempt ${attempt}/${MAX_ATTEMPTS})..."
+          RESPONSE="$(curl -sS -f -H "Authorization: Bearer ${ACTIONS_ID_TOKEN_REQUEST_TOKEN}" \
+            -H "Accept: application/json; api-version=2.0" \
+            -H "Content-Type: application/json" \
+            -X GET "$REQUEST_URL" 2>/tmp/oidc-curl.err || true)"
+
+          FEDERATED_TOKEN="$(printf '%s' "$RESPONSE" | jq -r '.value // empty' 2>/dev/null || true)"
+          if [ -n "$FEDERATED_TOKEN" ] && [ "$FEDERATED_TOKEN" != "null" ]; then
+            break
+          fi
+
+          echo "OIDC token fetch failed on attempt ${attempt}."
+          if [ -s /tmp/oidc-curl.err ]; then
+            cat /tmp/oidc-curl.err >&2 || true
+          fi
+          if [ "$attempt" -lt "$MAX_ATTEMPTS" ]; then
+            sleep $((attempt * 3))
+          fi
+        done
+
+        if [ -z "$FEDERATED_TOKEN" ] || [ "$FEDERATED_TOKEN" = "null" ]; then
+          echo "::error::Failed to fetch federated token from GitHub after ${MAX_ATTEMPTS} attempts."
+          exit 1
+        fi
+
+        az cloud set -n AzureCloud
+        az login --service-principal \
+          --username "$AZURE_CLIENT_ID" \
+          --tenant "$AZURE_TENANT_ID" \
+          --federated-token "$FEDERATED_TOKEN" \
+          --output none
+        az account set --subscription "$AZURE_SUBSCRIPTION_ID"
+        echo "Azure OIDC login succeeded."

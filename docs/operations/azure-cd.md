@@ -279,7 +279,8 @@ Local usage (after `az login`):
 
 | Symptom | Likely cause | Action |
 |---------|--------------|--------|
-| `Azure login` fails | Missing/incorrect federated credential | Verify subject claim matches GitHub environment |
+| `Azure login` fails with federated-token / `id-token` message | Transient GitHub OIDC fetch (common), or missing `permissions.id-token: write` | Workflow retries token fetch via `.github/actions/azure-oidc-login`; re-run the job if it still fails. Confirm job permissions include `id-token: write` and federated credential subject matches the GitHub environment |
+| `Azure login` fails with `AADSTS700213` | Federated credential subject mismatch | Verify subject claim matches GitHub environment (repo-id format) |
 | ACR push denied | Missing AcrPush role | Assign on ACR scope |
 | Migration auth failure | Deployment identity not SQL admin | Add to SQL admin group |
 | Migration network failure | Firewall blocked runner | Script adds temp rule; verify SQL Server Contributor |
