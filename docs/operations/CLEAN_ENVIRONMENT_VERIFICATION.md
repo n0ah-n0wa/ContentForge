@@ -1,7 +1,7 @@
 # Clean-environment verification report
 
 **Date:** 2026-09-05  
-**Commit verified (after fixes):** see repository `main` after this report’s companion commit  
+**Commit verified (after fixes):** `d7d7bc5`  
 **Method:** Fresh `git clone` into `ContentForge-clean-verify` (no prior `bin/`, `obj/`, or `node_modules`), then README/CI commands.
 
 ## Host baseline
