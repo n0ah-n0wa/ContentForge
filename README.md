@@ -261,9 +261,15 @@ Examples (login, content, public API): **[docs/api/README.md](./docs/api/README.
 | Authorization | Permission policies (e.g. `content.publish`, `user.read`) — UI and API both check; **API is authoritative** |
 | Frontend | Tokens in **sessionStorage**; refresh on 401; logout clears session caches |
 
-Password reset endpoints exist (`forgot-password`, `reset-password`); delivery channel depends on environment configuration (Development may log tokens — do not rely on email unless configured).
+Password reset endpoints exist (`forgot-password`, `reset-password`).
 
-Security model (Azure): [docs/operations/azure-security.md](./docs/operations/azure-security.md).  
+| Environment | Delivery |
+|-------------|----------|
+| Development / Testing | `PasswordReset:DeliveryMode=Logging` (token captured/logged; never use in Production) |
+| Production | **`DeliveryMode=Smtp` required** (`Host`, `FromAddress`, `PublicAppBaseUrl`) — API refuses to start otherwise |
+| Local prod Compose | MailHog SMTP (`mailhog:1025`, UI on host port `8025`) |
+
+Security model (Azure): [docs/operations/azure-security.md](./docs/operations/azure-security.md).
 Auth review: [docs/architecture/security-auth-review.md](./docs/architecture/security-auth-review.md).
 
 ---

@@ -175,6 +175,8 @@ jobs:
 
       - name: Validate Bicep templates
         run: |
+          chmod +x infra/azure/scripts/validate-azure-parameters.sh
+          infra/azure/scripts/validate-azure-parameters.sh
           bicep build infra/azure/bicep/main.bicep
           bicep build-params infra/azure/bicep/parameters/dev.bicepparam
           bicep build-params infra/azure/bicep/parameters/staging.bicepparam

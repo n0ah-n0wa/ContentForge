@@ -60,13 +60,13 @@ Complete these **before** the first successful workflow run:
 
 1. **Azure Container Registry** (shared across environments or per-env — document your choice)
 2. **Resource groups** — created manually or via first Bicep deploy (`rg-contentforge-staging`, `rg-contentforge-prod`)
-3. **Bicep parameter files** — replace placeholders in `infra/azure/bicep/parameters/*.bicepparam`:
-   - `azureAdAdminObjectId` / `azureAdAdminLogin` (SQL admin group)
-   - `containerRegistryUrl` and image repository paths matching your ACR
+3. **Bicep parameter files** — use real Azure AD SQL admin values (not Contoso / empty GUID). Template: `prod.example.bicepparam`. Staging/prod must set `acknowledgePublicDataPlaneRisks=true`. CI runs `validate-azure-parameters.sh`.
 4. **Initial infrastructure deploy** — run workflow manually with **Deploy infrastructure (Bicep)** enabled, or deploy Bicep locally once
 5. **Key Vault secret** — create `jwt-signing-key` after first infrastructure deploy ([azure-deployment.md](./azure-deployment.md#41-jwt-signing-key-key-vault))
 6. **SQL grants** — run `infra/azure/scripts/grant-api-sql-access.sql` for the API managed identity (runtime)
 7. **Deployment identity SQL access** — add the GitHub Actions app registration (or its group) to the Azure AD SQL admin group, **or** grant `db_ddladmin` to a dedicated migration identity used only by the pipeline
+8. **Deploy preflight** (after infra exists) — `infra/azure/scripts/deploy-preflight.sh` with `RESOURCE_GROUP`, `API_APP`, `WEB_APP`
+9. **Password reset SMTP** — configure Production App Settings for `PasswordReset__*` (SMTP); local prod Compose uses MailHog
 
 ---
 

@@ -63,6 +63,13 @@ services:
       Media__LocalRoot: /app/App_Data/media
       Media__PublicBaseUrl: /media-files
       Cors__AllowedOrigins__0: ${PUBLIC_ORIGIN:-http://localhost:8080}
+      PasswordReset__DeliveryMode: Smtp
+      PasswordReset__PublicAppBaseUrl: ${PUBLIC_ORIGIN:-http://localhost:8080}
+      PasswordReset__Smtp__Host: mailhog
+      PasswordReset__Smtp__Port: "1025"
+      PasswordReset__Smtp__EnableSsl: "false"
+      PasswordReset__Smtp__FromAddress: noreply@contentforge.local
+      PasswordReset__Smtp__FromDisplayName: ContentForge
     read_only: true
     tmpfs:
       - /tmp:size=64M
@@ -76,12 +83,23 @@ services:
     depends_on:
       postgres:
         condition: service_healthy
+      mailhog:
+        condition: service_started
     healthcheck:
       test: ["CMD-SHELL", "wget -qO- http://127.0.0.1:8080/health/ready >/dev/null 2>&1 || exit 1"]
       interval: 30s
       timeout: 5s
       start_period: 60s
       retries: 3
+    restart: unless-stopped
+
+  mailhog:
+    image: mailhog/mailhog:v1.0.1
+    expose:
+      - "1025"
+      - "8025"
+    ports:
+      - "${MAILHOG_UI_PORT:-8025}:8025"
     restart: unless-stopped
 
   web:

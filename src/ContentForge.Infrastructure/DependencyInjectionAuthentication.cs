@@ -59,6 +59,8 @@ internal static class DependencyInjectionAuthentication
         services.AddScoped<JwtTokenService>();
         services.AddScoped<RefreshTokenService>();
 
+        RegisterPasswordResetDelivery(services, configuration, environment);
+
         var jwtOptions = configuration.GetSection(JwtOptions.SectionName).Get<JwtOptions>()
             ?? throw new InvalidOperationException($"Configuration section '{JwtOptions.SectionName}' is missing.");
 
@@ -158,6 +160,60 @@ internal static class DependencyInjectionAuthentication
             throw new InvalidOperationException(
                 "JWT signing key appears to be a development placeholder. Configure a production secret.");
         }
+    }
+
+    private static void RegisterPasswordResetDelivery(
+        IServiceCollection services,
+        IConfiguration configuration,
+        IHostEnvironment? environment)
+    {
+        services.Configure<PasswordResetOptions>(configuration.GetSection(PasswordResetOptions.SectionName));
+        var options = configuration.GetSection(PasswordResetOptions.SectionName).Get<PasswordResetOptions>()
+            ?? new PasswordResetOptions();
+        var isNonProduction = IsNonProduction(configuration, environment);
+        var mode = options.DeliveryMode?.Trim() ?? "Logging";
+
+        if (string.Equals(mode, "Smtp", StringComparison.OrdinalIgnoreCase))
+        {
+            if (string.IsNullOrWhiteSpace(options.Smtp.Host)
+                || string.IsNullOrWhiteSpace(options.Smtp.FromAddress)
+                || string.IsNullOrWhiteSpace(options.PublicAppBaseUrl))
+            {
+                throw new InvalidOperationException(
+                    "PasswordReset DeliveryMode=Smtp requires Smtp:Host, Smtp:FromAddress, and PublicAppBaseUrl.");
+            }
+
+            services.AddSingleton<IPasswordResetNotifier, SmtpPasswordResetNotifier>();
+            return;
+        }
+
+        if (string.Equals(mode, "Logging", StringComparison.OrdinalIgnoreCase))
+        {
+            if (!isNonProduction)
+            {
+                throw new InvalidOperationException(
+                    "PasswordReset DeliveryMode=Logging is not allowed in Production. Configure DeliveryMode=Smtp.");
+            }
+
+            // Capturing notifier is used by integration tests; Development also logs via decorator below.
+            services.AddSingleton<CapturingPasswordResetNotifier>();
+            services.AddSingleton<IPasswordResetNotifier>(sp =>
+            {
+                var capture = sp.GetRequiredService<CapturingPasswordResetNotifier>();
+                if (environment?.IsEnvironment("Testing") == true)
+                {
+                    return capture;
+                }
+
+                return new CompositePasswordResetNotifier(
+                    capture,
+                    ActivatorUtilities.CreateInstance<LoggingPasswordResetNotifier>(sp));
+            });
+            return;
+        }
+
+        throw new InvalidOperationException(
+            $"Unsupported PasswordReset:DeliveryMode '{mode}'. Use 'Logging' or 'Smtp'.");
     }
 
     private static bool IsNonProduction(IConfiguration configuration, IHostEnvironment? environment)

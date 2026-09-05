@@ -91,4 +91,36 @@ This **destroys** local Postgres/media/Azurite volumes. It is not a production r
 | Operators | Test restore periodically before go-live; document RPO/RTO targets for the org |
 | Developers | Never delete production databases from app code; never run `database drop` in pipelines |
 
-SPECIFICATIONS.md §79 expects restore procedures to be documented and tested — this runbook is that documentation; schedule an actual restore drill in your subscription before relying on production.
+SPECIFICATIONS.md §79 expects restore procedures to be documented and tested — this runbook is that documentation. Execute the drill below before relying on production.
+
+---
+
+## Backup configuration verification (automated)
+
+When Azure CLI access is available:
+
+```bash
+RESOURCE_GROUP=rg-contentforge-staging \
+  ./infra/azure/scripts/verify-backup-configuration.sh
+
+RESOURCE_GROUP=rg-contentforge-prod ENVIRONMENT=prod \
+  ./infra/azure/scripts/verify-backup-configuration.sh
+```
+
+This checks SQL short-term retention (and LTR presence in prod) plus blob soft-delete/versioning flags.
+
+---
+
+## Disaster-recovery drill checklist
+
+Record evidence (date, operator, resource group, timestamps, screenshots/CLI output) in your ops ticket — do not commit secrets.
+
+1. **Config verify** — run `verify-backup-configuration.sh` for the environment.  
+2. **SQL PITR dry-run** — in Portal/CLI, create a restore to a **new** database name at T-15 minutes; do not cut over yet.  
+3. **Validate restored copy** — confirm schema + a known content row.  
+4. **Delete the restore copy** after validation (cost control).  
+5. **Blob soft-delete** — upload a test blob, soft-delete, undelete within retention.  
+6. **App rollback rehearsal** — identify previous ACR image tags from the last deploy job summary (no production traffic change required for a tabletop).  
+7. **Sign off** — store evidence with the change ticket.
+
+Until steps 1–6 have been executed at least once against a real subscription, treat recovery as **unproven**.

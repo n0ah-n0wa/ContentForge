@@ -50,6 +50,9 @@ param appInsightsSamplingPercentage int?
 @description('When true, blocks direct public access to the API App Service (staging/production default).')
 param restrictApiPublicAccess bool?
 
+@description('Required for staging/prod: acknowledge residual public SQL/storage/Key Vault endpoints until private endpoints exist.')
+param acknowledgePublicDataPlaneRisks bool = false
+
 // ---------------------------------------------------------------------------
 // Naming
 // ---------------------------------------------------------------------------
@@ -128,6 +131,14 @@ var enableKeyVaultPurgeProtection = env != 'dev'
 var enableSqlLongTermRetention = env == 'prod'
 var sqlShortTermRetentionDays = env == 'prod' ? 35 : 7
 var requireStorageInfrastructureEncryption = env == 'prod'
+
+// Reject placeholder SQL admin identities for staging/prod (H2). Dev may still use example files for compile-only workflows.
+var placeholderAdminObjectId = azureAdAdminObjectId == '00000000-0000-0000-0000-000000000000'
+var placeholderAdminLogin = contains(toLower(azureAdAdminLogin), 'contoso.com')
+assert env == 'dev' || (!placeholderAdminObjectId && !placeholderAdminLogin): 'azureAdAdminObjectId/Login must be real Azure AD values for staging/prod — see prod.example.bicepparam.'
+
+// Force conscious acceptance of residual public data-plane exposure (H5) outside dev.
+assert env == 'dev' || acknowledgePublicDataPlaneRisks: 'Set acknowledgePublicDataPlaneRisks=true after reviewing docs/operations/azure-security.md residual exposure table.'
 
 // Blocks direct browser access to the API URL; Web App proxy egress uses AzureCloud.
 var apiInboundRestrictions = resolvedRestrictApiPublicAccess ? [

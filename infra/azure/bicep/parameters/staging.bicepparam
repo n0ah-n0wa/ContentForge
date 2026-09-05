@@ -13,6 +13,9 @@ param containerRegistryUrl = 'contentforgeacr.azurecr.io'
 
 param allowedAdminIpAddresses = []
 
+// Explicit acceptance of residual public data-plane endpoints until private endpoints are adopted.
+param acknowledgePublicDataPlaneRisks = true
+
 // B2 Basic quota is often 0 on new subscriptions; B1 is sufficient for staging.
 param appServicePlanSku = {
   name: 'B1'

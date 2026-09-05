@@ -18,8 +18,8 @@ Authoritative contract: run the API and use Swagger, or inspect controllers unde
 | POST | `/api/v1/auth/refresh` | Anonymous | Body: `{ "refreshToken" }` |
 | POST | `/api/v1/auth/logout` | Bearer | Optional `{ "refreshToken" }` |
 | GET | `/api/v1/auth/me` | Bearer | Current user |
-| POST | `/api/v1/auth/forgot-password` | Anonymous | Rate limited |
-| POST | `/api/v1/auth/reset-password` | Anonymous | Email + reset token + new password |
+| POST | `/api/v1/auth/forgot-password` | Anonymous | Delivers reset token via configured notifier (Logging/Smtp); always 204 |
+| POST | `/api/v1/auth/reset-password` | Anonymous | Body: email, resetToken, newPassword |
 
 Send access tokens as:
 

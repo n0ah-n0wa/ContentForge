@@ -129,7 +129,7 @@ builder.Services.Configure<Microsoft.AspNetCore.Http.Features.FormOptions>(optio
 });
 
 builder.Services.AddContentForgeRateLimiting(builder.Configuration);
-builder.Services.AddContentForgeForwardedHeaders(builder.Environment);
+builder.Services.AddContentForgeForwardedHeaders(builder.Configuration, builder.Environment);
 
 var corsOrigins = builder.Configuration.GetSection("Cors:AllowedOrigins").Get<string[]>() ?? [];
 if (corsOrigins.Length > 0)

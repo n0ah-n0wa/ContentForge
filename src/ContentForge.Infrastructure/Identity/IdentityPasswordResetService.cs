@@ -8,7 +8,8 @@ using Microsoft.EntityFrameworkCore;
 
 internal sealed class IdentityPasswordResetService(
     UserManager<ContentForgeUser> userManager,
-    AppDbContext dbContext) : IPasswordResetService
+    AppDbContext dbContext,
+    IPasswordResetNotifier passwordResetNotifier) : IPasswordResetService
 {
     public async Task RequestPasswordResetAsync(string email, CancellationToken cancellationToken = default)
     {
@@ -22,7 +23,8 @@ internal sealed class IdentityPasswordResetService(
             return;
         }
 
-        _ = await userManager.GeneratePasswordResetTokenAsync(user).ConfigureAwait(false);
+        var token = await userManager.GeneratePasswordResetTokenAsync(user).ConfigureAwait(false);
+        await passwordResetNotifier.NotifyAsync(user.Email!, token, cancellationToken).ConfigureAwait(false);
     }
 
     public async Task ResetPasswordAsync(

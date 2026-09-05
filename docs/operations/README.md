@@ -16,6 +16,8 @@ Runbooks and deployment guides for ContentForge. All procedures below match scri
 | [database-migrations.md](./database-migrations.md) | EF migrations (PostgreSQL + Azure SQL) |
 | [docker.md](./docker.md) | Container deployment |
 | [backups-and-recovery.md](./backups-and-recovery.md) | Backups, PITR, media/Key Vault recovery |
+| [PRODUCTION_READINESS_REPORT.md](./PRODUCTION_READINESS_REPORT.md) | Independent production-readiness review (**does not certify readiness**) |
+| [SPECIFICATION_COMPLIANCE.md](./SPECIFICATION_COMPLIANCE.md) | Line-by-line SPEC compliance checklist (IMPLEMENTED / PARTIAL / NOT) |
 
 ## Quick links
 

@@ -53,16 +53,16 @@ Internet
 | Kudu/SCM open on production | SCM default **Deny** + AzureCloud allow (prod) |
 | Remote debugging enabled | Disabled on all App Service apps |
 
-### Residual exposure (documented, not yet eliminated)
+## Residual exposure (acknowledged for staging/prod)
 
 | Exposure | Why it remains | Mitigation |
 |----------|----------------|------------|
-| SQL public endpoint + `AllowAzureServices` | App Service MI connectivity without VNet/private endpoint | Azure AD-only authentication; no SQL logins; audit logging |
-| AzureCloud service tag on API | Web App outbound IPs are not static on Basic tier | Narrow to Front Door ID header or private endpoints in hardened topology |
+| SQL public endpoint + `AllowAzureServices` | App Service MI connectivity without VNet/private endpoint | Azure AD-only authentication; no SQL logins; audit logging; **Bicep requires `acknowledgePublicDataPlaneRisks=true`** |
+| AzureCloud service tag on API | Web App outbound IPs are not static on Basic tier | Narrow to Front Door ID header or private endpoints in hardened topology; acknowledgment required in parameters |
 | Web App public | Users must reach the admin UI | HTTPS-only; consider WAF (Front Door) in production |
 | App Insights ingestion public | App Service must send telemetry | RBAC on query side; sampling in prod |
 
-Follow-on hardening: **private endpoints**, **VNet integration**, and **Azure Front Door + WAF** (see [infra/azure/README.md](../../infra/azure/README.md)).
+Deployments to staging/prod **fail** unless `acknowledgePublicDataPlaneRisks = true` is set in the environment `.bicepparam` after reviewing this table. Follow-on hardening: **private endpoints**, **VNet integration**, and **Azure Front Door + WAF**.
 
 ## Identity and access (managed identities)
 

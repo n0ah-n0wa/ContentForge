@@ -17,6 +17,7 @@
   </ItemGroup>
 
   <ItemGroup>
+    <ProjectReference Include="..\..\src\ContentForge.Api\ContentForge.Api.csproj" />
     <ProjectReference Include="..\..\src\ContentForge.Application\ContentForge.Application.csproj" />
     <ProjectReference Include="..\..\src\ContentForge.Domain\ContentForge.Domain.csproj" />
     <ProjectReference Include="..\..\src\ContentForge.Infrastructure\ContentForge.Infrastructure.csproj" />

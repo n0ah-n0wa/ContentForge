@@ -126,6 +126,42 @@ public sealed class AuthIntegrationTests : IAsyncLifetime
     }
 
     [Fact]
+    public async Task ForgotPassword_DeliversToken_AndResetAllowsLogin()
+    {
+        var newPassword = "ViewerPassword456!";
+
+        var forgotResponse = await _client.PostAsJsonAsync(
+            "/api/v1/auth/forgot-password",
+            new ForgotPasswordRequest(AuthTestConstants.ViewerEmail));
+        forgotResponse.StatusCode.Should().Be(HttpStatusCode.NoContent);
+
+        var notifier = _factory.Services.GetRequiredService<ContentForge.Infrastructure.Identity.CapturingPasswordResetNotifier>();
+        notifier.TryGetToken(AuthTestConstants.ViewerEmail, out var token).Should().BeTrue();
+        token.Should().NotBeNullOrWhiteSpace();
+
+        var resetResponse = await _client.PostAsJsonAsync(
+            "/api/v1/auth/reset-password",
+            new ResetPasswordRequest(AuthTestConstants.ViewerEmail, token!, newPassword));
+        resetResponse.StatusCode.Should().Be(HttpStatusCode.NoContent);
+
+        var login = await LoginAsync(AuthTestConstants.ViewerEmail, newPassword);
+        login.AccessToken.Should().NotBeNullOrWhiteSpace();
+        login.Email.Should().Be(AuthTestConstants.ViewerEmail);
+    }
+
+    [Fact]
+    public async Task ForgotPassword_UnknownEmail_ReturnsNoContentWithoutToken()
+    {
+        var response = await _client.PostAsJsonAsync(
+            "/api/v1/auth/forgot-password",
+            new ForgotPasswordRequest("missing@contentforge.test"));
+        response.StatusCode.Should().Be(HttpStatusCode.NoContent);
+
+        var notifier = _factory.Services.GetRequiredService<ContentForge.Infrastructure.Identity.CapturingPasswordResetNotifier>();
+        notifier.TryGetToken("missing@contentforge.test", out _).Should().BeFalse();
+    }
+
+    [Fact]
     public async Task Refresh_WithValidRefreshToken_ReturnsNewAccessToken()
     {
         var login = await LoginAsync(AuthTestConstants.AdminEmail, AuthTestConstants.AdminPassword);

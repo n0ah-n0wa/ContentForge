@@ -108,6 +108,9 @@ infra/azure/
     ├── grant-api-sql-migration.sql
     ├── run-azure-sql-migrations.sh
     ├── validate-migrations.sh
+    ├── validate-azure-parameters.sh
+    ├── verify-backup-configuration.sh
+    ├── deploy-preflight.sh
     ├── destructive-migration-allowlist.txt
     └── staging-smoke-test.ps1
 ```
