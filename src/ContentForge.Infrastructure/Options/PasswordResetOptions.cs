@@ -1,14 +1,14 @@
 namespace ContentForge.Infrastructure.Options;
 
 /// <summary>
-/// Password reset delivery settings. Production requires SMTP; Development/Testing may use logging capture.
+/// Password reset delivery settings. Production requires SMTP; Development/Testing/Staging may use logging capture.
 /// </summary>
 public sealed class PasswordResetOptions
 {
     public const string SectionName = "PasswordReset";
 
     /// <summary>
-    /// <c>Logging</c> (non-production only) or <c>Smtp</c> (required in Production).
+    /// <c>Logging</c> (non-Production environments) or <c>Smtp</c> (required in Production).
     /// </summary>
     public string DeliveryMode { get; set; } = "Logging";
 

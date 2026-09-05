@@ -170,7 +170,6 @@ internal static class DependencyInjectionAuthentication
         services.Configure<PasswordResetOptions>(configuration.GetSection(PasswordResetOptions.SectionName));
         var options = configuration.GetSection(PasswordResetOptions.SectionName).Get<PasswordResetOptions>()
             ?? new PasswordResetOptions();
-        var isNonProduction = IsNonProduction(configuration, environment);
         var mode = options.DeliveryMode?.Trim() ?? "Logging";
 
         if (string.Equals(mode, "Smtp", StringComparison.OrdinalIgnoreCase))
@@ -189,7 +188,10 @@ internal static class DependencyInjectionAuthentication
 
         if (string.Equals(mode, "Logging", StringComparison.OrdinalIgnoreCase))
         {
-            if (!isNonProduction)
+            // Only Environments.Production forbids Logging. Staging may log tokens for ops
+            // until SMTP is configured; IsNonProduction is intentionally narrower (Dev/Testing)
+            // so Staging still enforces production-grade JWT rules.
+            if (IsProductionEnvironment(configuration, environment))
             {
                 throw new InvalidOperationException(
                     "PasswordReset DeliveryMode=Logging is not allowed in Production. Configure DeliveryMode=Smtp.");
@@ -224,12 +226,26 @@ internal static class DependencyInjectionAuthentication
                 || environment.IsEnvironment("Testing");
         }
 
-        var environmentName = configuration[HostDefaults.EnvironmentKey]
-            ?? configuration["ASPNETCORE_ENVIRONMENT"]
-            ?? Environment.GetEnvironmentVariable("ASPNETCORE_ENVIRONMENT")
-            ?? Environments.Production;
+        var environmentName = ResolveEnvironmentName(configuration);
 
         return environmentName.Equals(Environments.Development, StringComparison.OrdinalIgnoreCase)
             || environmentName.Equals("Testing", StringComparison.OrdinalIgnoreCase);
     }
+
+    private static bool IsProductionEnvironment(IConfiguration configuration, IHostEnvironment? environment)
+    {
+        if (environment is not null)
+        {
+            return environment.IsProduction();
+        }
+
+        return ResolveEnvironmentName(configuration)
+            .Equals(Environments.Production, StringComparison.OrdinalIgnoreCase);
+    }
+
+    private static string ResolveEnvironmentName(IConfiguration configuration) =>
+        configuration[HostDefaults.EnvironmentKey]
+        ?? configuration["ASPNETCORE_ENVIRONMENT"]
+        ?? Environment.GetEnvironmentVariable("ASPNETCORE_ENVIRONMENT")
+        ?? Environments.Production;
 }

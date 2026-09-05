@@ -66,8 +66,8 @@ This report **does not claim production readiness**.
 | | |
 |---|---|
 | **Root cause** | `IdentityPasswordResetService` generated a token and discarded it; no delivery port |
-| **Fix** | `IPasswordResetNotifier` + Logging (non-prod) / Smtp (Production required) / Capturing (tests); Production refuses `DeliveryMode=Logging` |
-| **Tests** | `AuthIntegrationTests.ForgotPassword_DeliversToken_AndResetAllowsLogin`; `PasswordResetDeliveryRegistrationTests.Production_RejectsLoggingDeliveryMode` |
+| **Fix** | `IPasswordResetNotifier` + Logging (Dev/Testing/Staging) / Smtp (Production required) / Capturing (tests); Production refuses `DeliveryMode=Logging` |
+| **Tests** | `AuthIntegrationTests.ForgotPassword_DeliversToken_AndResetAllowsLogin`; `PasswordResetDeliveryRegistrationTests` (Production reject + Staging allow) |
 | **Docs** | README auth section; `appsettings*.json`; prod Compose MailHog |
 
 ### H2 — Production Bicep placeholders — **RESOLVED**

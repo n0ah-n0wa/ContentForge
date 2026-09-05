@@ -615,10 +615,16 @@ jobs:
         run: |
           WEB_HOST="${{ needs.deploy.outputs.web_host }}"
           for i in $(seq 1 30); do
-            if curl -fsS "https://${WEB_HOST}/health/ready" | grep -qi '"status"[[:space:]]*:[[:space:]]*"Healthy"'; then
+            BODY_FILE="$(mktemp)"
+            CODE=$(curl -sS -o "$BODY_FILE" -w "%{http_code}" "https://${WEB_HOST}/health/ready" || echo "000")
+            if [ "$CODE" = "200" ] && grep -qi '"status"[[:space:]]*:[[:space:]]*"Healthy"' "$BODY_FILE"; then
               echo "API /health/ready succeeded (database + storage)"
+              cat "$BODY_FILE"
               exit 0
             fi
+            echo "attempt $i: HTTP $CODE"
+            head -c 1024 "$BODY_FILE" || true
+            echo
             sleep 10
           done
           echo "API readiness check failed for https://${WEB_HOST}/health/ready" >&2
