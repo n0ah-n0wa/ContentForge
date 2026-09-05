@@ -48,6 +48,28 @@ public sealed class MediaContentInspectorTests
     }
 
     [Fact]
+    public void EnsureMatchesDeclaredType_RejectsSvgWithEventHandler()
+    {
+        var svg = "<svg xmlns=\"http://www.w3.org/2000/svg\" onload=\"alert(1)\"><circle cx=\"5\" cy=\"5\" r=\"4\"/></svg>"u8.ToArray();
+
+        var action = () => MediaContentInspector.EnsureMatchesDeclaredType(svg, ".svg");
+
+        action.Should().Throw<DomainValidationException>()
+            .Which.Message.Should().Contain("script");
+    }
+
+    [Fact]
+    public void EnsureMatchesDeclaredType_RejectsSvgWithForeignObject()
+    {
+        var svg =
+            "<svg xmlns=\"http://www.w3.org/2000/svg\"><foreignObject><body xmlns=\"http://www.w3.org/1999/xhtml\">x</body></foreignObject></svg>"u8.ToArray();
+
+        var action = () => MediaContentInspector.EnsureMatchesDeclaredType(svg, ".svg");
+
+        action.Should().Throw<DomainValidationException>();
+    }
+
+    [Fact]
     public void EnsureMatchesDeclaredType_AcceptsSafeSvg()
     {
         var svg = "<svg xmlns=\"http://www.w3.org/2000/svg\"><circle cx=\"5\" cy=\"5\" r=\"4\"/></svg>"u8.ToArray();

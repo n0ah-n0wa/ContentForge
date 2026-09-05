@@ -157,7 +157,7 @@ function applyRichTextCommand(command: string): void {
 
 watch(stringValue, (value) => {
   if (richTextEditor.value && richTextEditor.value.innerHTML !== value) {
-    richTextEditor.value.innerHTML = value;
+    richTextEditor.value.innerHTML = sanitizeRichText(value);
   }
 });
 

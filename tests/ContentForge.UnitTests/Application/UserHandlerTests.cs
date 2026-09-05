@@ -56,7 +56,8 @@ public sealed class UserHandlerTests
             ApplicationTestData.CreateCurrentUser(ApplicationTestData.EditorUserId, ApplicationTestData.AdministratorRole),
             ApplicationTestData.CreateClock(),
             RepositorySubstituteExtensions.CreateAuditService(),
-            Substitute.For<ISessionInvalidationService>());
+            Substitute.For<ISessionInvalidationService>(),
+            new DisableUserCommandValidator());
 
         var result = await handler.HandleAsync(new DisableUserCommand(userId.Value), CancellationToken.None);
 
@@ -122,11 +123,29 @@ public sealed class UserHandlerTests
             RepositorySubstituteExtensions.CreateUnitOfWork(),
             ApplicationTestData.CreateCurrentUser(ApplicationTestData.EditorUserId, ApplicationTestData.AdministratorRole),
             ApplicationTestData.CreateClock(),
-            RepositorySubstituteExtensions.CreateAuditService());
+            RepositorySubstituteExtensions.CreateAuditService(),
+            new EnableUserCommandValidator());
 
         var result = await handler.HandleAsync(new EnableUserCommand(userId.Value), CancellationToken.None);
 
         result.IsActive.Should().BeTrue();
         await repository.Received(1).UpdateAsync(Arg.Is<ContentForge.Application.Users.Models.UserAccount>(account => account.IsActive), Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task DisableUserCommandHandler_EmptyUserId_ThrowsValidationException()
+    {
+        var handler = new DisableUserCommandHandler(
+            Substitute.For<IUserRepository>(),
+            RepositorySubstituteExtensions.CreateUnitOfWork(),
+            ApplicationTestData.CreateCurrentUser(ApplicationTestData.EditorUserId, ApplicationTestData.AdministratorRole),
+            ApplicationTestData.CreateClock(),
+            RepositorySubstituteExtensions.CreateAuditService(),
+            Substitute.For<ISessionInvalidationService>(),
+            new DisableUserCommandValidator());
+
+        var action = () => handler.HandleAsync(new DisableUserCommand(Guid.Empty), CancellationToken.None);
+
+        await action.Should().ThrowAsync<ApplicationValidationException>();
     }
 }

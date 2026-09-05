@@ -23,6 +23,10 @@ export function setRefreshHandler(handler: RefreshHandler): void {
   refreshHandler = handler;
 }
 
+export function getRefreshHandler(): RefreshHandler {
+  return refreshHandler;
+}
+
 export function getAccessToken(): string | null {
   return accessTokenProvider();
 }

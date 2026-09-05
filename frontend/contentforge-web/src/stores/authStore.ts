@@ -1,5 +1,7 @@
 import * as authApi from '@/api/auth';
 import { ApiError, getValidationMessages, isValidationProblem } from '@/api/errors';
+import { clearMediaAssetCache } from '@/composables/useMediaAssetCache';
+import { clearRelationOptionsCache } from '@/composables/useRelationOptions';
 import type { AuthenticatedUser, LoginResult } from '@/types/auth';
 import { extractPermissionsFromToken, isAccessTokenExpired } from '@/utils/jwt';
 import { clearStoredTokens, readStoredTokens, writeStoredTokens } from '@/utils/tokenStorage';
@@ -52,6 +54,8 @@ export const useAuthStore = defineStore('auth', () => {
     accessTokenExpiresAt.value = null;
     sessionStatus.value = reason;
     clearStoredTokens();
+    clearMediaAssetCache();
+    clearRelationOptionsCache();
   }
 
   async function initialize(): Promise<void> {
@@ -168,9 +172,6 @@ export const useAuthStore = defineStore('auth', () => {
   return {
     user,
     permissions,
-    accessToken,
-    refreshToken,
-    accessTokenExpiresAt,
     isInitialized,
     isAuthenticating,
     sessionStatus,

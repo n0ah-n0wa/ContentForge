@@ -68,7 +68,7 @@ const router = createRouter({
           path: 'content/:contentTypeSlug/:entryId',
           name: 'content-entry-edit',
           component: () => import('@/views/content-entries/ContentEntryEditView.vue'),
-          meta: { title: 'Edit entry', permissions: ['content.read'] },
+          meta: { title: 'Edit entry', permissions: ['content.update'] },
         },
         {
           path: 'content-types',
@@ -86,7 +86,7 @@ const router = createRouter({
           path: 'content-types/:id',
           name: 'content-type-edit',
           component: () => import('@/views/content-types/ContentTypeEditView.vue'),
-          meta: { title: 'Edit content type', permissions: [...ROUTE_PERMISSIONS.contentTypes] },
+          meta: { title: 'Edit content type', permissions: ['contentType.update'] },
         },
         {
           path: 'media',
@@ -110,7 +110,7 @@ const router = createRouter({
           path: 'users/:id',
           name: 'user-edit',
           component: () => import('@/views/users/UserEditView.vue'),
-          meta: { title: 'Manage user', permissions: [...ROUTE_PERMISSIONS.users] },
+          meta: { title: 'Manage user', permissions: ['user.update'] },
         },
         {
           path: 'roles',

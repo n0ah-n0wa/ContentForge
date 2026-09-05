@@ -1,5 +1,5 @@
-import { apiRequest, getAccessToken } from '@/api/client';
-import { ensureApiSession } from '@/api/authSession';
+import { apiRequest, getAccessToken, getRefreshHandler } from '@/api/client';
+import { ensureApiSession, notifyUnauthorizedSession } from '@/api/authSession';
 import { ApiError } from '@/api/errors';
 import { env } from '@/config/env';
 import type { PaginatedResponse } from '@/types/api';
@@ -53,8 +53,18 @@ export async function uploadMedia(
   metadata: UploadMediaMetadata = {},
   onProgress?: (percent: number) => void,
 ): Promise<MediaAsset> {
+  return uploadMediaInternal(file, metadata, onProgress, false);
+}
+
+async function uploadMediaInternal(
+  file: File,
+  metadata: UploadMediaMetadata,
+  onProgress: ((percent: number) => void) | undefined,
+  hasRetried: boolean,
+): Promise<MediaAsset> {
   const sessionIsValid = await ensureApiSession();
   if (!sessionIsValid) {
+    notifyUnauthorizedSession('expired');
     throw await ApiError.fromResponse(
       new Response(
         JSON.stringify({
@@ -96,6 +106,26 @@ export async function uploadMedia(
     xhr.onload = () => {
       if (xhr.status >= 200 && xhr.status < 300) {
         resolve(JSON.parse(xhr.responseText) as MediaAsset);
+        return;
+      }
+
+      if (xhr.status === 401 && !hasRetried) {
+        void getRefreshHandler()()
+          .then((refreshed) => {
+            if (refreshed) {
+              resolve(uploadMediaInternal(file, metadata, onProgress, true));
+              return;
+            }
+
+            notifyUnauthorizedSession('invalid');
+            return ApiError.fromResponse(
+              new Response(xhr.responseText, {
+                status: xhr.status,
+                headers: { 'Content-Type': 'application/json' },
+              }),
+            ).then(reject);
+          })
+          .catch(reject);
         return;
       }
 

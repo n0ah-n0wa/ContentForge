@@ -11,6 +11,9 @@ export function getCachedMediaAsset(id: string): Promise<MediaAsset> {
 
   const request = getMedia(id);
   cache.set(id, request);
+  void request.catch(() => {
+    cache.delete(id);
+  });
   return request;
 }
 

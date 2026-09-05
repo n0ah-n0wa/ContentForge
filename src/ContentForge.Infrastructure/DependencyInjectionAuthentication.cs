@@ -122,6 +122,26 @@ internal static class DependencyInjectionAuthentication
 
     private static void ValidateJwtOptions(JwtOptions jwtOptions, bool isNonProduction)
     {
+        if (string.IsNullOrWhiteSpace(jwtOptions.Issuer))
+        {
+            throw new InvalidOperationException("JWT issuer must be configured.");
+        }
+
+        if (string.IsNullOrWhiteSpace(jwtOptions.Audience))
+        {
+            throw new InvalidOperationException("JWT audience must be configured.");
+        }
+
+        if (jwtOptions.AccessTokenLifetimeMinutes <= 0)
+        {
+            throw new InvalidOperationException("JWT access token lifetime must be greater than zero minutes.");
+        }
+
+        if (jwtOptions.RefreshTokenLifetimeDays <= 0)
+        {
+            throw new InvalidOperationException("JWT refresh token lifetime must be greater than zero days.");
+        }
+
         if (string.IsNullOrWhiteSpace(jwtOptions.SigningKey) || jwtOptions.SigningKey.Length < 32)
         {
             throw new InvalidOperationException("JWT signing key must be at least 32 characters.");

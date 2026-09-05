@@ -5,6 +5,7 @@ import AppAlert from '@/components/common/AppAlert.vue';
 import AppButton from '@/components/common/AppButton.vue';
 import { useApiErrorHandling } from '@/composables/useApiErrorHandling';
 import { describeAuthError, useAuthStore } from '@/stores/authStore';
+import { resolveSafeInternalPath } from '@/utils/navigationSafety';
 
 const authStore = useAuthStore();
 const router = useRouter();
@@ -37,7 +38,7 @@ async function onSubmit(): Promise<void> {
 
   try {
     await authStore.login(form.email.trim(), form.password);
-    const redirect = typeof route.query.redirect === 'string' ? route.query.redirect : '/dashboard';
+    const redirect = resolveSafeInternalPath(route.query.redirect);
     await router.replace(redirect);
   } catch (error) {
     errorMessage.value = describeAuthError(error);

@@ -22,7 +22,7 @@ test.describe('Authorization', () => {
     await expect(contentEntryPage.lifecycleButton('Submit for review')).toHaveCount(0);
   });
 
-  test('viewer cannot edit', async ({ page, adminApi, cleanup, contentEntryPage }) => {
+  test('viewer cannot open the edit route', async ({ page, adminApi, cleanup }) => {
     const contentType = await seedContentType(adminApi, cleanup);
     const viewer = await seedUser(adminApi, cleanup, 'Viewer');
     const author = await seedUser(adminApi, cleanup, 'Author');
@@ -35,10 +35,10 @@ test.describe('Authorization', () => {
     );
 
     await loginAs(page, viewer.email, viewer.password);
-    await contentEntryPage.gotoEdit(contentType.slug, entry.id);
-    await expect(contentEntryPage.saveDraftButton()).toBeDisabled();
-    await expect(contentEntryPage.titleInput()).toBeDisabled();
-    await expect(contentEntryPage.lifecycleButton('Submit for review')).toHaveCount(0);
+    // Do not use ContentEntryPage.gotoEdit — it waits for edit UI that viewers never see.
+    await page.goto(`/content/${contentType.slug}/${entry.id}`);
+    await expect(page).toHaveURL(/\/access-denied/);
+    await expect(page.getByRole('heading', { name: 'Access denied', level: 2 })).toBeVisible();
   });
 
   test('editor can publish', async ({ page, adminApi, cleanup, contentEntryPage }) => {

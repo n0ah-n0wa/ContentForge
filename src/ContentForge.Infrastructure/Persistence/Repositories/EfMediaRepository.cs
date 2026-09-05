@@ -22,6 +22,11 @@ internal sealed class EfMediaRepository(AppDbContext dbContext) : IMediaReposito
         return entity is null ? null : MediaAssetMapper.ToDomain(entity);
     }
 
+    public Task<bool> ExistsActiveByStorageKeyAsync(string storageKey, CancellationToken cancellationToken = default) =>
+        dbContext.MediaAssets
+            .AsNoTracking()
+            .AnyAsync(media => media.StorageKey == storageKey && !media.IsDeleted, cancellationToken);
+
     public async Task<PaginatedResult<MediaAsset>> ListAsync(
         MediaListCriteria criteria,
         CancellationToken cancellationToken = default)

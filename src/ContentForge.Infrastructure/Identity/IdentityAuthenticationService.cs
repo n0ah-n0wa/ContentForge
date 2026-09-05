@@ -112,6 +112,24 @@ internal sealed class IdentityAuthenticationService(
             throw new AuthenticationFailedException();
         }
 
+        await using var transaction = await dbContext.Database.BeginTransactionAsync(cancellationToken)
+            .ConfigureAwait(false);
+
+        // Atomic claim: only one concurrent refresh can revoke the same active token.
+        var now = timeProvider.GetUtcNow();
+        var claimed = await dbContext.RefreshTokens
+            .Where(token => token.Id == existingToken.Id && token.RevokedAt == null)
+            .ExecuteUpdateAsync(
+                setters => setters.SetProperty(token => token.RevokedAt, now),
+                cancellationToken)
+            .ConfigureAwait(false);
+
+        if (claimed != 1)
+        {
+            await transaction.RollbackAsync(cancellationToken).ConfigureAwait(false);
+            throw new AuthenticationFailedException();
+        }
+
         var role = ResolveRole(user);
         var (accessToken, accessTokenExpiresAt) = jwtTokenService.CreateAccessToken(user, role);
         var (refreshToken, refreshTokenExpiresAt) = await refreshTokenService.IssueAsync(
@@ -119,12 +137,17 @@ internal sealed class IdentityAuthenticationService(
             jwtOptions.Value.RefreshTokenLifetimeDays,
             cancellationToken).ConfigureAwait(false);
 
-        await refreshTokenService.RevokeAsync(
-                existingToken,
-                JwtTokenService.HashToken(refreshToken),
+        await dbContext.RefreshTokens
+            .Where(token => token.Id == existingToken.Id)
+            .ExecuteUpdateAsync(
+                setters => setters.SetProperty(
+                    token => token.ReplacedByTokenHash,
+                    JwtTokenService.HashToken(refreshToken)),
                 cancellationToken)
             .ConfigureAwait(false);
+
         await dbContext.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
+        await transaction.CommitAsync(cancellationToken).ConfigureAwait(false);
 
         return new AuthenticationResult(
             UserId.From(user.Id),

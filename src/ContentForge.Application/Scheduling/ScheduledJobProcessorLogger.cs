@@ -33,4 +33,16 @@ internal static partial class ScheduledJobProcessorLogger
         Level = LogLevel.Information,
         Message = "Skipping scheduled unpublish for content entry {ContentEntryId} because it is already unpublished.")]
     public static partial void SkippingUnpublishAlreadyUnpublished(ILogger logger, Guid contentEntryId);
+
+    [LoggerMessage(
+        EventId = 2005,
+        Level = LogLevel.Warning,
+        Message = "Skipping scheduled publish for content entry {ContentEntryId} because no publish schedule is set.")]
+    public static partial void SkippingPublishNoSchedule(ILogger logger, Guid contentEntryId);
+
+    [LoggerMessage(
+        EventId = 2006,
+        Level = LogLevel.Warning,
+        Message = "Skipping scheduled unpublish for content entry {ContentEntryId} because no unpublish schedule is set.")]
+    public static partial void SkippingUnpublishNoSchedule(ILogger logger, Guid contentEntryId);
 }

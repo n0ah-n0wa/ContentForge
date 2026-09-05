@@ -228,11 +228,20 @@ public sealed class DeleteContentTypeCommandHandler
 
         if (hasEntries && command.ConfirmedSafeDeletion)
         {
-            await _contentEntryRepository.DeleteAllByContentTypeIdAsync(contentTypeId, cancellationToken);
+            await _unitOfWork.ExecuteInTransactionAsync(
+                async ct =>
+                {
+                    await _contentEntryRepository.DeleteAllByContentTypeIdAsync(contentTypeId, ct);
+                    await _repository.DeleteAsync(contentType, ct);
+                    await _unitOfWork.SaveChangesAsync(ct);
+                },
+                cancellationToken);
         }
-
-        await _repository.DeleteAsync(contentType, cancellationToken);
-        await _unitOfWork.SaveChangesAsync(cancellationToken);
+        else
+        {
+            await _repository.DeleteAsync(contentType, cancellationToken);
+            await _unitOfWork.SaveChangesAsync(cancellationToken);
+        }
 
         await _cacheInvalidator.InvalidateContentTypeAsync(contentType.Id, cancellationToken).ConfigureAwait(false);
     }

@@ -136,6 +136,36 @@ public sealed class MediaApiIntegrationTests : IAsyncLifetime
     }
 
     [Fact]
+    public async Task GetMediaFile_WhenSoftDeletedButBlobRemains_ReturnsNotFound()
+    {
+        var token = await ApiTestHelper.LoginAsync(
+            _client,
+            AuthTestConstants.EditorEmail,
+            AuthTestConstants.EditorPassword);
+
+        var payload = "deleted-media-bytes"u8.ToArray();
+        var uploadResponse = await UploadAsync(token, "deleted.txt", "text/plain", payload);
+        uploadResponse.StatusCode.Should().Be(HttpStatusCode.Created);
+        var asset = await uploadResponse.Content.ReadFromJsonAsync<MediaAssetDto>();
+
+        await using (var scope = _factory.Services.CreateAsyncScope())
+        {
+            var dbContext = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+            var entity = await dbContext.MediaAssets.SingleAsync(media => media.Id == asset!.Id);
+            entity.IsDeleted = true;
+            await dbContext.SaveChangesAsync();
+
+            var binaryPath = Path.Combine(
+                _factory.MediaRoot,
+                entity.StorageKey.Replace('/', Path.DirectorySeparatorChar));
+            File.Exists(binaryPath).Should().BeTrue("blob must remain so the DB gate is under test");
+        }
+
+        var afterDelete = await _client.GetAsync(asset!.Url);
+        afterDelete.StatusCode.Should().Be(HttpStatusCode.NotFound);
+    }
+
+    [Fact]
     public async Task UploadMedia_WithPathTraversalFileName_Returns422()
     {
         var token = await ApiTestHelper.LoginAsync(

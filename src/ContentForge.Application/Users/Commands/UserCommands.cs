@@ -167,6 +167,14 @@ public sealed class UpdateUserCommandHandler
 
 public sealed record DisableUserCommand(Guid UserId);
 
+public sealed class DisableUserCommandValidator : AbstractValidator<DisableUserCommand>
+{
+    public DisableUserCommandValidator()
+    {
+        RuleFor(command => command.UserId).NotEmpty();
+    }
+}
+
 public sealed class DisableUserCommandHandler
 {
     private readonly IUserRepository _repository;
@@ -175,6 +183,7 @@ public sealed class DisableUserCommandHandler
     private readonly IDateTimeProvider _clock;
     private readonly IAuditService _auditService;
     private readonly ISessionInvalidationService _sessionInvalidation;
+    private readonly IValidator<DisableUserCommand> _validator;
 
     public DisableUserCommandHandler(
         IUserRepository repository,
@@ -182,7 +191,8 @@ public sealed class DisableUserCommandHandler
         ICurrentUserService currentUser,
         IDateTimeProvider clock,
         IAuditService auditService,
-        ISessionInvalidationService sessionInvalidation)
+        ISessionInvalidationService sessionInvalidation,
+        IValidator<DisableUserCommand> validator)
     {
         _repository = repository;
         _unitOfWork = unitOfWork;
@@ -190,10 +200,13 @@ public sealed class DisableUserCommandHandler
         _clock = clock;
         _auditService = auditService;
         _sessionInvalidation = sessionInvalidation;
+        _validator = validator;
     }
 
     public async Task<UserDto> HandleAsync(DisableUserCommand command, CancellationToken cancellationToken)
     {
+        await CommandValidator.EnsureValidAsync(_validator, command, cancellationToken);
+
         var (actorId, role) = ApplicationGuard.RequireAuthenticatedUser(_currentUser);
         ApplicationGuard.EnsurePermission(role, Permissions.UserDisable);
 
@@ -223,6 +236,14 @@ public sealed class DisableUserCommandHandler
 
 public sealed record EnableUserCommand(Guid UserId);
 
+public sealed class EnableUserCommandValidator : AbstractValidator<EnableUserCommand>
+{
+    public EnableUserCommandValidator()
+    {
+        RuleFor(command => command.UserId).NotEmpty();
+    }
+}
+
 public sealed class EnableUserCommandHandler
 {
     private readonly IUserRepository _repository;
@@ -230,23 +251,28 @@ public sealed class EnableUserCommandHandler
     private readonly ICurrentUserService _currentUser;
     private readonly IDateTimeProvider _clock;
     private readonly IAuditService _auditService;
+    private readonly IValidator<EnableUserCommand> _validator;
 
     public EnableUserCommandHandler(
         IUserRepository repository,
         IUnitOfWork unitOfWork,
         ICurrentUserService currentUser,
         IDateTimeProvider clock,
-        IAuditService auditService)
+        IAuditService auditService,
+        IValidator<EnableUserCommand> validator)
     {
         _repository = repository;
         _unitOfWork = unitOfWork;
         _currentUser = currentUser;
         _clock = clock;
         _auditService = auditService;
+        _validator = validator;
     }
 
     public async Task<UserDto> HandleAsync(EnableUserCommand command, CancellationToken cancellationToken)
     {
+        await CommandValidator.EnsureValidAsync(_validator, command, cancellationToken);
+
         var (actorId, role) = ApplicationGuard.RequireAuthenticatedUser(_currentUser);
         ApplicationGuard.EnsurePermission(role, Permissions.UserUpdate);
 

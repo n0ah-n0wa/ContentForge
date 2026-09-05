@@ -18,6 +18,13 @@ describe('richTextSanitizer', () => {
     expect(clean).not.toContain('javascript:');
   });
 
+  it('blocks protocol-relative hrefs', () => {
+    const dirty = '<a href="//evil.example/path">Click</a>';
+    const clean = sanitizeRichText(dirty);
+
+    expect(clean).not.toContain('//evil.example');
+  });
+
   it('extracts plain text from sanitized html', () => {
     expect(richTextToPlainText('<p><strong>Title</strong></p>')).toBe('Title');
   });

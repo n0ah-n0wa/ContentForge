@@ -95,15 +95,70 @@ public static class MediaContentInspector
     private static void EnsureSafeSvg(ReadOnlySpan<byte> content)
     {
         var text = Encoding.UTF8.GetString(content);
-        if (text.Contains("<script", StringComparison.OrdinalIgnoreCase)
-            || text.Contains("javascript:", StringComparison.OrdinalIgnoreCase)
-            || text.Contains("onload=", StringComparison.OrdinalIgnoreCase)
-            || text.Contains("onerror=", StringComparison.OrdinalIgnoreCase))
+        if (ContainsUnsafeSvgMarker(text))
         {
             throw new DomainValidationException(
                 "content",
                 "SVG uploads must not contain executable script content.");
         }
+    }
+
+    private static bool ContainsUnsafeSvgMarker(string text)
+    {
+        ReadOnlySpan<string> forbidden =
+        [
+            "<script",
+            "</script",
+            "javascript:",
+            "vbscript:",
+            "data:text/html",
+            "data:image/svg+xml",
+            "<foreignobject",
+            "<iframe",
+            "<embed",
+            "<object",
+        ];
+
+        foreach (var marker in forbidden)
+        {
+            if (text.Contains(marker, StringComparison.OrdinalIgnoreCase))
+            {
+                return true;
+            }
+        }
+
+        // Block inline event handlers (onload=, onerror=, onclick=, …).
+        for (var index = 0; index < text.Length - 2; index++)
+        {
+            if (text[index] is not ('o' or 'O') || text[index + 1] is not ('n' or 'N'))
+            {
+                continue;
+            }
+
+            var nameStart = index + 2;
+            var cursor = nameStart;
+            while (cursor < text.Length && char.IsLetter(text[cursor]))
+            {
+                cursor++;
+            }
+
+            if (cursor == nameStart)
+            {
+                continue;
+            }
+
+            while (cursor < text.Length && char.IsWhiteSpace(text[cursor]))
+            {
+                cursor++;
+            }
+
+            if (cursor < text.Length && text[cursor] == '=')
+            {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     private static void EnsurePlainText(ReadOnlySpan<byte> content)

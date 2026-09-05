@@ -49,6 +49,11 @@ function sanitizeUrl(value: string): string | null {
     return null;
   }
 
+  // Protocol-relative URLs can escape the app origin unexpectedly.
+  if (trimmed.startsWith('//')) {
+    return null;
+  }
+
   return trimmed;
 }
 

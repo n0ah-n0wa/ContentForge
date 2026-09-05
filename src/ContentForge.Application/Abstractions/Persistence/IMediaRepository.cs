@@ -12,6 +12,12 @@ public interface IMediaRepository
 {
     Task<MediaAsset?> GetByIdAsync(MediaId id, CancellationToken cancellationToken = default);
 
+    /// <summary>
+    /// Returns true when an active (non-deleted) media asset exists for the storage key.
+    /// Used to gate anonymous binary delivery after soft-delete.
+    /// </summary>
+    Task<bool> ExistsActiveByStorageKeyAsync(string storageKey, CancellationToken cancellationToken = default);
+
     Task<PaginatedResult<MediaAsset>> ListAsync(MediaListCriteria criteria, CancellationToken cancellationToken = default);
 
     Task AddAsync(MediaAsset asset, CancellationToken cancellationToken = default);

@@ -63,6 +63,7 @@ internal sealed class EfScheduledJobRepository(AppDbContext dbContext) : ISchedu
 
         if (pendingJobs.Count > 0)
         {
+            // Must flush before ContentEntry UpdateAsync clears the change tracker.
             await dbContext.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
         }
     }
@@ -77,23 +78,7 @@ internal sealed class EfScheduledJobRepository(AppDbContext dbContext) : ISchedu
         await using var transaction = await dbContext.Database.BeginTransactionAsync(cancellationToken).ConfigureAwait(false);
 
         var pendingStatus = ScheduledJobStatus.Pending.ToString();
-        var dueJobIds = await dbContext.Database
-            .SqlQueryRaw<Guid>(
-                """
-                SELECT "Id"
-                FROM "ScheduledJobs"
-                WHERE "Status" = {0}
-                  AND "ScheduledAt" <= {1}
-                  AND ("NextAttemptAt" IS NULL OR "NextAttemptAt" <= {1})
-                  AND ("LockedUntil" IS NULL OR "LockedUntil" < {1})
-                ORDER BY "ScheduledAt"
-                LIMIT {2}
-                FOR UPDATE SKIP LOCKED
-                """,
-                pendingStatus,
-                now,
-                batchSize)
-            .ToListAsync(cancellationToken)
+        var dueJobIds = await ClaimDueJobIdsAsync(pendingStatus, now, batchSize, cancellationToken)
             .ConfigureAwait(false);
 
         if (dueJobIds.Count == 0)
@@ -192,6 +177,59 @@ internal sealed class EfScheduledJobRepository(AppDbContext dbContext) : ISchedu
         {
             await dbContext.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
         }
+    }
+
+    private async Task<List<Guid>> ClaimDueJobIdsAsync(
+        string pendingStatus,
+        DateTimeOffset now,
+        int batchSize,
+        CancellationToken cancellationToken)
+    {
+        var providerName = dbContext.Database.ProviderName ?? string.Empty;
+        if (providerName.Contains("Npgsql", StringComparison.OrdinalIgnoreCase))
+        {
+            return await dbContext.Database
+                .SqlQueryRaw<Guid>(
+                    """
+                    SELECT "Id"
+                    FROM "ScheduledJobs"
+                    WHERE "Status" = {0}
+                      AND "ScheduledAt" <= {1}
+                      AND ("NextAttemptAt" IS NULL OR "NextAttemptAt" <= {1})
+                      AND ("LockedUntil" IS NULL OR "LockedUntil" < {1})
+                    ORDER BY "ScheduledAt"
+                    LIMIT {2}
+                    FOR UPDATE SKIP LOCKED
+                    """,
+                    pendingStatus,
+                    now,
+                    batchSize)
+                .ToListAsync(cancellationToken)
+                .ConfigureAwait(false);
+        }
+
+        if (providerName.Contains("SqlServer", StringComparison.OrdinalIgnoreCase))
+        {
+            return await dbContext.Database
+                .SqlQueryRaw<Guid>(
+                    """
+                    SELECT TOP ({2}) Id
+                    FROM ScheduledJobs WITH (UPDLOCK, READPAST, ROWLOCK)
+                    WHERE Status = {0}
+                      AND ScheduledAt <= {1}
+                      AND (NextAttemptAt IS NULL OR NextAttemptAt <= {1})
+                      AND (LockedUntil IS NULL OR LockedUntil < {1})
+                    ORDER BY ScheduledAt
+                    """,
+                    pendingStatus,
+                    now,
+                    batchSize)
+                .ToListAsync(cancellationToken)
+                .ConfigureAwait(false);
+        }
+
+        throw new NotSupportedException(
+            $"Scheduled job claiming is not supported for database provider '{providerName}'.");
     }
 
     private static string BuildIdempotencyKey(ContentEntryId contentEntryId, ScheduledJobType jobType, DateTimeOffset scheduledAt) =>

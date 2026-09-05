@@ -23,7 +23,10 @@ export function getRelationOptions(contentTypeId: string): Promise<RelationOptio
         label: entry.slug,
       })),
     )
-    .catch(() => [] as RelationOption[]);
+    .catch((error: unknown) => {
+      cache.delete(contentTypeId);
+      throw error;
+    });
 
   cache.set(contentTypeId, request);
   return request;

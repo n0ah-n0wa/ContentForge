@@ -5,6 +5,8 @@ Supplementary architecture notes and diagrams live here.
 Primary reference: [ARCHITECTURE.md](../ARCHITECTURE.md)
 
 - [Application layer review](./application-review.md)
+- [Final backend production review](./final-backend-review.md)
+- [Final frontend production review](./final-frontend-review.md)
 - [REST API review](./api-review.md)
 - [Database review](./database-review.md)
 - [Query performance and safety](./query-performance.md)

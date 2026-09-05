@@ -111,4 +111,36 @@ describe('LoginView', () => {
     expect(wrapper.text()).toContain('Sign in failed');
     expect(useAuthStore().isAuthenticated).toBe(false);
   });
+
+  it('ignores open-redirect query values after successful login', async () => {
+    vi.mocked(authApi.login).mockResolvedValue({
+      userId: '11111111-1111-1111-1111-111111111111',
+      email: 'admin@contentforge.test',
+      displayName: 'Admin',
+      role: 0,
+      accessToken: createTestJwt({
+        sub: '11111111-1111-1111-1111-111111111111',
+        permission: adminPermissions,
+        exp: Math.floor(Date.now() / 1000) + 3600,
+      }),
+      accessTokenExpiresAt: new Date(Date.now() + 3_600_000).toISOString(),
+      refreshToken: 'refresh-token',
+      refreshTokenExpiresAt: new Date(Date.now() + 86_400_000).toISOString(),
+    });
+
+    await router.push({ name: 'login', query: { redirect: 'https://evil.example/phish' } });
+
+    const wrapper = mount(LoginView, {
+      global: {
+        plugins: [router],
+      },
+    });
+
+    await wrapper.find('input[name="email"]').setValue('admin@contentforge.test');
+    await wrapper.find('input[name="password"]').setValue('password');
+    await wrapper.find('form').trigger('submit.prevent');
+    await flushPromises();
+
+    expect(router.currentRoute.value.name).toBe('dashboard');
+  });
 });

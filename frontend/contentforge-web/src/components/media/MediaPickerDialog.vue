@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref } from 'vue';
+import { onUnmounted, ref } from 'vue';
 import AppButton from '@/components/common/AppButton.vue';
 import MediaLibraryBrowser from '@/components/media/MediaLibraryBrowser.vue';
 import { useModalDialog } from '@/composables/useModalDialog';
@@ -24,6 +24,7 @@ const emit = defineEmits<{
 
 const rootRef = ref<HTMLElement | null>(null);
 const selectedAssets = ref<MediaAsset[]>([]);
+let closeTimer: number | undefined;
 
 useModalDialog({
   rootRef,
@@ -48,7 +49,11 @@ function onSelect(asset: MediaAsset): void {
 function onConfirm(ids: string[]): void {
   emit('confirm', ids, selectedAssets.value);
   // Close after the confirming click finishes so it cannot activate controls under the overlay.
-  window.setTimeout(() => {
+  if (closeTimer !== undefined) {
+    window.clearTimeout(closeTimer);
+  }
+  closeTimer = window.setTimeout(() => {
+    closeTimer = undefined;
     open.value = false;
   }, 0);
 }
@@ -56,6 +61,12 @@ function onConfirm(ids: string[]): void {
 function close(): void {
   open.value = false;
 }
+
+onUnmounted(() => {
+  if (closeTimer !== undefined) {
+    window.clearTimeout(closeTimer);
+  }
+});
 </script>
 
 <template>
@@ -65,7 +76,7 @@ function close(): void {
     class="media-picker-overlay"
     role="dialog"
     aria-modal="true"
-    aria-label="Select media"
+    aria-labelledby="media-picker-title"
   >
     <section class="media-picker-dialog page-card">
       <header class="page-header">

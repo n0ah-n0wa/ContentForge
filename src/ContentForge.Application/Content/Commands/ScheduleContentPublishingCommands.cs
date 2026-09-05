@@ -72,36 +72,43 @@ public sealed class ScheduleContentPublishingCommandHandler
         ApplicationGuard.TranslateDomainException(() =>
             entry.SetPublishingSchedule(command.PublishAt, command.UnpublishAt, userId, timestamp));
 
-        if (command.PublishAt is not null)
-        {
-            await _scheduler.ScheduleContentPublishAsync(
-                entry.Id,
-                command.PublishAt.Value,
-                userId,
-                cancellationToken);
-        }
-        else
-        {
-            await _scheduler.CancelContentPublishAsync(entry.Id, cancellationToken);
-            entry.ClearScheduledPublish(userId, timestamp);
-        }
+        // Job persistence SaveChanges before entry UpdateAsync (which clears the change tracker).
+        // Wrap both in one transaction so a concurrency failure rolls back orphan jobs.
+        await _unitOfWork.ExecuteInTransactionAsync(
+            async ct =>
+            {
+                if (command.PublishAt is not null)
+                {
+                    await _scheduler.ScheduleContentPublishAsync(
+                        entry.Id,
+                        command.PublishAt.Value,
+                        userId,
+                        ct);
+                }
+                else
+                {
+                    await _scheduler.CancelContentPublishAsync(entry.Id, ct);
+                    entry.ClearScheduledPublish(userId, timestamp);
+                }
 
-        if (command.UnpublishAt is not null)
-        {
-            await _scheduler.ScheduleContentUnpublishAsync(
-                entry.Id,
-                command.UnpublishAt.Value,
-                userId,
-                cancellationToken);
-        }
-        else
-        {
-            await _scheduler.CancelContentUnpublishAsync(entry.Id, cancellationToken);
-            entry.ClearScheduledUnpublish(userId, timestamp);
-        }
+                if (command.UnpublishAt is not null)
+                {
+                    await _scheduler.ScheduleContentUnpublishAsync(
+                        entry.Id,
+                        command.UnpublishAt.Value,
+                        userId,
+                        ct);
+                }
+                else
+                {
+                    await _scheduler.CancelContentUnpublishAsync(entry.Id, ct);
+                    entry.ClearScheduledUnpublish(userId, timestamp);
+                }
 
-        await _repository.UpdateAsync(entry, cancellationToken);
-        await _unitOfWork.SaveChangesAsync(cancellationToken);
+                await _repository.UpdateAsync(entry, ct);
+                await _unitOfWork.SaveChangesAsync(ct);
+            },
+            cancellationToken);
 
         return ContentEntryMapper.ToDto(entry);
     }
@@ -162,11 +169,16 @@ public sealed class ClearContentPublishingScheduleCommandHandler
 
         var timestamp = _clock.UtcNow;
         entry.SetPublishingSchedule(null, null, userId, timestamp);
-        await _scheduler.CancelContentPublishAsync(entry.Id, cancellationToken);
-        await _scheduler.CancelContentUnpublishAsync(entry.Id, cancellationToken);
 
-        await _repository.UpdateAsync(entry, cancellationToken);
-        await _unitOfWork.SaveChangesAsync(cancellationToken);
+        await _unitOfWork.ExecuteInTransactionAsync(
+            async ct =>
+            {
+                await _scheduler.CancelContentPublishAsync(entry.Id, ct);
+                await _scheduler.CancelContentUnpublishAsync(entry.Id, ct);
+                await _repository.UpdateAsync(entry, ct);
+                await _unitOfWork.SaveChangesAsync(ct);
+            },
+            cancellationToken);
 
         return ContentEntryMapper.ToDto(entry);
     }

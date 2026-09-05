@@ -107,6 +107,12 @@ public sealed class ScheduledJobProcessor(
         DateTimeOffset timestamp,
         CancellationToken cancellationToken)
     {
+        if (entry.ScheduledPublishAt is null)
+        {
+            ScheduledJobProcessorLogger.SkippingPublishNoSchedule(logger, entry.Id.Value);
+            return;
+        }
+
         if (entry.IsAlreadyPublishedForSchedule())
         {
             ScheduledJobProcessorLogger.SkippingPublishAlreadyPublished(logger, entry.Id.Value);
@@ -147,6 +153,12 @@ public sealed class ScheduledJobProcessor(
         DateTimeOffset timestamp,
         CancellationToken cancellationToken)
     {
+        if (entry.ScheduledUnpublishAt is null)
+        {
+            ScheduledJobProcessorLogger.SkippingUnpublishNoSchedule(logger, entry.Id.Value);
+            return;
+        }
+
         if (entry.IsAlreadyUnpublishedForSchedule())
         {
             ScheduledJobProcessorLogger.SkippingUnpublishAlreadyUnpublished(logger, entry.Id.Value);

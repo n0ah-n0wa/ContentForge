@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { onMounted, onUnmounted, watch } from 'vue';
+import { onUnmounted, watch } from 'vue';
 import { useNotifications } from '@/composables/useNotifications';
 
 const KIND_LABELS = {
@@ -13,13 +13,29 @@ const { items, dismiss } = useNotifications();
 const timers = new Map<string, number>();
 
 function scheduleDismissal(id: string, timeoutMs: number): void {
-  const timerId = window.setTimeout(() => dismiss(id), timeoutMs);
+  const existing = timers.get(id);
+  if (existing !== undefined) {
+    window.clearTimeout(existing);
+  }
+
+  const timerId = window.setTimeout(() => {
+    timers.delete(id);
+    dismiss(id);
+  }, timeoutMs);
   timers.set(id, timerId);
 }
 
 watch(
   items,
   (notifications) => {
+    const activeIds = new Set(notifications.map((notification) => notification.id));
+    for (const [id, timerId] of timers) {
+      if (!activeIds.has(id)) {
+        window.clearTimeout(timerId);
+        timers.delete(id);
+      }
+    }
+
     for (const notification of notifications) {
       if (!timers.has(notification.id)) {
         scheduleDismissal(notification.id, notification.timeoutMs);
@@ -28,12 +44,6 @@ watch(
   },
   { deep: true, immediate: true },
 );
-
-onMounted(() => {
-  for (const notification of items.value) {
-    scheduleDismissal(notification.id, notification.timeoutMs);
-  }
-});
 
 onUnmounted(() => {
   for (const timerId of timers.values()) {
