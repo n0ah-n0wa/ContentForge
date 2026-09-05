@@ -174,7 +174,7 @@ All commands from `AGENTS.md` were run after fixes:
 | `dotnet format --verify-no-changes` | Pass |
 | `npm run lint` | Pass |
 | `npm run test` | Pass — 83 tests |
-| `npm run build` | Pass |
+| `npm run build:vite` | Pass |
 
 Integration coverage for query performance and public cache remains in:
 

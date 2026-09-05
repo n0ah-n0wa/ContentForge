@@ -1,9 +1,17 @@
 # ContentForge — System Specification
 
 **Version:** 1.0  
-**Status:** Production Target Specification  
+**Status:** Authoritative Product & Engineering Specification  
 **Project Type:** Full-Stack Headless Content Management System  
 **Primary Goal:** Demonstrate production-grade C#/.NET and Microsoft Azure engineering capabilities through a complete, cloud-ready content management platform.
+
+This document is the **source of truth for requirements**. Implementation status and as-built architecture are documented in:
+
+- [docs/IMPLEMENTATION_PLAN.md](./docs/IMPLEMENTATION_PLAN.md) — phased delivery (completed)
+- [docs/ARCHITECTURE.md](./docs/ARCHITECTURE.md) — system architecture as implemented
+- [README.md](./README.md) — quick start and operations entry points
+
+Do not treat unchecked planning artifacts elsewhere as overrides of this specification. When code and this document conflict, resolve explicitly before changing either.
 
 ---
 
@@ -1191,19 +1199,16 @@ Uploads should provide progress feedback where practical.
 
 # 39. Frontend State Management
 
-Pinia should be used for application state.
+Pinia should be used for shared application state that must survive across routes (for example authentication session, notifications, and global UI loading).
 
-State must be separated into logical stores.
+Domain/feature data (content types, entries, media lists, users, audit) may live in route-level views and composables when it does not need to be global. Do not invent Pinia stores solely to mirror every backend resource.
 
-Examples:
+As-built global stores:
 
 ```text
 authStore
-contentStore
-contentTypeStore
-mediaStore
-userStore
-auditStore
+notificationStore
+uiStore
 ```
 
 Transient component state should remain local when global state is unnecessary.

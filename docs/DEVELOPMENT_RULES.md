@@ -1,7 +1,7 @@
 # ContentForge — Development Rules
 
-**Version:** 1.0  
-**Status:** Planning  
+**Version:** 1.1  
+**Status:** Active  
 **Source of Truth:** [SPECIFICATIONS.md](../SPECIFICATIONS.md)
 
 These rules govern all human and AI-assisted development on ContentForge. They complement [ARCHITECTURE.md](./ARCHITECTURE.md) and [IMPLEMENTATION_PLAN.md](./IMPLEMENTATION_PLAN.md).
@@ -401,10 +401,12 @@ Before declaring any phase or feature complete, run the same checks locally:
 
 ```bash
 dotnet restore
-dotnet build --configuration Release
-dotnet format --verify-no-changes
+dotnet format ContentForge.sln --verify-no-changes
+dotnet build ContentForge.sln --configuration Release
 dotnet test --configuration Release --no-build
 ```
+
+(`dotnet test --no-build` requires the Release build above, matching CI.)
 
 **Frontend:**
 

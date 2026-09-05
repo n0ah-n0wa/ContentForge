@@ -155,7 +155,7 @@ dotnet publish src/ContentForge.Api/ContentForge.Api.csproj -c Release -o ./arti
 
 # CI parity
 dotnet build && dotnet test && dotnet format --verify-no-changes
-cd frontend/contentforge-web && npm ci && npm audit --audit-level=moderate && npm run lint && npm run test && npm run build
+cd frontend/contentforge-web && npm ci && npm audit --audit-level=moderate && npm run lint && npm run test && npm run build:vite
 ```
 
 ---

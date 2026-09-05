@@ -118,10 +118,12 @@ Typical pipeline steps:
 
 ## Development vs production
 
-| Concern | Development (`docker-compose.yml`) | Production images |
-|---------|-----------------------------------|-------------------|
-| Purpose | Local Postgres + Azurite | Deployable API + SPA |
-| Secrets | Fixed dev passwords | Env / secret store only |
-| API process | `dotnet run` on host | Published DLL in Alpine |
-| Frontend | Vite dev server | nginx static + proxy |
-| Swagger | Enabled in Development | Disabled in Production |
+| Concern | Development (`docker-compose.yml`) | Production images / `docker-compose.prod.yml` |
+|---------|-------------------------------------|-----------------------------------------------|
+| Purpose | Full local stack: Postgres, Azurite, API, admin UI | Deployable API + SPA (prod-like local or registry) |
+| Secrets | Fixed Development defaults (never for cloud) | Env / secret store only; placeholder JWT rejected |
+| API process | Containerized published API (`infra/docker/api/Dockerfile`), env `Development` | Same Alpine image; env `Production` |
+| Frontend | Containerized nginx SPA (`infra/docker/web/Dockerfile`) | Same nginx image |
+| Host hot-reload | Optional: infra-only Compose + `dotnet run` / `npm run dev` (see root README) | N/A |
+| Migrations | Applied on API startup by Development initializer | Explicit `migrate` profile / pipeline — not on API startup |
+| Swagger | Enabled (`Development`) | Disabled (`Production`) |

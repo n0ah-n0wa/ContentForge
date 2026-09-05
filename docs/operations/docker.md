@@ -9,14 +9,16 @@ Production container images are defined under [`infra/docker/`](../../infra/dock
   Browser ─────────►│  contentforge-web   │
   :8080             │  (nginx unprivileged)│
                     │  /        → SPA      │
-                    │  /api/*   → proxy    │
-                    │  /health  → 200 ok   │
+                    │  /api/*        → proxy    │
+                    │  /media-files/* → proxy    │
+                    │  /health       → 200 ok   │
                     └──────────┬──────────┘
-                               │ API_UPSTREAM
+                               │ API_UPSTREAM (container :8080)
                                ▼
                     ┌─────────────────────┐
                     │  contentforge-api   │
                     │  (ASP.NET Alpine)   │
+                    │  listens :8080      │
                     │  /health/live       │
                     │  /health/ready      │
                     └──────────┬──────────┘
@@ -24,10 +26,13 @@ Production container images are defined under [`infra/docker/`](../../infra/dock
                                ▼
                     ┌─────────────────────┐
                     │  PostgreSQL         │
+                    │  (Compose / local)  │
                     └─────────────────────┘
 ```
 
-When the admin SPA and API share a host (recommended), leave `VITE_API_BASE_URL` empty at build time. nginx proxies `/api` to the API service so browsers never need cross-origin requests.
+**Port mapping (local Compose):** host `5080` → API container `8080`; host `8080` → web container `8080`.
+
+When the admin SPA and API share a host (recommended), leave `VITE_API_BASE_URL` empty at build time. nginx proxies `/api/` and `/media-files/` to the API so browsers never need cross-origin requests.
 
 For split-host deployments (CDN for SPA, dedicated API subdomain), build the web image with `--build-arg VITE_API_BASE_URL=https://api.example.com` and configure `Cors__AllowedOrigins__*` on the API.
 
@@ -40,7 +45,18 @@ For split-host deployments (CDN for SPA, dedicated API subdomain), build the web
 
 ## Database migrations
 
-Migrations are **not** run automatically on API startup. Apply them in CI/CD before rolling out a new API version:
+| Environment | Behavior |
+|-------------|----------|
+| **Development** (`ASPNETCORE_ENVIRONMENT=Development`, including `docker-compose.yml` / e2e API) | `DevelopmentDatabaseInitializer` runs `MigrateAsync` and seeds the admin user when the database is empty |
+| **Production** (`docker-compose.prod.yml` API, Azure Staging/Production) | API does **not** migrate on startup — apply migrations explicitly before rolling out a new API version |
+
+Local prod-like migrate (Compose profile `tools`):
+
+```bash
+docker compose -f docker-compose.prod.yml --env-file .env.production run --rm migrate
+```
+
+Equivalent host command (PostgreSQL migrations project):
 
 ```bash
 dotnet ef database update \
@@ -48,21 +64,26 @@ dotnet ef database update \
   --startup-project src/ContentForge.Api/ContentForge.Api.csproj
 ```
 
-The `docker-compose.prod.yml` `migrate` profile wraps this for local validation.
+Azure SQL uses `ContentForge.Infrastructure.SqlServer` via `infra/azure/scripts/run-azure-sql-migrations.sh` — see [database-migrations.md](./database-migrations.md).
 
 ## Azure deployment notes
 
-- **API**: App Service container or Azure Container Apps — inject `Database__ConnectionString`, `Jwt__SigningKey`, and Application Insights connection string via Key Vault references
-- **Media**: Set `Media__Provider=Azure`, `Media__UseManagedIdentity=true`, and `Media__StorageAccountName` (see [azure-storage.md](./azure-storage.md))
-- **Web**: App Service static web app, Container Apps, or Azure Front Door origin — build with appropriate `VITE_API_BASE_URL` if API is on a separate host
-- **PostgreSQL**: Use Azure Database for PostgreSQL; do not run the compose Postgres service in production
+As built (Bicep under `infra/azure/`):
+
+- **API & Web**: Linux **App Service** containers (`app-cf-api-{env}`, `app-cf-web-{env}` with nginx proxy) — not Azure Static Web Apps
+- **Database**: **Azure SQL Database** (`Database__Provider=AzureSQL`) — do **not** run Compose Postgres in cloud environments
+- **Media**: `Media__Provider=Azure`, managed identity / blob settings — see [azure-storage.md](./azure-storage.md)
+- **Secrets / telemetry**: JWT via Key Vault reference; Application Insights connection string via App Service settings
+
+Optional hardening **not** provisioned by default: private endpoints, VNet integration, Azure Front Door / WAF.
 
 ## Observability
 
-Structured JSON logs go to stdout (container log driver). Request logging excludes bodies and authorization headers. When `ApplicationInsights__ConnectionString` is set, telemetry is exported automatically in Production.
+Structured JSON logs go to stdout (container log driver). Request logging excludes bodies and authorization headers. When Application Insights is configured (`APPLICATIONINSIGHTS_CONNECTION_STRING` / `ApplicationInsights__ConnectionString`), telemetry is exported in Staging/Production per [azure-observability.md](./azure-observability.md).
 
 ## Related
 
 - [README.md](../../README.md) — local Docker Compose quick start
 - [infra/docker/README.md](../../infra/docker/README.md) — build commands and environment reference
+- [azure-cd.md](./azure-cd.md) — GitHub Actions deploy
 - [dependency-security-audit.md](../architecture/dependency-security-audit.md) — image and secret hygiene review

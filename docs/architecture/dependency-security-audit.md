@@ -193,7 +193,7 @@ All AGENTS.md verification commands were run after remediation:
 | `npm audit --audit-level=moderate` | **0 vulnerabilities** |
 | `npm run lint` | Pass |
 | `npm run test` | Pass — **83 tests** |
-| `npm run build` | Pass |
+| `npm run build:vite` | Pass |
 
 ---
 

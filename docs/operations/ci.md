@@ -44,9 +44,9 @@ These checks must pass before merge. Any failure blocks the workflow.
 | Formatting | `dotnet format --verify-no-changes` (before build) | C# style drift from `.editorconfig` |
 | Compile + analyzers | `dotnet build ContentForge.sln -c Release` | Errors, warnings (`TreatWarningsAsErrors`), NetAnalyzers |
 | Migration validation | `infra/azure/scripts/validate-migrations.sh` | Pending model changes, destructive Up() ops, PG/SqlServer table parity |
-| Unit tests | `ContentForge.UnitTests` (166 tests) | Any unit test failure |
-| Architecture tests | `ContentForge.ArchitectureTests` (31 tests) | Layer boundaries, migration safety, schema parity |
-| Integration tests | `ContentForge.IntegrationTests` (~244 tests) | API/auth/persistence failures against PostgreSQL 16 |
+| Unit tests | `ContentForge.UnitTests` | Any unit test failure |
+| Architecture tests | `ContentForge.ArchitectureTests` | Layer boundaries, migration safety, schema parity |
+| Integration tests | `ContentForge.IntegrationTests` | API/auth/persistence failures against PostgreSQL 16 |
 
 ### Frontend
 

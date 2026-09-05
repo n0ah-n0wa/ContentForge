@@ -53,7 +53,6 @@ This pass found **no CRITICAL** defects. **HIGH** and several **MEDIUM** issues 
 | `contenteditable` + `document.execCommand` | Known a11y/platform limits (documented) |
 | Five permission composables | Thin facades; consolidate when the matrix grows |
 | CSS-class E2E locators for form fields | Prefer roles/`getByLabel` over time |
-| Stale `docs/ARCHITECTURE.md` §5 | Still mentions Axios / fictional Pinia domain stores |
 
 ---
 

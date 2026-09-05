@@ -151,7 +151,7 @@ Domain enforces version match; API returns 409 on conflict. No bypass identified
 | `dotnet build` | Pass |
 | `dotnet test` | Pass (includes new security regression tests) |
 | `dotnet format --verify-no-changes` | Pass |
-| `npm run lint` / `npm run test` / `npm run build` | Pass |
+| `npm run lint` / `npm run test` / `npm run build:vite` | Pass |
 
 ### New regression tests (this audit)
 

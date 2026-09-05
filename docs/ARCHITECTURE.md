@@ -1,801 +1,269 @@
 # ContentForge — Architecture
 
-**Version:** 1.0  
-**Status:** Planning  
-**Source of Truth:** [SPECIFICATIONS.md](../SPECIFICATIONS.md)
+**Version:** 1.1  
+**Status:** As built  
+**Source of Truth (requirements):** [SPECIFICATIONS.md](../SPECIFICATIONS.md)  
+**Decisions:** [docs/decisions/](./decisions/)
 
-This document describes the target architecture for ContentForge. It guides implementation and must remain consistent with the specification.
+This document describes the **implemented** architecture. Supplementary reviews live under [docs/architecture/](./architecture/).
 
 ---
 
-## 1. Architectural Principles
+## 1. Architectural principles
 
-ContentForge follows **Clean Architecture** with strict inward dependency flow:
+ContentForge follows **Clean Architecture** with inward dependency flow:
 
 ```text
 Api → Application → Domain ← Infrastructure
+                  ← Infrastructure.SqlServer (Azure SQL migrations)
 ```
 
-Guiding principles (from SPEC §118):
+- Domain logic is free of ASP.NET, EF, and Azure SDK types
+- Application orchestrates use cases via ports (interfaces)
+- Infrastructure implements persistence, Identity, storage, search, and background jobs
+- Api is the composition root (HTTP, auth middleware, DI, OpenAPI, health)
+- **Backend is authoritative** for validation, authorization, and business rules
+- Architecture tests (`ContentForge.ArchitectureTests`) enforce forbidden references
 
-- Clarity, correctness, testability, security, maintainability, observability
-- Every technology choice must solve a real requirement
-- Domain logic free of framework and infrastructure concerns
-- Backend remains authoritative for validation, authorization, and business rules
+See [ADR-001](./decisions/ADR-001-clean-architecture.md).
 
 ---
 
-## 2. Solution Structure
+## 2. Solution structure
 
 ```text
 /
 ├── src/
-│   ├── ContentForge.Api/              # HTTP, auth middleware, controllers, OpenAPI
-│   ├── ContentForge.Application/      # Use cases, DTOs, validators, interfaces
-│   ├── ContentForge.Domain/           # Entities, value objects, domain rules
-│   └── ContentForge.Infrastructure/   # EF Core, Identity, storage, external services
-│
-├── frontend/
-│   └── contentforge-web/              # Vue 3 + TypeScript admin SPA
-│
+│   ├── ContentForge.Domain/
+│   ├── ContentForge.Application/
+│   ├── ContentForge.Infrastructure/           # PostgreSQL migrations + shared infra
+│   ├── ContentForge.Infrastructure.SqlServer/ # Azure SQL migrations
+│   └── ContentForge.Api/
+├── frontend/contentforge-web/                 # Vue 3 + TypeScript admin SPA
 ├── tests/
 │   ├── ContentForge.UnitTests/
 │   ├── ContentForge.IntegrationTests/
 │   └── ContentForge.ArchitectureTests/
-│
-├── docs/
-│   ├── ARCHITECTURE.md
-│   ├── IMPLEMENTATION_PLAN.md
-│   ├── DEVELOPMENT_RULES.md
-│   ├── architecture/
-│   ├── api/
-│   ├── decisions/                     # ADRs
-│   └── operations/
-│
+├── docs/                                      # architecture, api, decisions, operations
 ├── infra/
-│   ├── docker/                        # Dockerfiles
-│   └── azure/                         # Azure Bicep/ARM/Terraform (as chosen)
-│
-├── .github/workflows/
+│   ├── docker/                                # API/Web Dockerfiles, env examples
+│   └── azure/                                 # Bicep + deploy scripts
+├── .github/workflows/                         # ci.yml, deploy.yml
 ├── docker-compose.yml
+├── docker-compose.prod.yml
 ├── docker-compose.test.yml
-├── Directory.Build.props
-└── Directory.Packages.props
+└── docker-compose.e2e.yml
 ```
-
-### 2.1 Project Responsibilities
 
 | Project | Responsibility |
 |---------|----------------|
-| **Domain** | Entities, enums, value objects, domain exceptions, domain services, repository interfaces |
-| **Application** | Commands/queries (use cases), DTOs, FluentValidation validators, application service interfaces, mapping |
-| **Infrastructure** | EF Core DbContext, entity configurations, Identity, JWT, blob storage, audit persistence, search implementation |
-| **Api** | Controllers, middleware, filters, DI composition root, Swagger, health checks |
-| **Frontend** | Admin UI only; consumes REST API |
+| **Domain** | Entities, value objects, permissions, lifecycle/schema rules, domain exceptions |
+| **Application** | Commands/queries, DTOs, FluentValidation, ports, mapping, sanitization |
+| **Infrastructure** | EF Core (PostgreSQL), Identity, JWT, blob/local storage, audit, EF search, scheduled publishing host |
+| **Infrastructure.SqlServer** | Azure SQL–targeted EF migrations for cloud |
+| **Api** | Controllers, middleware, rate limiting, Swagger, health, DI |
+| **Frontend** | Admin UI only; typed `fetch` API client |
 
 ---
 
-## 3. Dependency Direction
+## 3. Runtime topology
+
+### 3.1 Local development (Docker Compose)
 
 ```text
-┌───────────────────────────────────────────────┐
-│                  Vue Frontend                 │
-│             Vue 3 + TypeScript               │
-└───────────────────────┬───────────────────────┘
-                        │ HTTPS / REST
-                        ▼
-┌───────────────────────────────────────────────┐
-│                 ContentForge.Api              │
-│        Controllers / Middleware / OpenAPI     │
-└───────────────────────┬───────────────────────┘
-                        │
-                        ▼
-┌───────────────────────────────────────────────┐
-│            ContentForge.Application            │
-│     Use Cases / DTOs / Validators / Ports     │
-└───────────────────────┬───────────────────────┘
-                        │
-                        ▼
-┌───────────────────────────────────────────────┐
-│              ContentForge.Domain              │
-│       Entities / Rules / Domain Events        │
-└───────────────────────────────────────────────┘
-                        ▲
-                        │ implements interfaces
-┌───────────────────────┴───────────────────────┐
-│          ContentForge.Infrastructure           │
-│   EF Core / Identity / Blob / Audit / Search  │
-└───────────────────────────────────────────────┘
+Browser ──► web (host :8080 → container :8080, nginx SPA + /api + /media-files proxy)
+                │
+                ▼
+            api (host :5080 → container :8080) ──► postgres (host :5432)
+                     └──► local disk and/or azurite (host :10000) for media
 ```
 
-### 3.1 Forbidden Dependencies
-
-The **Domain** layer must not reference:
-
-- ASP.NET Core, EF Core, PostgreSQL, Azure SDKs, HTTP, Vue, or Infrastructure
-
-The **Application** layer must not reference:
-
-- Api, EF Core concrete types, Azure SDKs
-
-**Infrastructure** implements interfaces defined in Domain/Application and is referenced only from Api (composition root).
-
-Architecture tests enforce these rules (SPEC §62).
-
----
-
-## 4. Backend Layers
-
-### 4.1 Domain Layer
-
-Contains pure business logic:
-
-- **Entities:** `User`, `ContentType`, `ContentTypeField`, `ContentEntry`, `ContentVersion`, `Media`, `AuditLog`
-- **Value objects:** `Slug`, `FieldDefinition`, `ContentStatus`, permission identifiers
-- **Domain services:** lifecycle transition validator, slug generator, schema validator (rules only)
-- **Exceptions:** `DomainException`, `ConflictException`, `ValidationException` (domain-level)
-- **Repository interfaces:** `IContentEntryRepository`, `IContentTypeRepository`, etc.
-
-No ORM attributes on domain entities where avoidable; EF configurations live in Infrastructure.
-
-### 4.2 Application Layer
-
-Orchestrates use cases:
-
-- **Commands/queries:** `CreateContentEntry`, `PublishContent`, `RestoreVersion`, etc.
-- **DTOs:** request/response models for API boundary
-- **Validators:** FluentValidation for input DTOs; delegates schema validation to domain services
-- **Interfaces (ports):** `IFileStorage`, `IAuditService`, `IContentSearchService`, `ICurrentUserService`, `IDateTimeProvider`
-- **Mapping:** entity ↔ DTO (Manual or Mapster; decision in ADR if needed)
-
-Application services coordinate transactions via unit-of-work abstraction; they do not perform HTTP or SQL directly.
-
-### 4.3 Infrastructure Layer
-
-Implements external concerns:
-
-- **Persistence:** EF Core `AppDbContext`, entity configurations, migrations, repositories
-- **Identity:** ASP.NET Core Identity with custom user store if needed
-- **Authentication:** JWT token generation/validation services
-- **Storage:** `LocalFileStorage`, `AzuriteBlobStorage`, `AzureBlobStorage` implementing `IFileStorage`
-- **Audit:** `EfAuditService` writing immutable audit records
-- **Search:** `EfContentSearchService` (initial); swappable per `IContentSearchService`
-- **Background jobs:** `IBackgroundJobScheduler` abstraction (in-process or Azure WebJobs later)
-
-Database-specific SQL (full-text, JSON operators) isolated here.
-
-### 4.4 API Layer
-
-Thin HTTP adapter:
-
-- **Controllers:** Admin (`/api/v1/...`) and Public (`/api/v1/public/...`) separated by namespace/route conventions
-- **Middleware:** exception handling, correlation ID, request logging, rate limiting
-- **Authorization:** policy-based; maps permissions to ASP.NET authorization policies
-- **Filters:** model validation, concurrency conflict mapping to 409
-- **OpenAPI:** Swashbuckle with JWT security scheme
-- **Health checks:** liveness and readiness
-- **DI registration:** `Program.cs` / extension methods wire Infrastructure → Application → Api
-
----
-
-## 5. Frontend Structure
+### 3.2 Azure (staging / production)
 
 ```text
-frontend/contentforge-web/
-├── src/
-│   ├── api/                    # Centralized API clients
-│   │   ├── client.ts           # Axios/fetch wrapper, auth headers, error handling
-│   │   ├── auth.ts
-│   │   ├── content.ts
-│   │   ├── contentTypes.ts
-│   │   ├── media.ts
-│   │   ├── users.ts
-│   │   └── audit.ts
-│   ├── stores/                 # Pinia
-│   │   ├── authStore.ts
-│   │   ├── contentStore.ts
-│   │   ├── contentTypeStore.ts
-│   │   ├── mediaStore.ts
-│   │   ├── userStore.ts
-│   │   └── auditStore.ts
-│   ├── router/
-│   │   ├── index.ts
-│   │   └── guards.ts           # Auth + permission guards
-│   ├── views/                  # Route-level pages
-│   ├── components/
-│   │   ├── layout/
-│   │   ├── content/            # Dynamic editor, field renderers
-│   │   ├── media/
-│   │   └── common/
-│   ├── composables/            # Reusable logic
-│   ├── types/                  # TypeScript interfaces (may include OpenAPI-generated)
-│   └── utils/                  # Sanitization, formatting
-├── tests/
-│   ├── unit/
-│   └── component/
-└── e2e/                        # Playwright/Cypress (Phase 16)
+Internet
+   │
+   ▼
+app-cf-web-{env}  (public App Service, HTTPS)
+   │  nginx proxies /api and /media-files
+   ▼
+app-cf-api-{env}  (restricted public access in staging/prod)
+   ├── Azure SQL (Azure AD + managed identity)
+   ├── Blob Storage media container (MI RBAC)
+   └── Key Vault (JWT signing key reference)
+        │
+        └── Application Insights ← Log Analytics
 ```
 
-### 5.1 Frontend Architecture Rules
-
-- **API access** only through `src/api/` — never scattered in components
-- **Global state** in Pinia stores; transient UI state stays local
-- **Route protection** via guards checking auth token and permissions
-- **Validation** mirrors backend rules for UX; backend remains authoritative
-- **Rich text** rendered through sanitization (DOMPurify or equivalent)
-- **Strict TypeScript** (`strict: true` in tsconfig)
+See [ADR-010](./decisions/ADR-010-azure-hosting-topology.md) and [operations/azure-infrastructure.md](./operations/azure-infrastructure.md).
 
 ---
 
-## 6. Persistence Strategy
+## 4. Backend layers
 
-### 6.1 Database Providers
+### 4.1 Domain
 
-| Environment | Database |
-|-------------|----------|
-| Development | PostgreSQL (Docker Compose) |
-| Test / CI | PostgreSQL (Docker Compose / test container) |
-| Staging / Production | Azure SQL Database |
+Notable areas:
 
-EF Core abstracts provider differences. Database-specific features (e.g., JSON querying, full-text) isolated in Infrastructure with provider-conditional implementations where necessary.
+- Content types & fields (`FieldType`: Text, LongText, RichText, Integer, Decimal, Boolean, Date, DateTime, Media, MediaMultiple, Relation, RelationMultiple, Select, MultiSelect, Json)
+- Content entries, versions, lifecycle transitions, optimistic concurrency
+- Media assets and upload rules (extension/content-type/size validation)
+- Roles and permission catalog (`Permissions` / `DefaultRoleDefinitions`)
+- Audit event kinds and metadata sanitization rules
 
-### 6.2 Schema Design
+### 4.2 Application
 
-Normalized system tables (SPEC §43):
+- Handlers for auth, users, content types, content lifecycle, versions, media, audit, dashboard
+- `IFileStorage`, `IContentSearchService`, `IAuditService`, `ICurrentUserService`, etc.
+- Rich-text sanitization (`HtmlSanitizer` wrapper) before persistence
+- Scheduled publishing command handlers + job processor interface usage
+
+### 4.3 Infrastructure
+
+- `AppDbContext`, entity configurations, repositories
+- ASP.NET Identity + JWT issuance/validation
+- `LocalFileStorage` / Azure Blob implementations of `IFileStorage`
+- `EfContentSearchService` — portable keyword contains + filters/sort/pagination ([ADR-008](./decisions/ADR-008-search-abstraction.md))
+- `ScheduledPublishingBackgroundService` + job claim/processing ([ADR-011](./decisions/ADR-011-scheduled-publishing.md))
+- Development DB initializer (migrations + seed) — **Development only**
+
+### 4.4 API
+
+| Route prefix | Controllers |
+|--------------|-------------|
+| `/api/v1/auth` | Login, logout, refresh, password reset, me |
+| `/api/v1/users` | User CRUD, disable/enable |
+| `/api/v1/roles` | Role list |
+| `/api/v1/content-types` | Types and fields |
+| `/api/v1/content` | Entries, lifecycle, schedule, versions, search, preview |
+| `/api/v1/public` | Published content read API |
+| `/api/v1/media` | Media metadata CRUD / upload |
+| `/media-files` | Binary file serving |
+| `/api/v1/audit` | Audit query |
+| `/api/v1/dashboard` | Dashboard stats |
+| `/health/live`, `/health/ready` | Health |
+
+OpenAPI (Swashbuckle) is enabled in **Development** and **Testing** environments.
+
+---
+
+## 5. Frontend structure (as built)
 
 ```text
-Users, Roles, Permissions, UserRoles, RolePermissions
-ContentTypes, ContentTypeFields
-ContentEntries, ContentVersions
-Media
-AuditLogs
-+ relation junction tables as needed
+frontend/contentforge-web/src/
+├── api/              # fetch client + domain modules (auth, content, media, …)
+├── stores/           # Pinia: authStore, notificationStore, uiStore only
+├── router/           # routes + auth/permission guards
+├── views/            # route-level pages
+├── components/       # layout, forms, media, content fields, dialogs
+├── composables/      # forms, permissions, modal, errors
+├── types/
+└── utils/            # sanitizer helpers, navigation safety, …
 ```
 
-### 6.3 Content Data Storage
+Rules:
 
-Clear separation:
+- HTTP only via `src/api/` (`client.ts` — **native fetch**, not Axios)
+- Domain state lives in views/composables; Pinia is limited to session, toasts, and loading UI
+- Route `meta.permissions` enforced by guards; mutation routes require update permissions
+- Strict TypeScript; unit tests (Vitest) + E2E (Playwright)
+
+Accessibility notes: [frontend/contentforge-web/docs/accessibility.md](../frontend/contentforge-web/docs/accessibility.md).  
+Frontend review: [architecture/final-frontend-review.md](./architecture/final-frontend-review.md).
+
+---
+
+## 6. Persistence
+
+| Environment | Database | Migrations project |
+|-------------|----------|-------------------|
+| Development / CI / local Docker | PostgreSQL | `ContentForge.Infrastructure` |
+| Staging / Production | Azure SQL | `ContentForge.Infrastructure.SqlServer` |
+
+See [ADR-002](./decisions/ADR-002-database-strategy.md).
+
+### Content data model
 
 | Concern | Storage |
 |---------|---------|
-| Content schema | `ContentTypes`, `ContentTypeFields` (relational) |
-| Content data | `ContentEntries.Data` (JSON column) + typed indexes where needed |
-| Published snapshot | Separate column/table or version reference (per ADR-007) |
-| System metadata | Relational columns on `ContentEntries` |
+| Schema | Relational `ContentTypes` / `ContentTypeFields` |
+| Draft field data | JSON column `DraftDataJson` on entries |
+| Published representation | `PublishedSnapshotJson` (+ metadata such as `PublishedAt`) — [ADR-007](./decisions/ADR-007-publishing-architecture.md) |
+| Versions | `ContentVersions` with immutable snapshots |
+| Media metadata | Relational `Media`; binaries in file store / blob |
+| Audit | Append-only audit table |
 
-Dynamic field data uses JSON; validation enforced in Application/Domain against schema, not by DB constraints alone.
-
-### 6.4 EF Core Conventions
-
-- Explicit `IEntityTypeConfiguration<T>` per entity
-- Migrations committed to source control; reviewed and tested
-- `RowVersion` / concurrency token on `ContentEntry` and other concurrently edited entities
-- Indexes on: `ContentTypeId`, `Status`, `Slug`, `CreatedAt`, `UpdatedAt`, `ContentEntryId` (versions), `AuditLog.Timestamp`, `AuditLog.UserId`
-- Async APIs only; `CancellationToken` propagated
-- No lazy loading by default; explicit includes/projections to avoid N+1
-
-### 6.5 Transaction Boundaries
-
-Explicit transactions for atomic operations:
-
-- Publish content
-- Restore version
-- Delete content (soft delete + relation cleanup)
-- Content type schema change
-
-Transactions must not span external network calls (blob upload happens before/after transaction as designed).
+Dynamic JSON is validated in Domain/Application against the content-type schema ([ADR-003](./decisions/ADR-003-dynamic-content-schema.md)).
 
 ---
 
-## 7. Authentication Architecture
+## 7. Authentication & authorization
 
 ```text
-┌──────────┐    POST /auth/login     ┌─────────────┐
-│  Client  │ ──────────────────────► │   Api       │
-└──────────┘                         └──────┬──────┘
-     ▲                                      │
-     │         JWT access token              ▼
-     │                              ┌─────────────────┐
-     └──────────────────────────────│ Identity + JWT  │
-                                    │   Infrastructure │
-                                    └─────────────────┘
-```
-
-### 7.1 Components
-
-- **ASP.NET Core Identity:** user store, password hashing (PBKDF2/bcrypt via Identity defaults), lockout, email uniqueness
-- **JWT bearer authentication:** access tokens with expiration, claims for user ID and permissions
-- **Refresh tokens (optional):** if implemented, stored securely server-side or as rotating tokens; document in ADR-004
-- **Token invalidation:** short-lived access tokens; refresh rotation or token blocklist for logout
-
-### 7.2 Security Controls
-
-- Password policies (complexity, length)
-- Account lockout / login throttling
-- Rate limiting on login and password reset
-- Disabled account rejection at authentication and authorization
-- Passwords never logged
-- Secure password reset workflow with audit events
-
-### 7.3 Frontend Auth Flow
-
-1. User submits credentials to `/api/v1/auth/login`
-2. Store receives JWT; attached to subsequent requests via API client interceptor
-3. Token expiration triggers re-login or silent refresh (if implemented)
-4. Logout clears client token and calls server invalidation endpoint if available
-
----
-
-## 8. Authorization Architecture
-
-Authorization is **permission-based** internally; roles are the administrative grouping.
-
-```text
-Role (Administrator, Editor, Author, Viewer)
-    │
-    └──► Permissions (content.read, content.publish, media.upload, ...)
-              │
-              └──► ASP.NET Authorization Policies
-                        │
-                        └──► Controller/action [Authorize(Policy = "...")]
-```
-
-### 8.1 Permission Enforcement
-
-- Permissions stored in database: `Permissions`, `RolePermissions`
-- JWT includes permission claims (or role claims resolved server-side per request — decision in ADR-004)
-- Centralized `PermissionAuthorizationHandler` evaluates requirements
-- Every protected mutation verifies permissions server-side
-- Frontend permission checks are UX only (hide/disable controls)
-
-### 8.2 Permission Catalog
-
-Initial permissions per SPEC §8:
-
-```text
-content.read | content.create | content.update | content.delete
-content.publish | content.archive | content.restore | content.review
-content.version.read | content.version.restore
-contentType.read | contentType.create | contentType.update | contentType.delete
-media.read | media.upload | media.update | media.delete
-user.read | user.create | user.update | user.disable
-audit.read
-```
-
-### 8.3 Role → Permission Mapping
-
-| Role | Capabilities |
-|------|-------------|
-| Administrator | All permissions |
-| Editor | Content CRUD, review, publish, media, no user/role management |
-| Author | Create, edit own drafts, submit for review, manage own content |
-| Viewer | Read-only admin and published content |
-
-"Own content" enforced in Application layer by comparing `CreatedBy` / ownership rules, not only by permission name.
-
----
-
-## 9. Content Modeling Strategy
-
-### 9.1 Dynamic Content Types
-
-Content types are **data-defined**, not hardcoded C# classes (SPEC §100):
-
-- `ContentType` entity holds metadata (Name, Slug, DisplayName, Version, IsActive)
-- `ContentTypeField` defines field name, type, and JSON configuration
-- Demo types (Article, Page, Author, Category) seeded as content type records
-
-### 9.2 Field Type System
-
-Each field type maps to:
-
-- **Validation rules** in Domain (required, length, range, pattern, options)
-- **Storage** as JSON key in `ContentEntry.Data`
-- **Relation fields** store referenced entry IDs; validated for existence and type compatibility
-- **Media fields** store media IDs; validated against media library
-
-### 9.3 Schema vs Data vs Metadata
-
-| Layer | Examples |
-|-------|----------|
-| Schema | Content type name, field definitions, validation config |
-| Data | title, body, tags — stored in JSON `Data` |
-| Metadata | Status, Slug, CreatedAt, PublishedAt, CurrentVersion, RowVersion |
-
-### 9.4 Schema Evolution
-
-Changes to content types follow explicit rules:
-
-- **Add field:** safe; optional fields or defaults
-- **Remove field:** data retained in JSON but ignored; confirmation required
-- **Rename field:** migration script or alias mapping; confirmation required
-- **Change validation:** re-validate existing entries on next edit/publish
-- **Change relation target:** blocked if incompatible entries exist
-
-Destructive changes require admin confirmation workflow (API flag + UI confirmation).
-
----
-
-## 10. Versioning Strategy
-
-```text
-ContentEntry (current head)
-    │
-    ├── ContentVersion 1  (immutable snapshot)
-    ├── ContentVersion 2
-    └── ContentVersion N  (latest)
-```
-
-### 10.1 Version Creation
-
-A new `ContentVersion` is created on every meaningful mutation:
-
-- Content data changes
-- Status transitions (especially publish)
-- Slug changes on published content
-- Version restore
-
-Each version contains: `VersionNumber` (monotonic per entry), `Snapshot` (JSON), `CreatedAt`, `CreatedBy`, `ChangeSummary`.
-
-### 10.2 Draft vs Published
-
-- **Draft data** lives on the entry's working copy
-- **Published representation** is a snapshot promoted on publish (either copied to dedicated published storage or referenced via published version pointer — ADR-007)
-- Editing draft after publish does not alter public API until re-published
-
-### 10.3 Restore
-
-Restoring version N:
-
-1. Load immutable snapshot from version N
-2. Apply as new draft/working copy
-3. Create version N+1 documenting the restore
-4. Historical versions remain unchanged
-
-### 10.4 Compare
-
-Version compare returns structured diff (field-level added/changed/removed) computed in Application layer from JSON snapshots.
-
----
-
-## 11. Media Storage Abstraction
-
-```text
-         IFileStorage (Application/Domain port)
+Client ──POST /auth/login──► Identity password check
                 │
-    ┌───────────┼───────────────┐
-    ▼           ▼               ▼
-LocalFile   AzuriteBlob    AzureBlobStorage
-Storage     Storage        (Production)
-(Dev)       (Dev/Test)
+                ├── Access JWT (permissions/role claims)
+                └── Refresh token (persisted; rotation on refresh)
+
+Request ──Bearer JWT──► JwtBearer middleware
+                │
+                └── PermissionAuthorizationHandler (policy per permission)
 ```
 
-### 11.1 Interface Responsibilities
+Details: [ADR-004](./decisions/ADR-004-authentication-strategy.md), [architecture/security-auth-review.md](./architecture/security-auth-review.md).
 
-```csharp
-// Conceptual — exact signature defined at implementation
-interface IFileStorage
-{
-    Task<StorageResult> UploadAsync(Stream content, StorageUploadRequest request, CancellationToken ct);
-    Task<Stream> DownloadAsync(string storageKey, CancellationToken ct);
-    Task DeleteAsync(string storageKey, CancellationToken ct);
-    Task<bool> ExistsAsync(string storageKey, CancellationToken ct);
-}
-```
-
-### 11.2 Storage Key Generation
-
-- System-generated GUID-based keys with controlled prefix (e.g., `media/{yyyy}/{guid}.ext`)
-- User filenames stored as metadata only (`OriginalFileName`)
-- Path traversal prevented; uploads treated as untrusted
-
-### 11.3 Media Entity
-
-Relational DB stores metadata only (`StorageKey`, `Url`, dimensions, alt text). Binaries never in SQL.
-
-### 11.4 Upload Validation
-
-MIME type, extension allowlist, max size, filename sanitization — enforced in Application before storage call.
+Roles: Administrator (all permissions), Editor, Author, Viewer — see Domain `DefaultRoleDefinitions`.
 
 ---
 
-## 12. Public vs Administrative API
+## 8. Media storage
 
-### 12.1 Route Separation
+`IFileStorage` abstraction ([ADR-005](./decisions/ADR-005-media-storage.md)):
 
-| Surface | Base Path | Auth | Content |
-|---------|-----------|------|---------|
-| **Public** | `/api/v1/public/` | None (rate limited) | Published only |
-| **Admin** | `/api/v1/auth/`, `/users/`, `/roles/`, `/content-types/`, `/content/`, `/media/`, `/audit/` | JWT required | Full CMS |
+| Mode | Typical use |
+|------|-------------|
+| `Media:Provider=Local` | Local Docker / native disk under configured root |
+| `Media:Provider=Azure` | Azurite locally or Azure Blob with connection string / managed identity |
 
-Preview endpoints (authenticated, scoped tokens) live under admin namespace, not public.
-
-### 12.2 DTO Separation
-
-- **Admin DTOs:** include status, audit fields, draft data, internal IDs, concurrency tokens
-- **Public DTOs:** stable, minimal, no internal metadata, no user info unless modeled as public content (e.g., Author name field)
-
-Public DTOs versioned independently if needed within `/api/v1/`.
-
-### 12.3 Query Behavior
-
-| Feature | Admin API | Public API |
-|---------|-----------|------------|
-| Drafts | Visible per permissions | Never exposed |
-| Filtering | Full whitelist filters | Limited (status always published) |
-| Search | Full admin search | Optional basic filtering |
-| Pagination | Yes | Yes |
-| Sorting | Controlled whitelist | Controlled whitelist |
+Uploads are content-inspected; SVG and other risky types follow hardened rules (see security reviews).
 
 ---
 
-## 13. Content Lifecycle
+## 9. Content versioning & publishing
 
-```text
-DRAFT ──► IN_REVIEW ──► PUBLISHED ──► ARCHIVED
-  ▲          │              │
-  │          ▼              ▼
-  └──────── DRAFT      UNPUBLISHED ──► DRAFT
-```
-
-Valid transitions enforced in Domain (`ContentLifecycleService`):
-
-| From | To |
-|------|-----|
-| DRAFT | IN_REVIEW |
-| IN_REVIEW | DRAFT, PUBLISHED |
-| PUBLISHED | DRAFT, ARCHIVED |
-| ARCHIVED | DRAFT |
-| PUBLISHED | UNPUBLISHED → DRAFT |
-
-Invalid transitions → domain error → HTTP 422/409 as appropriate.
-
-**Publish** executes: schema validation → version creation → published snapshot update → publication metadata → cache invalidation → audit event.
+- Edits create or advance versions with change summaries ([ADR-006](./decisions/ADR-006-content-versioning.md))
+- Publish copies validated draft into published snapshot; public API reads published only
+- Soft delete for entries/media where specified; restore flows where implemented
+- Optimistic concurrency via `concurrencyToken` → HTTP 409
 
 ---
 
-## 14. Search Architecture
+## 10. Cross-cutting concerns
 
-```text
-Admin API ──► IContentSearchService (Application port)
-                      │
-                      ▼
-              EfContentSearchService (Infrastructure)
-                      │
-              (future: Azure Cognitive Search, Elasticsearch, etc.)
-```
-
-Initial implementation uses EF Core with PostgreSQL `ILIKE`/JSON operators. Domain and Application depend only on the interface. Filters and sort fields are whitelisted; unsupported parameters return 400.
+| Concern | Implementation |
+|---------|----------------|
+| Errors | Problem Details–style responses; frontend toast mapping |
+| Rate limiting | ASP.NET rate limiter policies (auth, public, media, preview, …) |
+| Caching | Configurable public content cache options |
+| Observability | Structured logging; Application Insights / OpenTelemetry when enabled |
+| Health | `/health/live`, `/health/ready` (DB readiness) |
+| CI quality | Format, NuGet/npm audit, unit/arch/integration, frontend gates, E2E, Bicep/Docker smoke |
 
 ---
 
-## 15. Audit Architecture
+## 11. Deployment & migrations
 
-- Append-only `AuditLogs` table
-- `IAuditService` called from Application use cases after successful operations
-- Records: Timestamp, UserId, Action, EntityType, EntityId, Metadata (JSON), IpAddress, UserAgent
-- No update/delete API for audit records
-- Admin read access requires `audit.read` permission
+- **Local Development:** API may apply PostgreSQL migrations on startup
+- **Staging/Production:** Explicit pipeline step via `infra/azure/scripts/run-azure-sql-migrations.sh` — API does **not** migrate on startup ([ADR-009](./decisions/ADR-009-cicd-and-migrations.md))
 
----
-
-## 16. Error Handling Architecture
-
-All API errors use **RFC 7807 Problem Details**:
-
-```json
-{
-  "type": "https://contentforge/errors/validation",
-  "title": "Validation failed",
-  "status": 422,
-  "detail": "One or more fields are invalid.",
-  "instance": "/api/v1/content/articles/123",
-  "errors": { "title": ["Title is required."] },
-  "traceId": "..."
-}
-```
-
-- Global exception middleware maps domain exceptions to status codes
-- Validation errors → 422 with field-level `errors`
-- Concurrency conflict → 409 with current version info for client resolution
-- Production: no stack traces or internal details in responses
+Ops guides: [operations/](./operations/).
 
 ---
 
-## 17. Testing Architecture
+## 12. Related documents
 
-```text
-tests/
-├── ContentForge.UnitTests/           # Domain, Application (no DB)
-├── ContentForge.IntegrationTests/    # WebApplicationFactory + PostgreSQL
-├── ContentForge.ArchitectureTests/   # NetArchTest / custom rules
-frontend/contentforge-web/
-├── tests/unit/                       # Vitest: stores, utils
-├── tests/component/                  # Vue Test Utils
-└── e2e/                              # Playwright: critical journeys
-```
-
-| Layer | Scope | Tools |
-|-------|-------|-------|
-| Unit | Domain rules, validators, lifecycle, permissions, slug, versioning | xUnit, FluentAssertions |
-| Integration | HTTP endpoints, auth, EF, migrations, transactions, errors | xUnit, WebApplicationFactory, Testcontainers/Docker |
-| Architecture | Dependency direction, layer isolation | NetArchTest |
-| Frontend unit | Stores, API client, composables | Vitest |
-| Frontend component | Dynamic forms, guards | Vue Test Utils |
-| E2E | Login, content workflow, authorization, media | Playwright |
-
-Test data via factories/builders; isolated per test; no production data; order-independent.
-
----
-
-## 18. Docker Architecture
-
-### 18.1 Local Development (`docker-compose.yml`)
-
-```text
-┌─────────────────────────────────────────────────┐
-│  docker compose                                  │
-│  ┌──────────────┐  ┌──────────────┐             │
-│  │  PostgreSQL  │  │   Azurite    │             │
-│  │   :5432      │  │   :10000     │             │
-│  └──────────────┘  └──────────────┘             │
-└─────────────────────────────────────────────────┘
-         ▲                    ▲
-         │                    │
-   dotnet run            dotnet run
-   (host machine)        (host machine)
-   npm run dev
-```
-
-Backend and frontend run on host during development for fast iteration; infrastructure in Docker.
-
-Optional: full stack compose with API and frontend containers for CI-like local testing.
-
-### 18.2 Test Compose (`docker-compose.test.yml`)
-
-Ephemeral PostgreSQL (and Azurite if needed) for integration tests and CI.
-
-### 18.3 Production Dockerfile
-
-Multi-stage build:
-
-1. **Build stage:** SDK image, restore, publish
-2. **Runtime stage:** ASP.NET runtime, non-root user, minimal footprint
-
-Frontend: static files built in CI; served via App Service static hosting, CDN, or embedded static files middleware (ADR-010).
-
-### 18.4 Container Requirements (SPEC §69)
-
-- Non-root execution
-- Multi-stage builds
-- Configuration via environment variables
-- Only required ports exposed
-
----
-
-## 19. Azure Deployment Architecture
-
-```text
-                    Internet
-                       │
-                       ▼
-               Azure App Service
-              (HTTPS termination)
-                       │
-         ┌─────────────┴─────────────┐
-         │                           │
-         ▼                           ▼
-   ASP.NET Core API            Vue Static Assets
-   (App Service)               (same or separate App Service / CDN)
-         │
-    ┌────┼────────────┐
-    ▼    ▼            ▼
-Azure SQL  Azure Blob  Application
-Database   Storage     Insights
-```
-
-### 19.1 Components
-
-| Service | Purpose |
-|---------|---------|
-| **Azure App Service** | Host ASP.NET Core API; optionally frontend static site |
-| **Azure SQL Database** | Production relational persistence |
-| **Azure Blob Storage** | Media binaries |
-| **Application Insights** | Telemetry, logs, dependencies, exceptions |
-| **Azure Key Vault** (recommended) | Secrets, connection strings |
-| **Managed Identity** | App Service → SQL, Blob, Key Vault (no long-lived credentials) |
-
-### 19.2 Environments
-
-| Environment | Purpose |
-|-------------|---------|
-| Development | Local Docker + host-run apps |
-| Test | CI ephemeral containers |
-| Staging | Production-like Azure deployment for validation |
-| Production | Live deployment with approval gates |
-
-### 19.3 Deployment Flow
-
-```text
-GitHub Actions CI → Build artifacts → Container image → Deploy to Staging
-    → Health check (/health/ready) → Manual/auto promote to Production
-    → Migration execution (controlled, documented) → Verification
-```
-
-- Deployment slots for zero-downtime swaps where appropriate
-- Database migrations applied via documented pipeline step — not implicit auto-migrate on startup in Production
-- Backups: Azure SQL automated backups + point-in-time recovery; Blob redundancy (GRS/LRS per policy)
-
-### 19.4 Configuration
-
-Environment variables and Key Vault references:
-
-- Connection strings (SQL, Blob)
-- JWT signing keys
-- CORS allowed origins
-- Application Insights connection string
-- Rate limit thresholds
-
-Secrets never in source, Docker images, or workflow files.
-
-### 19.5 Observability in Azure
-
-- Application Insights SDK in API
-- Structured logs with correlation IDs forwarded to Insights
-- Health checks configured as App Service health probes
-- Alerts on failed health checks, exception rate spikes (operations docs)
-
----
-
-## 20. Cross-Cutting Concerns
-
-### 20.1 Caching
-
-Optional ASP.NET output/data cache for public content. Invalidated on publish/unpublish/archive. Not required for initial release but architecture supports it.
-
-### 20.2 Rate Limiting
-
-Applied to: login, password reset, public API, media upload. Configurable per environment via `appsettings`.
-
-### 20.3 Background Processing
-
-`IBackgroundJobScheduler` abstraction for scheduled publishing (`publishAt`, `unpublishAt`). Initial implementation may use `IHostedService` with idempotent execution and persisted job state. Not a full distributed scheduler unless justified.
-
-### 20.4 Correlation IDs
-
-Middleware accepts `X-Correlation-ID` from trusted sources or generates GUID. Propagated to logs, Application Insights, and error responses (`traceId`).
-
-### 20.5 API Versioning
-
-All external APIs under `/api/v1/`. Breaking changes require `/api/v2/`. Versioned via URL path (explicit, per SPEC).
-
-### 20.6 Soft Deletion
-
-Content entries (and potentially media) use soft delete flags. Excluded from normal queries; recoverable; audit trail preserved.
-
----
-
-## 21. Security Architecture Summary
-
-| Control | Implementation |
-|---------|---------------|
-| Transport | HTTPS in production |
-| Authentication | Identity + JWT |
-| Authorization | Permission policies, server-side |
-| Input validation | FluentValidation + domain schema validation |
-| SQL injection | EF Core parameterized queries |
-| XSS | Output encoding; sanitized rich text in frontend |
-| File upload | Type/size validation; safe storage paths |
-| Secrets | Key Vault / App Service settings |
-| CORS | Explicit allowlist |
-| Rate limiting | Middleware |
-| Audit | Immutable audit log |
-
----
-
-## 22. Related Documents
-
-- [IMPLEMENTATION_PLAN.md](./IMPLEMENTATION_PLAN.md) — phased delivery
-- [DEVELOPMENT_RULES.md](./DEVELOPMENT_RULES.md) — coding and agent rules
-- [SPECIFICATIONS.md](../SPECIFICATIONS.md) — authoritative requirements
-- `docs/decisions/` — ADRs for key decisions
+- [API usage & examples](./api/README.md)
+- [Implementation plan](./IMPLEMENTATION_PLAN.md)
+- [Final backend review](./architecture/final-backend-review.md)
+- [Final frontend review](./architecture/final-frontend-review.md)
+- [Azure security model](./operations/azure-security.md)

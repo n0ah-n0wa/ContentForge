@@ -1,15 +1,33 @@
 # Operations Documentation
 
-Deployment, backup, recovery, and runbook documentation will be maintained here.
+Runbooks and deployment guides for ContentForge. All procedures below match scripts and workflows that exist in this repository or platform features configured by Bicep.
 
-- [Continuous Integration (CI)](./ci.md)
-- [Azure Continuous Deployment (CD)](./azure-cd.md)
-- [Database migrations (production strategy)](./database-migrations.md)
-- [Docker deployment](./docker.md)
-- [Azure infrastructure (Bicep)](./azure-infrastructure.md)
-- [Azure deployment guide](./azure-deployment.md)
-- [Azure security model](./azure-security.md)
-- [Azure Blob Storage (media)](./azure-storage.md)
-- [Azure Observability (Application Insights)](./azure-observability.md)
+## Index
 
-See also [IMPLEMENTATION_PLAN.md](../IMPLEMENTATION_PLAN.md) Phase 16 deliverables.
+| Document | Topics |
+|----------|--------|
+| [ci.md](./ci.md) | GitHub Actions CI gates |
+| [azure-cd.md](./azure-cd.md) | Continuous deployment, OIDC, **rollback** |
+| [azure-deployment.md](./azure-deployment.md) | Azure deploy how-to |
+| [azure-infrastructure.md](./azure-infrastructure.md) | Resource topology |
+| [azure-security.md](./azure-security.md) | Security model, backup retention matrix |
+| [azure-storage.md](./azure-storage.md) | Blob media operations |
+| [azure-observability.md](./azure-observability.md) | Application Insights / monitoring |
+| [database-migrations.md](./database-migrations.md) | EF migrations (PostgreSQL + Azure SQL) |
+| [docker.md](./docker.md) | Container deployment |
+| [backups-and-recovery.md](./backups-and-recovery.md) | Backups, PITR, media/Key Vault recovery |
+
+## Quick links
+
+- Infra as code: [`infra/azure/README.md`](../../infra/azure/README.md)
+- Docker images: [`infra/docker/README.md`](../../infra/docker/README.md)
+- Architecture: [`../ARCHITECTURE.md`](../ARCHITECTURE.md)
+- ADRs: [`../decisions/`](../decisions/)
+
+## Operational principles
+
+1. **No secrets in git** — use Key Vault / GitHub OIDC / local env files that are gitignored.
+2. **Migrations before app** — cloud schema changes run in the migrate job; API does not migrate on startup in Staging/Production.
+3. **Staging before production** — production deploy is manual with environment protection.
+4. **Rollback prefers previous images** — schema rollback is a separate, careful decision (forward-fix preferred).
+5. **Documented ≠ automated** — backups are Azure platform features; restore drills are an operator responsibility.

@@ -9,11 +9,12 @@ ContentForge must demonstrate production-grade .NET engineering with clear separ
 
 ## Decision
 
-Adopt Clean Architecture with four backend projects:
+Adopt Clean Architecture with backend projects:
 
 - `ContentForge.Domain` — entities, value objects, domain rules
 - `ContentForge.Application` — use cases, DTOs, validators, ports
-- `ContentForge.Infrastructure` — EF Core, Identity, storage, external services
+- `ContentForge.Infrastructure` — EF Core (PostgreSQL), Identity, storage, external services
+- `ContentForge.Infrastructure.SqlServer` — Azure SQL EF migrations for cloud
 - `ContentForge.Api` — HTTP, middleware, composition root
 
 Dependency direction flows inward: Api → Application → Domain ← Infrastructure.

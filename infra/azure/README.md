@@ -104,9 +104,13 @@ infra/azure/
 │       ├── prod.bicepparam
 │       └── dev.example.bicepparam
 └── scripts/
-    └── grant-api-sql-access.sql
+    ├── grant-api-sql-access.sql
+    ├── grant-api-sql-migration.sql
+    ├── run-azure-sql-migrations.sh
+    ├── validate-migrations.sh
+    ├── destructive-migration-allowlist.txt
+    └── staging-smoke-test.ps1
 ```
-
 ## Configuration
 
 1. Edit the parameter file for your target environment under `bicep/parameters/`.
@@ -271,4 +275,4 @@ For network hardening beyond these defaults (private endpoints, VNet integration
 
 ## Phase status
 
-This deliverable corresponds to **IMPLEMENTATION_PLAN.md Phase 16** (Azure infrastructure definitions). CI/CD wiring and production hardening (private endpoints, Front Door) are follow-on work.
+This deliverable corresponds to **IMPLEMENTATION_PLAN.md Phase 16** (Azure infrastructure + CD). Continuous deployment is implemented in [`.github/workflows/deploy.yml`](../../.github/workflows/deploy.yml) (see [docs/operations/azure-cd.md](../../docs/operations/azure-cd.md)). Optional further hardening (private endpoints, Front Door / WAF) is not required for the current Bicep topology.

@@ -42,7 +42,7 @@ Override endpoints with `E2E_BASE_URL` and `E2E_API_BASE_URL` when needed.
 | `auth.spec.ts`             | Login, invalid login, logout (+ session cleared), protected route, forbidden access, disabled account         |
 | `content-workflow.spec.ts` | Create, edit, save draft, submit, publish, public API visibility, unpublish, public API invisibility, archive |
 | `versioning.spec.ts`       | Multiple versions, inspect history, restore previous version                                                  |
-| `authorization.spec.ts`    | Author cannot publish; Viewer cannot edit; Editor can publish; Administrator manages users                    |
+| `authorization.spec.ts`    | Author cannot publish; Viewer cannot open edit route; Editor can publish; Administrator manages users |
 | `media.spec.ts`            | Upload, select on content entry, delete (+ API 404)                                                           |
 | `concurrency.spec.ts`      | Stale concurrency token conflict + reload                                                                     |
 | `accessibility.spec.ts`    | axe-core WCAG 2.1 A/AA smoke on login + authenticated dashboard shell                                         |
