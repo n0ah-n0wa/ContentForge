@@ -86,8 +86,11 @@ describe('ContentEntryLifecycleActions', () => {
     await publishButton!.trigger('click');
     expect(wrapper.text()).toContain('Publish "hello-world"');
 
-    const confirmButton = wrapper.findAll('button').find((button) => button.text() === 'Confirm');
-    expect(confirmButton?.attributes('disabled')).toBeDefined();
+    const confirmButton = wrapper
+      .findAll('button')
+      .find((button) => button.text() === 'Publish entry');
+    expect(confirmButton).toBeDefined();
+    expect(confirmButton!.attributes('disabled')).toBeDefined();
 
     await wrapper
       .find('input[placeholder="Describe why this action is being taken"]')

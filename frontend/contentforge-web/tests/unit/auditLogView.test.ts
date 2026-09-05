@@ -64,7 +64,7 @@ describe('AuditLogView', () => {
 
     expect(auditApi.listAuditLogs).toHaveBeenCalledOnce();
     expect(wrapper.text()).toContain('Content published');
-    expect(wrapper.text()).toContain('Apply filters');
+    expect(wrapper.text()).toContain('Apply');
 
     await wrapper.find('.audit-log-row__button').trigger('click');
     await flushPromises();
