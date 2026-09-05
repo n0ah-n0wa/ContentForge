@@ -49,6 +49,10 @@ coverage/
 *.trx
 *.coverage
 *.coveragexml
+/test-results/
+
+## Local dotnet tools (install via `dotnet tool install --tool-path .tools`)
+/.tools/
 
 ## Environment
 .env
