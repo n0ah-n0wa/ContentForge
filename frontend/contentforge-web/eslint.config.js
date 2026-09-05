@@ -1,5 +1,6 @@
 import js from '@eslint/js';
 import pluginVue from 'eslint-plugin-vue';
+import pluginVueA11y from 'eslint-plugin-vuejs-accessibility';
 import globals from 'globals';
 import tseslint from 'typescript-eslint';
 
@@ -9,8 +10,10 @@ export default tseslint.config(
   ...tseslint.configs.recommended,
   ...pluginVue.configs['flat/recommended'],
   {
-    files: ['**/*.{ts,vue}'],
-    ignores: ['e2e/**', 'playwright.config.ts'],
+    files: ['src/**/*.{ts,vue}', 'tests/**/*.{ts,vue}'],
+    plugins: {
+      'vuejs-accessibility': pluginVueA11y,
+    },
     languageOptions: {
       ecmaVersion: 'latest',
       sourceType: 'module',
@@ -29,6 +32,30 @@ export default tseslint.config(
       'vue/html-closing-bracket-newline': 'off',
       'vue/html-indent': 'off',
       'vue/first-attribute-linebreak': 'off',
+      // Practical WCAG-oriented rules without blocking existing CMS density.
+      'vuejs-accessibility/alt-text': 'error',
+      'vuejs-accessibility/anchor-has-content': 'error',
+      'vuejs-accessibility/aria-props': 'error',
+      'vuejs-accessibility/aria-role': 'error',
+      'vuejs-accessibility/aria-unsupported-elements': 'error',
+      'vuejs-accessibility/click-events-have-key-events': 'warn',
+      'vuejs-accessibility/form-control-has-label': 'error',
+      'vuejs-accessibility/heading-has-content': 'error',
+      'vuejs-accessibility/iframe-has-title': 'error',
+      'vuejs-accessibility/interactive-supports-focus': 'warn',
+      'vuejs-accessibility/label-has-for': [
+        'error',
+        {
+          required: { some: ['nesting', 'id'] },
+          allowChildren: true,
+        },
+      ],
+      'vuejs-accessibility/media-has-caption': 'warn',
+      'vuejs-accessibility/mouse-events-have-key-events': 'warn',
+      'vuejs-accessibility/no-autofocus': 'off',
+      'vuejs-accessibility/no-distracting-elements': 'error',
+      'vuejs-accessibility/no-redundant-roles': 'warn',
+      'vuejs-accessibility/role-has-required-aria-props': 'error',
     },
   },
   {

@@ -30,8 +30,8 @@ function onPageSizeChange(event: Event): void {
 </script>
 
 <template>
-  <div class="pagination-bar">
-    <p class="pagination-bar__summary">
+  <nav class="pagination-bar" aria-label="Pagination">
+    <p class="pagination-bar__summary" aria-live="polite">
       Showing page {{ page }} of {{ totalPages }} ({{ totalItems }} items)
     </p>
     <div class="pagination-bar__controls">
@@ -60,5 +60,5 @@ function onPageSizeChange(event: Event): void {
         Next
       </AppButton>
     </div>
-  </div>
+  </nav>
 </template>

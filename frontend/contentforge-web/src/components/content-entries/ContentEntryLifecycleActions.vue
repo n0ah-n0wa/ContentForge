@@ -4,9 +4,11 @@ import AppButton from '@/components/common/AppButton.vue';
 import ConfirmActionPanel from '@/components/common/ConfirmActionPanel.vue';
 import { useContentEntryActions } from '@/composables/useContentEntryActions';
 import { useContentPermissions } from '@/composables/useContentPermissions';
+import { useNotifications } from '@/composables/useNotifications';
 import { ContentStatus, type ContentEntry } from '@/types/contentEntries';
 import {
   getAvailableLifecycleActions,
+  getLifecycleConfirmLabel,
   getLifecycleConfirmationMessage,
   isDestructiveLifecycleAction,
   lifecycleActionRequiresChangeSummary,
@@ -28,6 +30,7 @@ const emit = defineEmits<{
   error: [error: unknown, title: string];
 }>();
 
+const { notifySuccess } = useNotifications();
 const entryRef = computed(() => props.entry);
 const pendingAction = ref<LifecycleAction | null>(null);
 const confirmChangeSummary = ref('');
@@ -101,7 +104,13 @@ async function confirmAction(): Promise<void> {
 
   if (success) {
     if (action === 'delete') {
+      notifySuccess('Entry deleted', `"${props.entry.slug}" was soft-deleted.`);
       emit('deleted');
+    } else {
+      notifySuccess(
+        getLifecycleConfirmLabel(action),
+        `"${props.entry.slug}" was updated successfully.`,
+      );
     }
     cancelAction();
   }
@@ -130,7 +139,7 @@ defineExpose({
       v-model:change-summary="confirmChangeSummary"
       :title="pendingConfirmation.title"
       :message="pendingConfirmation.message"
-      :confirm-label="pendingConfirmation.destructive ? 'Confirm destructive action' : 'Confirm'"
+      :confirm-label="getLifecycleConfirmLabel(pendingConfirmation.action)"
       :require-change-summary="pendingConfirmation.requireChangeSummary"
       :loading="actionLoading"
       @confirm="confirmAction"

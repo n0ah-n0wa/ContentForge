@@ -82,9 +82,8 @@ async function loadMedia(): Promise<void> {
     totalItems.value = response.totalItems;
     totalPages.value = Math.max(response.totalPages, 1);
     page.value = response.page;
-  } catch (error) {
+  } catch {
     errorMessage.value = 'Unable to load media library.';
-    handleError(error, 'Failed to load media');
   } finally {
     loading.value = false;
   }
@@ -94,6 +93,17 @@ function applyFilters(): void {
   page.value = 1;
   void loadMedia();
 }
+
+function clearFilters(): void {
+  search.value = '';
+  contentTypeFilter.value = '';
+  page.value = 1;
+  void loadMedia();
+}
+
+const filtersActive = computed(
+  () => Boolean(search.value.trim()) || Boolean(contentTypeFilter.value),
+);
 
 function onAssetSelect(asset: MediaAsset): void {
   if (props.selectionMode) {
@@ -214,18 +224,34 @@ defineExpose({
           {{ viewMode === 'grid' ? 'List view' : 'Grid view' }}
         </AppButton>
         <AppButton type="submit" variant="secondary">Apply</AppButton>
+        <AppButton v-if="filtersActive" type="button" variant="ghost" @click="clearFilters">
+          Clear
+        </AppButton>
       </div>
     </form>
 
-    <AppAlert v-if="errorMessage" kind="error" title="Load failed" :message="errorMessage" />
+    <AppAlert v-if="errorMessage" kind="error" title="Unable to load" :message="errorMessage">
+      <template #actions>
+        <AppButton variant="secondary" type="button" @click="loadMedia">Retry</AppButton>
+      </template>
+    </AppAlert>
 
     <div v-if="loading" class="inline-loading">
-      <AppSpinner label="Loading media library" />
+      <AppSpinner label="Loading media" />
       <span>Loading media…</span>
     </div>
 
-    <div v-else-if="items.length === 0" class="empty-state">
-      No media assets match the current filters.
+    <div v-else-if="items.length === 0" class="empty-state empty-state--stack">
+      <p>
+        {{
+          filtersActive
+            ? 'No media assets match the current filters.'
+            : 'No media assets have been uploaded yet.'
+        }}
+      </p>
+      <AppButton v-if="filtersActive" variant="secondary" type="button" @click="clearFilters">
+        Clear filters
+      </AppButton>
     </div>
 
     <template v-else>

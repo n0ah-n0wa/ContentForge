@@ -11,12 +11,14 @@ import { ApiError } from '@/api/errors';
 import { useApiErrorHandling } from '@/composables/useApiErrorHandling';
 import { useContentEntryForm } from '@/composables/useContentEntryForm';
 import { useContentPermissions } from '@/composables/useContentPermissions';
+import { useNotifications } from '@/composables/useNotifications';
 import type { ContentType } from '@/types/contentTypes';
 import { serializeEntryDataForApi } from '@/utils/contentEntryValidation';
 
 const route = useRoute();
 const router = useRouter();
 const { handleError } = useApiErrorHandling();
+const { notifySuccess } = useNotifications();
 const { canCreate } = useContentPermissions();
 
 const contentTypeSlug = computed(() => route.params.contentTypeSlug as string);
@@ -63,9 +65,8 @@ async function loadContentType(): Promise<void> {
     contentType.value = await getContentType(contentType.value.id);
 
     initializeForCreate(contentType.value);
-  } catch (error) {
+  } catch {
     pageErrorMessage.value = 'Unable to load content type.';
-    handleError(error, 'Failed to load content type');
   } finally {
     loading.value = false;
   }
@@ -90,6 +91,7 @@ async function createEntry(): Promise<void> {
       data: serializeEntryDataForApi(contentType.value.fields, data.value),
     });
 
+    notifySuccess('Draft created', `"${created.slug}" is ready to edit.`);
     await router.push({
       name: 'content-entry-edit',
       params: {
@@ -127,12 +129,23 @@ onMounted(() => {
     <AppAlert
       v-if="pageErrorMessage"
       kind="error"
-      title="Unable to continue"
+      title="Unable to load"
       :message="pageErrorMessage"
-    />
+    >
+      <template #actions>
+        <AppButton variant="secondary" type="button" @click="loadContentType">Retry</AppButton>
+        <AppButton
+          variant="ghost"
+          type="button"
+          @click="router.push({ name: 'content-by-type', params: { contentTypeSlug } })"
+        >
+          Back to list
+        </AppButton>
+      </template>
+    </AppAlert>
 
     <div v-if="loading" class="inline-loading">
-      <AppSpinner label="Loading editor" />
+      <AppSpinner label="Preparing editor" />
       <span>Preparing editor…</span>
     </div>
 
@@ -146,8 +159,23 @@ onMounted(() => {
 
       <label class="form-field" :class="{ 'form-field--invalid': validationErrors.Slug?.length }">
         <span>Slug</span>
-        <input v-model="slug" type="text" required :disabled="saving" />
-        <ul v-if="validationErrors.Slug?.length" class="entry-field__errors">
+        <input
+          id="content-entry-slug"
+          v-model="slug"
+          type="text"
+          required
+          :disabled="saving"
+          :aria-invalid="validationErrors.Slug?.length ? 'true' : undefined"
+          :aria-describedby="
+            validationErrors.Slug?.length ? 'content-entry-slug-errors' : undefined
+          "
+        />
+        <ul
+          v-if="validationErrors.Slug?.length"
+          id="content-entry-slug-errors"
+          class="entry-field__errors"
+          role="alert"
+        >
           <li v-for="message in validationErrors.Slug" :key="message">{{ message }}</li>
         </ul>
       </label>
@@ -168,9 +196,7 @@ onMounted(() => {
         >
           Cancel
         </AppButton>
-        <AppButton type="submit" :disabled="saving || !canCreate">
-          {{ saving ? 'Creating…' : 'Create draft' }}
-        </AppButton>
+        <AppButton type="submit" :loading="saving" :disabled="!canCreate"> Create draft </AppButton>
       </div>
     </form>
   </section>

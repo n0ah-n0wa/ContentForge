@@ -22,6 +22,7 @@ import {
 import { ApiError, getValidationMessages, isValidationProblem } from '@/api/errors';
 import { useApiErrorHandling } from '@/composables/useApiErrorHandling';
 import { useContentTypePermissions } from '@/composables/useContentTypePermissions';
+import { useNotifications } from '@/composables/useNotifications';
 import {
   getConfirmationMessage,
   isConfirmationRequiredError,
@@ -55,6 +56,7 @@ type PendingAction =
 const route = useRoute();
 const router = useRouter();
 const { handleError } = useApiErrorHandling();
+const { notifySuccess } = useNotifications();
 const { canUpdate, canDelete } = useContentTypePermissions();
 
 const contentTypeId = computed(() => route.params.id as string);
@@ -108,9 +110,9 @@ async function loadPage(): Promise<void> {
       slug: loaded.slug,
       description: loaded.description ?? '',
     };
-  } catch (error) {
+  } catch {
     pageErrorMessage.value = 'Unable to load content type.';
-    handleError(error, 'Failed to load content type');
+    contentType.value = null;
   } finally {
     loading.value = false;
   }
@@ -130,12 +132,12 @@ async function saveMetadata(): Promise<void> {
       slug: metadata.value.slug.trim(),
       description: metadata.value.description.trim() || null,
     });
+    notifySuccess('Metadata saved', 'Content type metadata was updated.');
   } catch (error) {
     pageErrorMessage.value =
       error instanceof ApiError && error.isValidationError && isValidationProblem(error.problem)
         ? getValidationMessages(error.problem).join(' ')
         : 'Unable to save content type metadata.';
-    handleError(error, 'Update content type failed');
   } finally {
     savingMetadata.value = false;
   }
@@ -440,11 +442,25 @@ onMounted(() => {
       <span>Loading content type…</span>
     </div>
 
+    <AppAlert
+      v-else-if="pageErrorMessage && !contentType"
+      kind="error"
+      title="Unable to load"
+      :message="pageErrorMessage"
+    >
+      <template #actions>
+        <AppButton variant="secondary" type="button" @click="loadPage">Retry</AppButton>
+        <AppButton variant="ghost" type="button" @click="router.push({ name: 'content-types' })">
+          Back to list
+        </AppButton>
+      </template>
+    </AppAlert>
+
     <template v-else-if="contentType">
       <AppAlert
         v-if="pageErrorMessage"
         kind="error"
-        title="Operation failed"
+        title="Unable to complete"
         :message="pageErrorMessage"
       />
 

@@ -13,10 +13,11 @@
     --color-primary-dark: #1d4ed8;
     --color-surface: #ffffff;
     --color-border: #cbd5e1;
-    --color-muted: #64748b;
+    --color-muted: #475569;
     --color-danger: #b91c1c;
     --color-warning: #b45309;
     --color-success: #047857;
+    --color-focus: #1d4ed8;
     --shadow-card: 0 10px 30px rgba(15, 23, 42, 0.08);
     --radius-md: 0.75rem;
     --sidebar-width: 16rem;
@@ -59,8 +60,46 @@ input {
 }
 
 :focus-visible {
-    outline: 3px solid #93c5fd;
+    outline: 3px solid var(--color-focus);
     outline-offset: 2px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+        animation-duration: 0.01ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: 0.01ms !important;
+        scroll-behavior: auto !important;
+    }
+}
+
+input::placeholder,
+textarea::placeholder {
+    color: #475569;
+    opacity: 1;
+}
+
+.form-field__label {
+    display: block;
+    font-weight: 600;
+    margin-bottom: 0.35rem;
+}
+
+.form-field__label small {
+    margin-left: 0.35rem;
+    font-weight: 500;
+    color: var(--color-muted);
+}
+
+.notification__kind {
+    margin: 0 0 0.15rem;
+    font-size: 0.75rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: var(--color-muted);
 }
 
 .app-layout {
@@ -96,7 +135,7 @@ input {
 
 .app-sidebar__brand p {
     margin: 0.15rem 0 0;
-    color: #94a3b8;
+    color: #cbd5e1;
     font-size: 0.875rem;
 }
 
@@ -107,7 +146,8 @@ input {
     width: 2.5rem;
     height: 2.5rem;
     border-radius: 0.75rem;
-    background: #2563eb;
+    background: #1d4ed8;
+    color: #ffffff;
     font-weight: 700;
 }
 
@@ -329,6 +369,13 @@ input {
     margin: 0.35rem 0 0;
 }
 
+.app-alert__actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    margin-top: 0.75rem;
+}
+
 .app-alert--info {
     background: #eff6ff;
     color: #1d4ed8;
@@ -430,7 +477,6 @@ input {
 .page-header,
 .section-header,
 .toolbar,
-.form-actions,
 .form-grid,
 .stack-form,
 .metadata-form,
@@ -444,9 +490,7 @@ input {
 }
 
 .page-header,
-.section-header,
-.toolbar,
-.form-actions {
+.section-header {
     grid-template-columns: 1fr auto;
     align-items: start;
 }
@@ -458,8 +502,16 @@ input {
 }
 
 .toolbar {
-    grid-template-columns: 1fr 12rem auto;
+    grid-template-columns: repeat(auto-fit, minmax(12rem, 1fr));
+    align-items: end;
     margin-top: 1.5rem;
+}
+
+.toolbar__actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.75rem;
+    align-items: end;
 }
 
 .form-grid {
@@ -476,7 +528,11 @@ input {
 }
 
 .form-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.75rem;
     justify-content: flex-end;
+    align-items: center;
 }
 
 .inline-loading,
@@ -486,6 +542,19 @@ input {
     gap: 0.75rem;
     color: var(--color-muted);
     margin-top: 1rem;
+}
+
+.empty-state {
+    flex-wrap: wrap;
+}
+
+.empty-state--stack {
+    flex-direction: column;
+    align-items: flex-start;
+}
+
+.empty-state p {
+    margin: 0;
 }
 
 .data-table-wrap {
@@ -758,7 +827,8 @@ input {
 .content-list-toolbar {
     display: grid;
     gap: 1rem;
-    grid-template-columns: repeat(4, minmax(0, 1fr));
+    grid-template-columns: repeat(auto-fit, minmax(12rem, 1fr));
+    align-items: end;
     margin-top: 1.5rem;
 }
 
@@ -1152,12 +1222,14 @@ input {
     .toolbar,
     .page-header,
     .section-header,
-    .form-actions,
+    .form-grid,
     .editor-grid,
     .content-list-toolbar,
     .version-history__layout,
     .dashboard-panels,
-    .dashboard-list__item {
+    .dashboard-list__item,
+    .user-detail-grid,
+    .audit-log-grid {
         grid-template-columns: 1fr;
     }
 }

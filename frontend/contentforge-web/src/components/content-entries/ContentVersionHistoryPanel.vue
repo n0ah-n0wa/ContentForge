@@ -49,9 +49,8 @@ async function loadVersions(): Promise<void> {
 
   try {
     versions.value = await listContentVersions(props.entryId);
-  } catch (error) {
+  } catch {
     errorMessage.value = 'Unable to load version history.';
-    emit('error', error, 'Failed to load versions');
   } finally {
     loading.value = false;
   }
@@ -136,7 +135,11 @@ defineExpose({
       <span>Loading versions…</span>
     </div>
 
-    <AppAlert v-else-if="errorMessage" kind="error" title="Load failed" :message="errorMessage" />
+    <AppAlert v-else-if="errorMessage" kind="error" title="Unable to load" :message="errorMessage">
+      <template #actions>
+        <AppButton variant="secondary" type="button" @click="loadVersions">Retry</AppButton>
+      </template>
+    </AppAlert>
 
     <div v-else-if="sortedVersions.length === 0" class="empty-state">No versions recorded yet.</div>
 
@@ -155,6 +158,7 @@ defineExpose({
               'version-history__summary--selected': selectedVersionNumber === version.versionNumber,
             }"
             :data-testid="`version-summary-${version.versionNumber}`"
+            :aria-current="selectedVersionNumber === version.versionNumber ? 'true' : undefined"
             @click="inspectVersion(version.versionNumber)"
           >
             <strong>Version {{ version.versionNumber }}</strong>

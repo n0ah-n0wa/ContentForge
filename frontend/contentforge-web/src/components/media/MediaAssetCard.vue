@@ -28,6 +28,8 @@ const isImage = computed(() => isImageMedia(props.asset.contentType));
       type="button"
       class="media-asset-card__button"
       :disabled="!selectable"
+      :aria-pressed="selectable ? selected : undefined"
+      :aria-label="asset.title ?? asset.originalFileName"
       @click="emit('select')"
     >
       <div class="media-asset-card__preview">

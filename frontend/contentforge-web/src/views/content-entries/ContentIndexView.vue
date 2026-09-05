@@ -5,12 +5,10 @@ import AppAlert from '@/components/common/AppAlert.vue';
 import AppButton from '@/components/common/AppButton.vue';
 import AppSpinner from '@/components/common/AppSpinner.vue';
 import { listContentTypes } from '@/api/contentTypes';
-import { useApiErrorHandling } from '@/composables/useApiErrorHandling';
 import { useContentPermissions } from '@/composables/useContentPermissions';
 import type { ContentType } from '@/types/contentTypes';
 
 const router = useRouter();
-const { handleError } = useApiErrorHandling();
 const { canRead } = useContentPermissions();
 
 const items = ref<ContentType[]>([]);
@@ -30,9 +28,8 @@ async function loadContentTypes(): Promise<void> {
       isActive: true,
     });
     items.value = response.items;
-  } catch (error) {
+  } catch {
     errorMessage.value = 'Unable to load content types.';
-    handleError(error, 'Failed to load content');
   } finally {
     loading.value = false;
   }
@@ -55,7 +52,11 @@ onMounted(() => {
       </div>
     </header>
 
-    <AppAlert v-if="errorMessage" kind="error" title="Load failed" :message="errorMessage" />
+    <AppAlert v-if="errorMessage" kind="error" title="Unable to load" :message="errorMessage">
+      <template #actions>
+        <AppButton variant="secondary" type="button" @click="loadContentTypes">Retry</AppButton>
+      </template>
+    </AppAlert>
 
     <div v-if="loading" class="inline-loading">
       <AppSpinner label="Loading content types" />

@@ -18,6 +18,7 @@ import { useApiErrorHandling } from '@/composables/useApiErrorHandling';
 import { useContentEntryActions } from '@/composables/useContentEntryActions';
 import { useContentEntryForm } from '@/composables/useContentEntryForm';
 import { useContentPermissions } from '@/composables/useContentPermissions';
+import { useNotifications } from '@/composables/useNotifications';
 import type { ContentEntry } from '@/types/contentEntries';
 import type { ContentType } from '@/types/contentTypes';
 import { getLifecycleConfirmationMessage } from '@/utils/contentLifecycle';
@@ -27,6 +28,7 @@ import { openContentPreview } from '@/utils/contentPreview';
 const route = useRoute();
 const router = useRouter();
 const { handleError } = useApiErrorHandling();
+const { notifySuccess } = useNotifications();
 const { canUpdate, canDelete, canRead } = useContentPermissions();
 
 const entryId = computed(() => route.params.entryId as string);
@@ -38,8 +40,10 @@ const saving = ref(false);
 const pageErrorMessage = ref<string | null>(null);
 const concurrencyConflict = ref<ConcurrencyConflictProblem | null>(null);
 const showDeleteConfirm = ref(false);
+const showLeaveConfirm = ref(false);
 const previewLoading = ref(false);
 const versionHistoryRef = ref<InstanceType<typeof ContentVersionHistoryPanel> | null>(null);
+let pendingLeaveNext: ((value?: false) => void) | null = null;
 
 const {
   slug,
@@ -104,9 +108,10 @@ async function loadPage(): Promise<void> {
     }
 
     applyEntry(loadedEntry, contentType.value.fields);
-  } catch (error) {
+  } catch {
     pageErrorMessage.value = 'Unable to load content entry.';
-    handleError(error, 'Failed to load content entry');
+    entry.value = null;
+    contentType.value = null;
   } finally {
     loading.value = false;
   }
@@ -135,6 +140,7 @@ async function saveDraft(): Promise<void> {
     entry.value = updated;
     markSaved(updated, contentType.value.fields);
     void versionHistoryRef.value?.reload();
+    notifySuccess('Draft saved', 'Your changes were saved successfully.');
   } catch (error) {
     if (error instanceof ApiError) {
       if (error.isConcurrencyConflict && isConcurrencyConflict(error.problem)) {
@@ -220,9 +226,30 @@ onBeforeRouteLeave((_to, _from, next) => {
     return;
   }
 
-  const confirmed = window.confirm('You have unsaved changes. Leave without saving?');
-  next(confirmed ? undefined : false);
+  showLeaveConfirm.value = true;
+  pendingLeaveNext = next;
 });
+
+function confirmLeave(): void {
+  showLeaveConfirm.value = false;
+  const next = pendingLeaveNext;
+  pendingLeaveNext = null;
+  next?.();
+}
+
+function cancelLeave(): void {
+  showLeaveConfirm.value = false;
+  const next = pendingLeaveNext;
+  pendingLeaveNext = null;
+  next?.(false);
+}
+
+function goBackToList(): void {
+  void router.push({
+    name: 'content-by-type',
+    params: { contentTypeSlug: contentType.value?.slug ?? contentTypeSlug.value },
+  });
+}
 </script>
 
 <template>
@@ -236,13 +263,22 @@ onBeforeRouteLeave((_to, _from, next) => {
       </div>
       <div class="entry-editor__actions">
         <AppButton
+          variant="secondary"
+          type="button"
+          :disabled="saving || actionLoading"
+          @click="goBackToList"
+        >
+          Back to list
+        </AppButton>
+        <AppButton
           v-if="canRead && entry"
           variant="secondary"
           type="button"
-          :disabled="previewLoading || saving || actionLoading"
+          :loading="previewLoading"
+          :disabled="saving || actionLoading"
           @click="openPreview"
         >
-          {{ previewLoading ? 'Opening preview…' : 'Preview draft' }}
+          Preview draft
         </AppButton>
         <AppButton
           variant="secondary"
@@ -275,8 +311,13 @@ onBeforeRouteLeave((_to, _from, next) => {
         >
           Delete
         </AppButton>
-        <AppButton type="button" :disabled="saving || !canUpdate || !isDirty" @click="saveDraft">
-          {{ saving ? 'Saving…' : 'Save draft' }}
+        <AppButton
+          type="button"
+          :loading="saving"
+          :disabled="!canUpdate || !isDirty"
+          @click="saveDraft"
+        >
+          Save draft
         </AppButton>
       </div>
     </header>
@@ -291,12 +332,26 @@ onBeforeRouteLeave((_to, _from, next) => {
       @cancel="showDeleteConfirm = false"
     />
 
+    <ConfirmActionPanel
+      v-if="showLeaveConfirm"
+      title="Unsaved changes"
+      message="You have unsaved changes. Leave without saving?"
+      confirm-label="Leave without saving"
+      @confirm="confirmLeave"
+      @cancel="cancelLeave"
+    />
+
     <AppAlert
       v-if="pageErrorMessage"
       kind="error"
-      title="Unable to continue"
+      title="Unable to load"
       :message="pageErrorMessage"
-    />
+    >
+      <template #actions>
+        <AppButton variant="secondary" type="button" @click="loadPage">Retry</AppButton>
+        <AppButton variant="ghost" type="button" @click="goBackToList">Back to list</AppButton>
+      </template>
+    </AppAlert>
 
     <ConcurrencyConflictPanel
       v-if="concurrencyConflict"
@@ -307,7 +362,7 @@ onBeforeRouteLeave((_to, _from, next) => {
     />
 
     <div v-if="loading" class="inline-loading">
-      <AppSpinner label="Loading editor" />
+      <AppSpinner label="Loading entry" />
       <span>Loading entry…</span>
     </div>
 
@@ -328,8 +383,22 @@ onBeforeRouteLeave((_to, _from, next) => {
 
         <label class="form-field" :class="{ 'form-field--invalid': validationErrors.Slug?.length }">
           <span>Slug</span>
-          <input v-model="slug" type="text" :disabled="saving || !canUpdate" />
-          <ul v-if="validationErrors.Slug?.length" class="entry-field__errors">
+          <input
+            id="content-entry-edit-slug"
+            v-model="slug"
+            type="text"
+            :disabled="saving || !canUpdate"
+            :aria-invalid="validationErrors.Slug?.length ? 'true' : undefined"
+            :aria-describedby="
+              validationErrors.Slug?.length ? 'content-entry-edit-slug-errors' : undefined
+            "
+          />
+          <ul
+            v-if="validationErrors.Slug?.length"
+            id="content-entry-edit-slug-errors"
+            class="entry-field__errors"
+            role="alert"
+          >
             <li v-for="message in validationErrors.Slug" :key="message">{{ message }}</li>
           </ul>
         </label>
@@ -340,12 +409,24 @@ onBeforeRouteLeave((_to, _from, next) => {
         >
           <span>Change summary</span>
           <input
+            id="content-entry-change-summary"
             v-model="changeSummary"
             type="text"
             placeholder="Describe what changed in this draft save"
             :disabled="saving || !canUpdate"
+            :aria-invalid="validationErrors.ChangeSummary?.length ? 'true' : undefined"
+            :aria-describedby="
+              validationErrors.ChangeSummary?.length
+                ? 'content-entry-change-summary-errors'
+                : undefined
+            "
           />
-          <ul v-if="validationErrors.ChangeSummary?.length" class="entry-field__errors">
+          <ul
+            v-if="validationErrors.ChangeSummary?.length"
+            id="content-entry-change-summary-errors"
+            class="entry-field__errors"
+            role="alert"
+          >
             <li v-for="message in validationErrors.ChangeSummary" :key="message">
               {{ message }}
             </li>

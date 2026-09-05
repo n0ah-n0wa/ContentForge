@@ -2,6 +2,13 @@
 import { onMounted, onUnmounted, watch } from 'vue';
 import { useNotifications } from '@/composables/useNotifications';
 
+const KIND_LABELS = {
+  success: 'Success',
+  error: 'Error',
+  warning: 'Warning',
+  info: 'Info',
+} as const;
+
 const { items, dismiss } = useNotifications();
 const timers = new Map<string, number>();
 
@@ -44,8 +51,11 @@ onUnmounted(() => {
       :key="notification.id"
       class="notification"
       :class="`notification--${notification.kind}`"
+      :role="notification.kind === 'error' ? 'alert' : 'status'"
+      :aria-live="notification.kind === 'error' ? 'assertive' : 'polite'"
     >
       <div class="notification__content">
+        <p class="notification__kind">{{ KIND_LABELS[notification.kind] }}</p>
         <strong>{{ notification.title }}</strong>
         <p v-if="notification.message">{{ notification.message }}</p>
       </div>

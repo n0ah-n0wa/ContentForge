@@ -63,7 +63,14 @@ async function onSubmit(): Promise<void> {
 
     <label class="form-field">
       <span>Email</span>
-      <input v-model="form.email" type="email" name="email" autocomplete="username" required />
+      <input
+        v-model="form.email"
+        type="email"
+        name="email"
+        autocomplete="username"
+        required
+        :aria-invalid="errorMessage ? 'true' : undefined"
+      />
     </label>
 
     <label class="form-field">
@@ -74,6 +81,7 @@ async function onSubmit(): Promise<void> {
         name="password"
         autocomplete="current-password"
         required
+        :aria-invalid="errorMessage ? 'true' : undefined"
       />
     </label>
 

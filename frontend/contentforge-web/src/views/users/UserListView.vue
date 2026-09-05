@@ -1,12 +1,11 @@
 <script setup lang="ts">
-import { onMounted, ref, watch } from 'vue';
+import { onMounted, ref, watch, computed } from 'vue';
 import { useRouter } from 'vue-router';
 import AppAlert from '@/components/common/AppAlert.vue';
 import AppButton from '@/components/common/AppButton.vue';
 import AppSpinner from '@/components/common/AppSpinner.vue';
 import PaginationBar from '@/components/common/PaginationBar.vue';
 import { listUsers } from '@/api/users';
-import { useApiErrorHandling } from '@/composables/useApiErrorHandling';
 import { useUserPermissions } from '@/composables/useUserPermissions';
 import {
   formatUserTimestamp,
@@ -17,7 +16,6 @@ import {
 } from '@/types/users';
 
 const router = useRouter();
-const { handleError } = useApiErrorHandling();
 const { canRead, canCreate } = useUserPermissions();
 
 const items = ref<UserAccount[]>([]);
@@ -54,13 +52,29 @@ async function loadUsers(): Promise<void> {
     totalItems.value = response.totalItems;
     totalPages.value = Math.max(response.totalPages, 1);
     page.value = response.page;
-  } catch (error) {
+  } catch {
     errorMessage.value = 'Unable to load users.';
-    handleError(error, 'Failed to load users');
   } finally {
     loading.value = false;
   }
 }
+
+function applyFilters(): void {
+  page.value = 1;
+  void loadUsers();
+}
+
+function clearFilters(): void {
+  search.value = '';
+  activeFilter.value = 'all';
+  roleFilter.value = '';
+  page.value = 1;
+  void loadUsers();
+}
+
+const filtersActive = computed(
+  () => Boolean(search.value.trim()) || activeFilter.value !== 'all' || Boolean(roleFilter.value),
+);
 
 onMounted(() => {
   void loadUsers();
@@ -94,7 +108,7 @@ watch([page, pageSize], () => {
     />
 
     <template v-else>
-      <form class="toolbar" @submit.prevent="loadUsers">
+      <form class="toolbar" @submit.prevent="applyFilters">
         <label class="form-field">
           <span>Search</span>
           <input v-model="search" type="search" placeholder="Search by email or name" />
@@ -116,18 +130,45 @@ watch([page, pageSize], () => {
             </option>
           </select>
         </label>
-        <AppButton type="submit" variant="secondary">Apply</AppButton>
+        <div class="toolbar__actions">
+          <AppButton type="submit" variant="secondary">Apply</AppButton>
+          <AppButton v-if="filtersActive" type="button" variant="ghost" @click="clearFilters">
+            Clear
+          </AppButton>
+        </div>
       </form>
 
-      <AppAlert v-if="errorMessage" kind="error" title="Load failed" :message="errorMessage" />
+      <AppAlert v-if="errorMessage" kind="error" title="Unable to load" :message="errorMessage">
+        <template #actions>
+          <AppButton variant="secondary" type="button" @click="loadUsers">Retry</AppButton>
+        </template>
+      </AppAlert>
 
       <div v-if="loading" class="inline-loading">
         <AppSpinner label="Loading users" />
         <span>Loading users…</span>
       </div>
 
-      <div v-else-if="items.length === 0" class="empty-state">
-        No users match the current filters.
+      <div v-else-if="items.length === 0" class="empty-state empty-state--stack">
+        <p>
+          {{
+            filtersActive
+              ? 'No users match the current filters.'
+              : 'No users have been created yet.'
+          }}
+        </p>
+        <div class="toolbar__actions">
+          <AppButton v-if="filtersActive" variant="secondary" type="button" @click="clearFilters">
+            Clear filters
+          </AppButton>
+          <AppButton
+            v-if="canCreate && !filtersActive"
+            type="button"
+            @click="router.push({ name: 'user-create' })"
+          >
+            New user
+          </AppButton>
+        </div>
       </div>
 
       <template v-else>

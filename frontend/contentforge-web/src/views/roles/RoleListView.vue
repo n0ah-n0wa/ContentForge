@@ -1,14 +1,13 @@
 <script setup lang="ts">
 import { onMounted, ref } from 'vue';
 import AppAlert from '@/components/common/AppAlert.vue';
+import AppButton from '@/components/common/AppButton.vue';
 import AppSpinner from '@/components/common/AppSpinner.vue';
 import RolePermissionsPanel from '@/components/users/RolePermissionsPanel.vue';
 import { listRoles } from '@/api/roles';
-import { useApiErrorHandling } from '@/composables/useApiErrorHandling';
 import { useUserPermissions } from '@/composables/useUserPermissions';
 import type { RoleDefinition } from '@/types/users';
 
-const { handleError } = useApiErrorHandling();
 const { canRead } = useUserPermissions();
 
 const roles = ref<RoleDefinition[]>([]);
@@ -26,9 +25,8 @@ async function loadRoles(): Promise<void> {
 
   try {
     roles.value = await listRoles();
-  } catch (error) {
+  } catch {
     errorMessage.value = 'Unable to load roles and permissions.';
-    handleError(error, 'Failed to load roles');
   } finally {
     loading.value = false;
   }
@@ -58,7 +56,11 @@ onMounted(() => {
       message="You do not have permission to inspect roles."
     />
 
-    <AppAlert v-if="errorMessage" kind="error" title="Load failed" :message="errorMessage" />
+    <AppAlert v-if="errorMessage" kind="error" title="Unable to load" :message="errorMessage">
+      <template #actions>
+        <AppButton variant="secondary" type="button" @click="loadRoles">Retry</AppButton>
+      </template>
+    </AppAlert>
 
     <div v-if="loading" class="inline-loading">
       <AppSpinner label="Loading roles" />

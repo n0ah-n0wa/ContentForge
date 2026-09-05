@@ -2,6 +2,7 @@
 import { ref } from 'vue';
 import AppButton from '@/components/common/AppButton.vue';
 import MediaLibraryBrowser from '@/components/media/MediaLibraryBrowser.vue';
+import { useModalDialog } from '@/composables/useModalDialog';
 import type { MediaAsset } from '@/types/media';
 
 const open = defineModel<boolean>('open', { default: false });
@@ -21,7 +22,16 @@ const emit = defineEmits<{
   confirm: [ids: string[], assets: MediaAsset[]];
 }>();
 
+const rootRef = ref<HTMLElement | null>(null);
 const selectedAssets = ref<MediaAsset[]>([]);
+
+useModalDialog({
+  rootRef,
+  isOpen: open,
+  onEscape: () => {
+    open.value = false;
+  },
+});
 
 function onSelect(asset: MediaAsset): void {
   if (props.multiple) {
@@ -51,6 +61,7 @@ function close(): void {
 <template>
   <div
     v-if="open"
+    ref="rootRef"
     class="media-picker-overlay"
     role="dialog"
     aria-modal="true"
@@ -59,10 +70,10 @@ function close(): void {
     <section class="media-picker-dialog page-card">
       <header class="page-header">
         <div>
-          <h2>Select media</h2>
+          <h2 id="media-picker-title">Select media</h2>
           <p class="page-card__lead">Choose one or more assets from the library.</p>
         </div>
-        <AppButton variant="secondary" type="button" @click="close">Close</AppButton>
+        <AppButton variant="secondary" type="button" data-autofocus @click="close">Close</AppButton>
       </header>
 
       <MediaLibraryBrowser

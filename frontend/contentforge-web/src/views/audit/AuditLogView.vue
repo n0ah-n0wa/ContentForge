@@ -6,7 +6,6 @@ import AppSpinner from '@/components/common/AppSpinner.vue';
 import PaginationBar from '@/components/common/PaginationBar.vue';
 import AuditLogDetailPanel from '@/components/audit/AuditLogDetailPanel.vue';
 import { listAuditLogs } from '@/api/audit';
-import { useApiErrorHandling } from '@/composables/useApiErrorHandling';
 import { useAuditPermissions } from '@/composables/useAuditPermissions';
 import {
   AUDIT_ACTION_OPTIONS,
@@ -17,7 +16,6 @@ import {
   type AuditLogEntry,
 } from '@/types/audit';
 
-const { handleError } = useApiErrorHandling();
 const { canRead } = useAuditPermissions();
 
 const items = ref<AuditLogEntry[]>([]);
@@ -82,9 +80,8 @@ async function loadAuditLogs(): Promise<void> {
         selectedEntry.value = null;
       }
     }
-  } catch (error) {
+  } catch {
     errorMessage.value = 'Unable to load audit log.';
-    handleError(error, 'Failed to load audit log');
   } finally {
     loading.value = false;
   }
@@ -187,12 +184,16 @@ watch([page, pageSize], () => {
           <input v-model="toFilter" type="datetime-local" />
         </label>
         <div class="audit-toolbar__actions">
-          <AppButton type="submit" variant="secondary">Apply filters</AppButton>
+          <AppButton type="submit" variant="secondary">Apply</AppButton>
           <AppButton type="button" variant="ghost" @click="clearFilters">Clear</AppButton>
         </div>
       </form>
 
-      <AppAlert v-if="errorMessage" kind="error" title="Load failed" :message="errorMessage" />
+      <AppAlert v-if="errorMessage" kind="error" title="Unable to load" :message="errorMessage">
+        <template #actions>
+          <AppButton variant="secondary" type="button" @click="loadAuditLogs">Retry</AppButton>
+        </template>
+      </AppAlert>
 
       <div class="audit-log-grid">
         <section class="panel-card audit-log-list">
@@ -201,8 +202,11 @@ watch([page, pageSize], () => {
             <span>Loading audit events…</span>
           </div>
 
-          <div v-else-if="items.length === 0" class="empty-state">
-            No audit events match the current filters.
+          <div v-else-if="items.length === 0" class="empty-state empty-state--stack">
+            <p>No audit events match the current filters.</p>
+            <AppButton variant="secondary" type="button" @click="clearFilters">
+              Clear filters
+            </AppButton>
           </div>
 
           <template v-else>

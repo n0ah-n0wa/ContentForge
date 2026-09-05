@@ -29,12 +29,15 @@
     "vue-router": "^4.5.0"
   },
   "devDependencies": {
+    "@axe-core/playwright": "^4.13.0",
     "@eslint/js": "^9.16.0",
     "@playwright/test": "^1.63.0",
     "@vitejs/plugin-vue": "^5.2.1",
     "@vue/test-utils": "^2.4.6",
+    "axe-core": "^4.13.0",
     "eslint": "^9.16.0",
     "eslint-plugin-vue": "^9.32.0",
+    "eslint-plugin-vuejs-accessibility": "^2.6.0",
     "globals": "^15.13.0",
     "jsdom": "^25.0.1",
     "prettier": "^3.4.2",

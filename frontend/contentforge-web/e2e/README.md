@@ -45,6 +45,7 @@ Override endpoints with `E2E_BASE_URL` and `E2E_API_BASE_URL` when needed.
 | `authorization.spec.ts`    | Author cannot publish; Viewer cannot edit; Editor can publish; Administrator manages users                    |
 | `media.spec.ts`            | Upload, select on content entry, delete (+ API 404)                                                           |
 | `concurrency.spec.ts`      | Stale concurrency token conflict + reload                                                                     |
+| `accessibility.spec.ts`    | axe-core WCAG 2.1 A/AA smoke on login + authenticated dashboard shell                                         |
 
 ## Layout
 

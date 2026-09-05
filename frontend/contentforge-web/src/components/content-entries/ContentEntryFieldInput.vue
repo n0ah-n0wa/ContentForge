@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, ref, watch } from 'vue';
+import { computed, ref, useId, watch } from 'vue';
 import { FieldType, type ContentTypeField } from '@/types/contentTypes';
 import type { ContentFieldValue } from '@/types/contentEntries';
 import { sanitizeRichText, richTextToPlainText } from '@/utils/richTextSanitizer';
@@ -23,6 +23,12 @@ const relationOptions = ref<Array<{ id: string; label: string }>>([]);
 const relationLoading = ref(false);
 const richTextMode = ref<'edit' | 'preview'>('edit');
 const richTextEditor = ref<HTMLElement | null>(null);
+const fieldId = useId();
+const labelId = `${fieldId}-label`;
+const errorsId = `${fieldId}-errors`;
+
+const hasErrors = computed(() => (props.errors?.length ?? 0) > 0);
+const describedBy = computed(() => (hasErrors.value ? errorsId : undefined));
 
 const stringValue = computed({
   get: () =>
@@ -88,6 +94,17 @@ const mediaMultipleValue = computed({
 const sanitizedPreview = computed(() => richTextToPlainText(stringValue.value));
 
 const selectOptions = computed(() => props.field.configuration.options);
+
+const isComplexField = computed(() =>
+  [
+    FieldType.RichText,
+    FieldType.Media,
+    FieldType.MediaMultiple,
+    FieldType.MultiSelect,
+    FieldType.RelationMultiple,
+    FieldType.Boolean,
+  ].includes(props.field.fieldType),
+);
 
 async function loadRelationOptions(): Promise<void> {
   if (!props.relationTargetTypeId) {
@@ -159,185 +176,260 @@ watch(
 </script>
 
 <template>
-  <div class="entry-field" :class="{ 'entry-field--invalid': errors?.length }">
-    <label class="form-field">
-      <span>
+  <div
+    class="entry-field form-field"
+    :class="{ 'form-field--invalid': hasErrors, 'entry-field--invalid': hasErrors }"
+    :role="isComplexField ? 'group' : undefined"
+    :aria-labelledby="isComplexField ? labelId : undefined"
+    :aria-describedby="isComplexField ? describedBy : undefined"
+    :aria-invalid="isComplexField && hasErrors ? 'true' : undefined"
+  >
+    <div :id="labelId" class="form-field__label">
+      <label v-if="!isComplexField" :for="fieldId">
         {{ field.displayName }}
         <small v-if="field.configuration.isRequired">Required</small>
-      </span>
-
-      <input
-        v-if="field.fieldType === FieldType.Text"
-        v-model="stringValue"
-        type="text"
-        :disabled="disabled"
-        @blur="emit('blur')"
-      />
-
-      <textarea
-        v-else-if="field.fieldType === FieldType.LongText"
-        v-model="stringValue"
-        rows="5"
-        :disabled="disabled"
-        @blur="emit('blur')"
-      />
-
-      <div v-else-if="field.fieldType === FieldType.RichText" class="rich-text-field">
-        <div class="rich-text-field__toolbar">
-          <button type="button" :disabled="disabled" @click="applyRichTextCommand('bold')">
-            Bold
-          </button>
-          <button type="button" :disabled="disabled" @click="applyRichTextCommand('italic')">
-            Italic
-          </button>
-          <button
-            type="button"
-            :disabled="disabled"
-            @click="applyRichTextCommand('insertUnorderedList')"
-          >
-            List
-          </button>
-          <button
-            type="button"
-            :disabled="disabled"
-            @click="richTextMode = richTextMode === 'edit' ? 'preview' : 'edit'"
-          >
-            {{ richTextMode === 'edit' ? 'Preview' : 'Edit' }}
-          </button>
-        </div>
-        <div
-          v-if="richTextMode === 'edit'"
-          ref="richTextEditor"
-          class="rich-text-field__editor"
-          :contenteditable="!disabled"
-          :aria-label="field.displayName"
-          @input="onRichTextInput"
-          @blur="emit('blur')"
-        />
-        <div v-else class="rich-text-field__preview">
-          {{ sanitizedPreview }}
-        </div>
-      </div>
-
-      <input
-        v-else-if="field.fieldType === FieldType.Integer"
-        v-model="numberValue"
-        type="number"
-        step="1"
-        :disabled="disabled"
-        @blur="emit('blur')"
-      />
-
-      <input
-        v-else-if="field.fieldType === FieldType.Decimal"
-        v-model="numberValue"
-        type="number"
-        step="any"
-        :disabled="disabled"
-        @blur="emit('blur')"
-      />
-
-      <label
-        v-else-if="field.fieldType === FieldType.Boolean"
-        class="form-field form-field--inline entry-field__checkbox"
-      >
-        <input v-model="booleanValue" type="checkbox" :disabled="disabled" @blur="emit('blur')" />
-        <span>Enabled</span>
       </label>
+      <template v-else>
+        <span>
+          {{ field.displayName }}
+          <small v-if="field.configuration.isRequired">Required</small>
+        </span>
+      </template>
+    </div>
 
-      <input
-        v-else-if="field.fieldType === FieldType.Date"
-        v-model="stringValue"
-        type="date"
-        :disabled="disabled"
-        @blur="emit('blur')"
-      />
+    <input
+      v-if="field.fieldType === FieldType.Text"
+      :id="fieldId"
+      v-model="stringValue"
+      type="text"
+      :disabled="disabled"
+      :aria-invalid="hasErrors ? 'true' : undefined"
+      :aria-describedby="describedBy"
+      @blur="emit('blur')"
+    />
 
-      <input
-        v-else-if="field.fieldType === FieldType.DateTime"
-        v-model="stringValue"
-        type="datetime-local"
-        :disabled="disabled"
-        @blur="emit('blur')"
-      />
+    <textarea
+      v-else-if="field.fieldType === FieldType.LongText"
+      :id="fieldId"
+      v-model="stringValue"
+      rows="5"
+      :disabled="disabled"
+      :aria-invalid="hasErrors ? 'true' : undefined"
+      :aria-describedby="describedBy"
+      @blur="emit('blur')"
+    />
 
-      <MediaFieldSelector
-        v-else-if="field.fieldType === FieldType.Media"
-        v-model="mediaValue"
-        :disabled="disabled"
-      />
-
-      <MediaFieldSelector
-        v-else-if="field.fieldType === FieldType.MediaMultiple"
-        v-model="mediaMultipleValue"
-        multiple
-        :disabled="disabled"
-      />
-
-      <select
-        v-else-if="field.fieldType === FieldType.Select"
-        v-model="stringValue"
-        :disabled="disabled"
-        @blur="emit('blur')"
+    <div v-else-if="field.fieldType === FieldType.RichText" class="rich-text-field">
+      <div
+        class="rich-text-field__toolbar"
+        role="toolbar"
+        :aria-label="`${field.displayName} formatting`"
       >
-        <option value="">Select an option</option>
-        <option v-for="option in selectOptions" :key="option" :value="option">
-          {{ option }}
-        </option>
-      </select>
-
-      <div v-else-if="field.fieldType === FieldType.MultiSelect" class="entry-field__options">
-        <label v-for="option in selectOptions" :key="option" class="form-field form-field--inline">
-          <input
-            type="checkbox"
-            :checked="multiSelectValue.includes(option)"
-            :disabled="disabled"
-            @change="toggleMultiSelect(option, ($event.target as HTMLInputElement).checked)"
-          />
-          <span>{{ option }}</span>
-        </label>
-      </div>
-
-      <select
-        v-else-if="field.fieldType === FieldType.Relation"
-        v-model="stringValue"
-        :disabled="disabled || relationLoading"
-        @blur="emit('blur')"
-      >
-        <option value="">Select related entry</option>
-        <option v-for="option in relationOptions" :key="option.id" :value="option.id">
-          {{ option.label }}
-        </option>
-      </select>
-
-      <div v-else-if="field.fieldType === FieldType.RelationMultiple" class="entry-field__options">
-        <p v-if="relationLoading" class="entry-field__hint">Loading related entries…</p>
-        <label
-          v-for="option in relationOptions"
-          :key="option.id"
-          class="form-field form-field--inline"
+        <button type="button" :disabled="disabled" @click="applyRichTextCommand('bold')">
+          Bold
+        </button>
+        <button type="button" :disabled="disabled" @click="applyRichTextCommand('italic')">
+          Italic
+        </button>
+        <button
+          type="button"
+          :disabled="disabled"
+          @click="applyRichTextCommand('insertUnorderedList')"
         >
-          <input
-            type="checkbox"
-            :checked="multiSelectValue.includes(option.id)"
-            :disabled="disabled"
-            @change="toggleGuidSelection(option.id, ($event.target as HTMLInputElement).checked)"
-          />
-          <span>{{ option.label }}</span>
-        </label>
+          List
+        </button>
+        <button
+          type="button"
+          :disabled="disabled"
+          :aria-pressed="richTextMode === 'preview'"
+          @click="richTextMode = richTextMode === 'edit' ? 'preview' : 'edit'"
+        >
+          {{ richTextMode === 'edit' ? 'Preview' : 'Edit' }}
+        </button>
       </div>
-
-      <textarea
-        v-else-if="field.fieldType === FieldType.Json"
-        v-model="jsonValue"
-        rows="8"
-        spellcheck="false"
-        :disabled="disabled"
+      <div
+        v-if="richTextMode === 'edit'"
+        :id="fieldId"
+        ref="richTextEditor"
+        class="rich-text-field__editor"
+        role="textbox"
+        aria-multiline="true"
+        :contenteditable="!disabled"
+        :aria-labelledby="labelId"
+        :aria-invalid="hasErrors ? 'true' : undefined"
+        :aria-describedby="describedBy"
+        @input="onRichTextInput"
         @blur="emit('blur')"
       />
+      <div v-else class="rich-text-field__preview" :aria-labelledby="labelId">
+        {{ sanitizedPreview }}
+      </div>
+    </div>
+
+    <input
+      v-else-if="field.fieldType === FieldType.Integer"
+      :id="fieldId"
+      v-model="numberValue"
+      type="number"
+      step="1"
+      :disabled="disabled"
+      :aria-invalid="hasErrors ? 'true' : undefined"
+      :aria-describedby="describedBy"
+      @blur="emit('blur')"
+    />
+
+    <input
+      v-else-if="field.fieldType === FieldType.Decimal"
+      :id="fieldId"
+      v-model="numberValue"
+      type="number"
+      step="any"
+      :disabled="disabled"
+      :aria-invalid="hasErrors ? 'true' : undefined"
+      :aria-describedby="describedBy"
+      @blur="emit('blur')"
+    />
+
+    <label
+      v-else-if="field.fieldType === FieldType.Boolean"
+      class="form-field form-field--inline entry-field__checkbox"
+      :for="fieldId"
+    >
+      <input
+        :id="fieldId"
+        v-model="booleanValue"
+        type="checkbox"
+        :disabled="disabled"
+        :aria-invalid="hasErrors ? 'true' : undefined"
+        :aria-describedby="describedBy"
+        @blur="emit('blur')"
+      />
+      <span>Enabled</span>
     </label>
 
-    <ul v-if="errors?.length" class="entry-field__errors">
+    <input
+      v-else-if="field.fieldType === FieldType.Date"
+      :id="fieldId"
+      v-model="stringValue"
+      type="date"
+      :disabled="disabled"
+      :aria-invalid="hasErrors ? 'true' : undefined"
+      :aria-describedby="describedBy"
+      @blur="emit('blur')"
+    />
+
+    <input
+      v-else-if="field.fieldType === FieldType.DateTime"
+      :id="fieldId"
+      v-model="stringValue"
+      type="datetime-local"
+      :disabled="disabled"
+      :aria-invalid="hasErrors ? 'true' : undefined"
+      :aria-describedby="describedBy"
+      @blur="emit('blur')"
+    />
+
+    <MediaFieldSelector
+      v-else-if="field.fieldType === FieldType.Media"
+      v-model="mediaValue"
+      :disabled="disabled"
+      :aria-labelledby="labelId"
+      :aria-describedby="describedBy"
+      :aria-invalid="hasErrors ? 'true' : undefined"
+    />
+
+    <MediaFieldSelector
+      v-else-if="field.fieldType === FieldType.MediaMultiple"
+      v-model="mediaMultipleValue"
+      multiple
+      :disabled="disabled"
+      :aria-labelledby="labelId"
+      :aria-describedby="describedBy"
+      :aria-invalid="hasErrors ? 'true' : undefined"
+    />
+
+    <select
+      v-else-if="field.fieldType === FieldType.Select"
+      :id="fieldId"
+      v-model="stringValue"
+      :disabled="disabled"
+      :aria-invalid="hasErrors ? 'true' : undefined"
+      :aria-describedby="describedBy"
+      @blur="emit('blur')"
+    >
+      <option value="">Select an option</option>
+      <option v-for="option in selectOptions" :key="option" :value="option">
+        {{ option }}
+      </option>
+    </select>
+
+    <div
+      v-else-if="field.fieldType === FieldType.MultiSelect"
+      class="entry-field__options"
+      role="group"
+      :aria-labelledby="labelId"
+    >
+      <label v-for="option in selectOptions" :key="option" class="form-field form-field--inline">
+        <input
+          type="checkbox"
+          :checked="multiSelectValue.includes(option)"
+          :disabled="disabled"
+          @change="toggleMultiSelect(option, ($event.target as HTMLInputElement).checked)"
+        />
+        <span>{{ option }}</span>
+      </label>
+    </div>
+
+    <select
+      v-else-if="field.fieldType === FieldType.Relation"
+      :id="fieldId"
+      v-model="stringValue"
+      :disabled="disabled || relationLoading"
+      :aria-invalid="hasErrors ? 'true' : undefined"
+      :aria-describedby="describedBy"
+      @blur="emit('blur')"
+    >
+      <option value="">Select related entry</option>
+      <option v-for="option in relationOptions" :key="option.id" :value="option.id">
+        {{ option.label }}
+      </option>
+    </select>
+
+    <div
+      v-else-if="field.fieldType === FieldType.RelationMultiple"
+      class="entry-field__options"
+      role="group"
+      :aria-labelledby="labelId"
+    >
+      <p v-if="relationLoading" class="entry-field__hint">Loading related entries…</p>
+      <label
+        v-for="option in relationOptions"
+        :key="option.id"
+        class="form-field form-field--inline"
+      >
+        <input
+          type="checkbox"
+          :checked="multiSelectValue.includes(option.id)"
+          :disabled="disabled"
+          @change="toggleGuidSelection(option.id, ($event.target as HTMLInputElement).checked)"
+        />
+        <span>{{ option.label }}</span>
+      </label>
+    </div>
+
+    <textarea
+      v-else-if="field.fieldType === FieldType.Json"
+      :id="fieldId"
+      v-model="jsonValue"
+      rows="8"
+      spellcheck="false"
+      :disabled="disabled"
+      :aria-invalid="hasErrors ? 'true' : undefined"
+      :aria-describedby="describedBy"
+      @blur="emit('blur')"
+    />
+
+    <ul v-if="hasErrors" :id="errorsId" class="entry-field__errors" role="alert">
       <li v-for="message in errors" :key="message">{{ message }}</li>
     </ul>
   </div>

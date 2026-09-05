@@ -86,9 +86,10 @@ async function loadPage(): Promise<void> {
         },
       });
     }
-  } catch (error) {
+  } catch {
     pageErrorMessage.value = 'Unable to load content entry.';
-    handleError(error, 'Failed to load content entry');
+    entry.value = null;
+    contentType.value = null;
   } finally {
     loading.value = false;
   }
@@ -163,13 +164,27 @@ onMounted(() => {
       </div>
       <div class="entry-editor__actions">
         <AppButton
+          variant="secondary"
+          type="button"
+          :disabled="actionLoading"
+          @click="
+            router.push({
+              name: 'content-by-type',
+              params: { contentTypeSlug: contentType?.slug ?? contentTypeSlug },
+            })
+          "
+        >
+          Back to list
+        </AppButton>
+        <AppButton
           v-if="canRead && entry"
           variant="secondary"
           type="button"
-          :disabled="previewLoading || actionLoading"
+          :loading="previewLoading"
+          :disabled="actionLoading"
           @click="openPreview"
         >
-          {{ previewLoading ? 'Opening preview…' : 'Preview draft' }}
+          Preview draft
         </AppButton>
         <ContentEntryLifecycleActions
           v-if="entry"
@@ -217,9 +232,25 @@ onMounted(() => {
     <AppAlert
       v-if="pageErrorMessage"
       kind="error"
-      title="Unable to continue"
+      title="Unable to load"
       :message="pageErrorMessage"
-    />
+    >
+      <template #actions>
+        <AppButton variant="secondary" type="button" @click="loadPage">Retry</AppButton>
+        <AppButton
+          variant="ghost"
+          type="button"
+          @click="
+            router.push({
+              name: 'content-by-type',
+              params: { contentTypeSlug: contentTypeSlug },
+            })
+          "
+        >
+          Back to list
+        </AppButton>
+      </template>
+    </AppAlert>
 
     <ConcurrencyConflictPanel
       v-if="concurrencyConflict"

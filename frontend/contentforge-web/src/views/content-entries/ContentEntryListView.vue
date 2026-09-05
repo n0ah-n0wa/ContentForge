@@ -7,7 +7,6 @@ import AppSpinner from '@/components/common/AppSpinner.vue';
 import PaginationBar from '@/components/common/PaginationBar.vue';
 import { listContentEntries, searchContentEntries } from '@/api/content';
 import { listContentTypes } from '@/api/contentTypes';
-import { useApiErrorHandling } from '@/composables/useApiErrorHandling';
 import { useContentPermissions } from '@/composables/useContentPermissions';
 import {
   CONTENT_STATUS_FILTER_OPTIONS,
@@ -26,7 +25,6 @@ const SORT_OPTIONS = [
 
 const route = useRoute();
 const router = useRouter();
-const { handleError } = useApiErrorHandling();
 const { canCreate, canRead, canUpdate } = useContentPermissions();
 
 const contentTypeSlug = computed(() => route.params.contentTypeSlug as string);
@@ -92,9 +90,8 @@ async function loadEntries(): Promise<void> {
     totalItems.value = response.totalItems;
     totalPages.value = Math.max(response.totalPages, 1);
     page.value = response.page;
-  } catch (error) {
+  } catch {
     errorMessage.value = 'Unable to load content entries.';
-    handleError(error, 'Failed to load content entries');
   } finally {
     loading.value = false;
   }
@@ -113,9 +110,8 @@ async function initializePage(): Promise<void> {
     }
 
     await loadEntries();
-  } catch (error) {
+  } catch {
     errorMessage.value = 'Unable to load content entries.';
-    handleError(error, 'Failed to load content entries');
     loading.value = false;
   }
 }
@@ -124,6 +120,25 @@ function applyFilters(): void {
   page.value = 1;
   void loadEntries();
 }
+
+function clearFilters(): void {
+  search.value = '';
+  statusFilter.value = '';
+  sortBy.value = 'updatedAt';
+  sortDirection.value = 'desc';
+  useAdvancedSearch.value = false;
+  page.value = 1;
+  void loadEntries();
+}
+
+const filtersActive = computed(
+  () =>
+    Boolean(search.value.trim()) ||
+    Boolean(statusFilter.value) ||
+    useAdvancedSearch.value ||
+    sortBy.value !== 'updatedAt' ||
+    sortDirection.value !== 'desc',
+);
 
 function toggleSortDirection(): void {
   sortDirection.value = sortDirection.value === 'asc' ? 'desc' : 'asc';
@@ -216,18 +231,48 @@ onMounted(() => {
           Sort {{ sortDirection === 'asc' ? 'ascending' : 'descending' }}
         </AppButton>
         <AppButton type="submit" variant="secondary">Apply</AppButton>
+        <AppButton v-if="filtersActive" type="button" variant="ghost" @click="clearFilters">
+          Clear
+        </AppButton>
       </div>
     </form>
 
-    <AppAlert v-if="errorMessage" kind="error" title="Load failed" :message="errorMessage" />
+    <AppAlert v-if="errorMessage" kind="error" title="Unable to load" :message="errorMessage">
+      <template #actions>
+        <AppButton variant="secondary" type="button" @click="initializePage">Retry</AppButton>
+      </template>
+    </AppAlert>
 
     <div v-if="loading" class="inline-loading">
       <AppSpinner label="Loading content entries" />
       <span>Loading content entries…</span>
     </div>
 
-    <div v-else-if="items.length === 0" class="empty-state">
-      No entries match the current filters.
+    <div v-else-if="items.length === 0" class="empty-state empty-state--stack">
+      <p>
+        {{
+          filtersActive
+            ? 'No entries match the current filters.'
+            : 'No entries yet for this content type.'
+        }}
+      </p>
+      <div class="content-list-toolbar__actions">
+        <AppButton v-if="filtersActive" variant="secondary" type="button" @click="clearFilters">
+          Clear filters
+        </AppButton>
+        <AppButton
+          v-if="canCreate && contentType && !filtersActive"
+          type="button"
+          @click="
+            router.push({
+              name: 'content-entry-create',
+              params: { contentTypeSlug: contentType.slug },
+            })
+          "
+        >
+          New entry
+        </AppButton>
+      </div>
     </div>
 
     <template v-else>

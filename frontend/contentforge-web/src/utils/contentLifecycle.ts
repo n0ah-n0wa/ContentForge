@@ -58,3 +58,25 @@ export function getLifecycleConfirmationMessage(action: LifecycleAction, slug: s
       return `Apply "${LIFECYCLE_ACTION_LABELS[action]}" to "${slug}"?`;
   }
 }
+
+/** Confirm button label: verb + object (not a generic "Confirm"). */
+export function getLifecycleConfirmLabel(action: LifecycleAction): string {
+  switch (action) {
+    case 'submit':
+      return 'Submit for review';
+    case 'withdraw':
+      return 'Withdraw from review';
+    case 'publish':
+      return 'Publish entry';
+    case 'unpublish':
+      return 'Unpublish entry';
+    case 'archive':
+      return 'Archive entry';
+    case 'restore':
+      return 'Restore to draft';
+    case 'delete':
+      return 'Delete entry';
+    default:
+      return LIFECYCLE_ACTION_LABELS[action];
+  }
+}

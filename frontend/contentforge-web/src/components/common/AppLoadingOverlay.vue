@@ -6,7 +6,15 @@ const { isGlobalLoading } = useLoading();
 </script>
 
 <template>
-  <div v-if="isGlobalLoading" class="app-loading-overlay" aria-live="polite" aria-busy="true">
+  <div
+    v-if="isGlobalLoading"
+    class="app-loading-overlay"
+    role="alertdialog"
+    aria-modal="true"
+    aria-busy="true"
+    aria-live="assertive"
+    aria-label="Loading"
+  >
     <div class="app-loading-overlay__panel">
       <AppSpinner size="lg" label="Loading application data" />
       <p>Loading…</p>

@@ -6,12 +6,12 @@ import AppButton from '@/components/common/AppButton.vue';
 import UserFormFields from '@/components/users/UserFormFields.vue';
 import { createUser } from '@/api/users';
 import { ApiError, getValidationMessages, isValidationProblem } from '@/api/errors';
-import { useApiErrorHandling } from '@/composables/useApiErrorHandling';
 import { useUserPermissions } from '@/composables/useUserPermissions';
+import { useNotifications } from '@/composables/useNotifications';
 import type { UserRoleName } from '@/types/users';
 
 const router = useRouter();
-const { handleError } = useApiErrorHandling();
+const { notifySuccess } = useNotifications();
 const { canCreate } = useUserPermissions();
 
 const email = ref('');
@@ -36,6 +36,7 @@ async function onSubmit(): Promise<void> {
       password: password.value,
       role: role.value,
     });
+    notifySuccess('User created', `${created.email} was added successfully.`);
     await router.push({ name: 'user-edit', params: { id: created.id } });
   } catch (error) {
     if (
@@ -51,7 +52,6 @@ async function onSubmit(): Promise<void> {
     } else {
       errorMessage.value = 'Unable to create user.';
     }
-    handleError(error, 'Create user failed');
   } finally {
     saving.value = false;
     password.value = '';
@@ -74,7 +74,7 @@ async function onSubmit(): Promise<void> {
     <AppAlert
       v-if="!canCreate"
       kind="warning"
-      title="Insufficient permissions"
+      title="Access restricted"
       message="You need the user.create permission to create users."
     />
 

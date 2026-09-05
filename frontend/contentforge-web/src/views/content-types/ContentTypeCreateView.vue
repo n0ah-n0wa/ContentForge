@@ -7,10 +7,10 @@ import ContentTypeMetadataForm from '@/components/content-types/ContentTypeMetad
 import { createContentType } from '@/api/contentTypes';
 import { ApiError, getValidationMessages, isValidationProblem } from '@/api/errors';
 import { useContentTypePermissions } from '@/composables/useContentTypePermissions';
-import { useApiErrorHandling } from '@/composables/useApiErrorHandling';
+import { useNotifications } from '@/composables/useNotifications';
 
 const router = useRouter();
-const { handleError } = useApiErrorHandling();
+const { notifySuccess } = useNotifications();
 const { canCreate } = useContentTypePermissions();
 
 const metadata = ref({
@@ -37,6 +37,7 @@ async function onSubmit(): Promise<void> {
       slug: metadata.value.slug.trim(),
       description: metadata.value.description.trim() || null,
     });
+    notifySuccess('Content type created', `"${created.displayName}" is ready to configure.`);
     await router.push({ name: 'content-type-edit', params: { id: created.id } });
   } catch (error) {
     if (
@@ -50,7 +51,6 @@ async function onSubmit(): Promise<void> {
     } else {
       errorMessage.value = 'Unable to create content type.';
     }
-    handleError(error, 'Create content type failed');
   } finally {
     saving.value = false;
   }
@@ -71,7 +71,7 @@ async function onSubmit(): Promise<void> {
     <AppAlert
       v-if="!canCreate"
       kind="warning"
-      title="Insufficient permissions"
+      title="Access restricted"
       message="You need the contentType.create permission to create content types."
     />
 

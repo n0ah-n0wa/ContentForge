@@ -13,6 +13,7 @@ import { ApiError, getValidationMessages, isValidationProblem } from '@/api/erro
 import { useApiErrorHandling } from '@/composables/useApiErrorHandling';
 import { useUserPermissions } from '@/composables/useUserPermissions';
 import { useAuthStore } from '@/stores/authStore';
+import { useNotifications } from '@/composables/useNotifications';
 import {
   formatUserTimestamp,
   getUserRoleLabel,
@@ -25,6 +26,7 @@ const route = useRoute();
 const router = useRouter();
 const authStore = useAuthStore();
 const { handleError } = useApiErrorHandling();
+const { notifySuccess } = useNotifications();
 const { canRead, canUpdate, canDisable } = useUserPermissions();
 
 const user = ref<UserAccount | null>(null);
@@ -63,9 +65,8 @@ async function loadUser(): Promise<void> {
     roles.value = loadedRoles;
     displayName.value = loadedUser.displayName;
     role.value = loadedUser.role;
-  } catch (error) {
+  } catch {
     errorMessage.value = 'Unable to load user details.';
-    handleError(error, 'Failed to load user');
   } finally {
     loading.value = false;
   }
@@ -86,6 +87,7 @@ async function saveChanges(): Promise<void> {
     });
     displayName.value = user.value.displayName;
     role.value = user.value.role;
+    notifySuccess('User updated', 'Account details were saved.');
   } catch (error) {
     if (
       error instanceof ApiError &&
@@ -100,7 +102,6 @@ async function saveChanges(): Promise<void> {
     } else {
       errorMessage.value = 'Unable to save user changes.';
     }
-    handleError(error, 'Update user failed');
   } finally {
     saving.value = false;
   }
@@ -115,6 +116,7 @@ async function confirmDisable(): Promise<void> {
   try {
     user.value = await disableUser(user.value.id);
     showDisableConfirm.value = false;
+    notifySuccess('User disabled', `${user.value.email} can no longer sign in.`);
   } catch (error) {
     handleError(error, 'Failed to disable user');
   } finally {
@@ -131,6 +133,7 @@ async function confirmEnable(): Promise<void> {
   try {
     user.value = await enableUser(user.value.id);
     showEnableConfirm.value = false;
+    notifySuccess('User activated', `${user.value.email} can sign in again.`);
   } catch (error) {
     handleError(error, 'Failed to enable user');
   } finally {
@@ -169,6 +172,17 @@ onMounted(() => {
       <AppSpinner label="Loading user" />
       <span>Loading user…</span>
     </div>
+
+    <AppAlert
+      v-else-if="errorMessage && !user"
+      kind="error"
+      title="Unable to load"
+      :message="errorMessage"
+    >
+      <template #actions>
+        <AppButton variant="secondary" type="button" @click="loadUser">Retry</AppButton>
+      </template>
+    </AppAlert>
 
     <template v-else-if="user">
       <AppAlert
@@ -215,9 +229,6 @@ onMounted(() => {
             />
 
             <div class="form-actions">
-              <AppButton type="submit" :loading="saving" :disabled="!canUpdate">
-                Save changes
-              </AppButton>
               <AppButton
                 v-if="user.isActive && canToggleStatus"
                 variant="secondary"
@@ -235,6 +246,9 @@ onMounted(() => {
                 @click="showEnableConfirm = true"
               >
                 Activate user
+              </AppButton>
+              <AppButton type="submit" :loading="saving" :disabled="!canUpdate">
+                Save changes
               </AppButton>
             </div>
 

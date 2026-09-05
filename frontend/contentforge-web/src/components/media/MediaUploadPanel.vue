@@ -3,7 +3,7 @@ import { ref } from 'vue';
 import AppAlert from '@/components/common/AppAlert.vue';
 import AppButton from '@/components/common/AppButton.vue';
 import { uploadMedia } from '@/api/media';
-import { useApiErrorHandling } from '@/composables/useApiErrorHandling';
+import { useNotifications } from '@/composables/useNotifications';
 import type { MediaAsset } from '@/types/media';
 import { MEDIA_MAX_FILE_SIZE_BYTES } from '@/types/media';
 import { formatMediaSize } from '@/utils/mediaUrl';
@@ -16,7 +16,7 @@ const emit = defineEmits<{
   uploaded: [asset: MediaAsset];
 }>();
 
-const { handleError } = useApiErrorHandling();
+const { notifySuccess } = useNotifications();
 
 const fileInput = ref<HTMLInputElement | null>(null);
 const selectedFile = ref<File | null>(null);
@@ -72,10 +72,14 @@ async function uploadSelectedFile(): Promise<void> {
     if (fileInput.value) {
       fileInput.value.value = '';
     }
+    notifySuccess('Upload complete', `"${asset.originalFileName}" was added to the library.`);
     emit('uploaded', asset);
   } catch (error) {
-    errorMessage.value = 'Upload failed.';
-    handleError(error, 'Failed to upload media');
+    if (error instanceof Error) {
+      errorMessage.value = error.message;
+    } else {
+      errorMessage.value = 'Upload failed.';
+    }
   } finally {
     uploading.value = false;
     progress.value = 0;
@@ -104,6 +108,7 @@ async function uploadSelectedFile(): Promise<void> {
       ref="fileInput"
       class="sr-only"
       type="file"
+      aria-label="Choose file to upload"
       :disabled="disabled || uploading"
       @change="onFileSelected"
     />
@@ -116,7 +121,10 @@ async function uploadSelectedFile(): Promise<void> {
       v-if="uploading"
       class="media-upload-panel__progress"
       role="progressbar"
+      aria-label="Upload progress"
       :aria-valuenow="progress"
+      aria-valuemin="0"
+      aria-valuemax="100"
     >
       <div class="media-upload-panel__progress-bar" :style="{ width: `${progress}%` }" />
       <span>{{ progress }}%</span>

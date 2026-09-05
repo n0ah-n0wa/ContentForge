@@ -42,6 +42,8 @@ function formatDate(value: string | null): string {
           class="entry-status"
           :class="statusClass(entry.status)"
           data-testid="entry-status"
+          role="status"
+          aria-live="polite"
         >
           {{ CONTENT_STATUS_LABELS[entry.status] }}
         </span>

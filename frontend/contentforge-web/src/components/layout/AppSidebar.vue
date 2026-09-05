@@ -14,6 +14,29 @@ const visibleNavItems = computed(() =>
     (item) => !item.permissions?.length || authStore.hasPermissions(item.permissions),
   ),
 );
+
+/** Keep parent nav items highlighted on nested create/edit/view routes. */
+function isNavItemActive(itemName: string): boolean {
+  const name = activeRouteName.value;
+  if (!name) {
+    return false;
+  }
+
+  if (name === itemName) {
+    return true;
+  }
+
+  switch (itemName) {
+    case 'content':
+      return name === 'content-by-type' || name.startsWith('content-entry-');
+    case 'content-types':
+      return name.startsWith('content-type-');
+    case 'users':
+      return name.startsWith('user-');
+    default:
+      return false;
+  }
+}
 </script>
 
 <template>
@@ -31,8 +54,8 @@ const visibleNavItems = computed(() =>
         <RouterLink
           :to="{ name: item.name }"
           class="app-sidebar__link"
-          :class="{ 'app-sidebar__link--active': activeRouteName === item.name }"
-          :aria-current="activeRouteName === item.name ? 'page' : undefined"
+          :class="{ 'app-sidebar__link--active': isNavItemActive(item.name) }"
+          :aria-current="isNavItemActive(item.name) ? 'page' : undefined"
         >
           {{ item.label }}
         </RouterLink>

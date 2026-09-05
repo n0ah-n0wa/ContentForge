@@ -1,16 +1,14 @@
 <script setup lang="ts">
-import { onMounted, ref } from 'vue';
+import { computed, onMounted, ref } from 'vue';
 import { useRouter } from 'vue-router';
 import AppAlert from '@/components/common/AppAlert.vue';
 import AppButton from '@/components/common/AppButton.vue';
 import AppSpinner from '@/components/common/AppSpinner.vue';
 import { listContentTypes } from '@/api/contentTypes';
 import { useContentTypePermissions } from '@/composables/useContentTypePermissions';
-import { useApiErrorHandling } from '@/composables/useApiErrorHandling';
 import type { ContentType } from '@/types/contentTypes';
 
 const router = useRouter();
-const { handleError } = useApiErrorHandling();
 const { canCreate } = useContentTypePermissions();
 
 const items = ref<ContentType[]>([]);
@@ -33,13 +31,24 @@ async function loadContentTypes(): Promise<void> {
       isActive: activeFilter.value === 'all' ? undefined : activeFilter.value === 'active',
     });
     items.value = response.items;
-  } catch (error) {
+  } catch {
     errorMessage.value = 'Unable to load content types.';
-    handleError(error, 'Failed to load content types');
   } finally {
     loading.value = false;
   }
 }
+
+function applyFilters(): void {
+  void loadContentTypes();
+}
+
+function clearFilters(): void {
+  search.value = '';
+  activeFilter.value = 'all';
+  void loadContentTypes();
+}
+
+const filtersActive = computed(() => Boolean(search.value.trim()) || activeFilter.value !== 'all');
 
 onMounted(() => {
   void loadContentTypes();
@@ -60,7 +69,7 @@ onMounted(() => {
       </AppButton>
     </header>
 
-    <form class="toolbar" @submit.prevent="loadContentTypes">
+    <form class="toolbar" @submit.prevent="applyFilters">
       <label class="form-field">
         <span>Search</span>
         <input v-model="search" type="search" placeholder="Search by name or slug" />
@@ -73,18 +82,45 @@ onMounted(() => {
           <option value="inactive">Inactive</option>
         </select>
       </label>
-      <AppButton type="submit" variant="secondary">Apply</AppButton>
+      <div class="toolbar__actions">
+        <AppButton type="submit" variant="secondary">Apply</AppButton>
+        <AppButton v-if="filtersActive" type="button" variant="ghost" @click="clearFilters">
+          Clear
+        </AppButton>
+      </div>
     </form>
 
-    <AppAlert v-if="errorMessage" kind="error" title="Load failed" :message="errorMessage" />
+    <AppAlert v-if="errorMessage" kind="error" title="Unable to load" :message="errorMessage">
+      <template #actions>
+        <AppButton variant="secondary" type="button" @click="loadContentTypes">Retry</AppButton>
+      </template>
+    </AppAlert>
 
     <div v-if="loading" class="inline-loading">
       <AppSpinner label="Loading content types" />
       <span>Loading content types…</span>
     </div>
 
-    <div v-else-if="items.length === 0" class="empty-state">
-      No content types match the current filters.
+    <div v-else-if="items.length === 0" class="empty-state empty-state--stack">
+      <p>
+        {{
+          filtersActive
+            ? 'No content types match the current filters.'
+            : 'No content types have been defined yet.'
+        }}
+      </p>
+      <div class="toolbar__actions">
+        <AppButton v-if="filtersActive" variant="secondary" type="button" @click="clearFilters">
+          Clear filters
+        </AppButton>
+        <AppButton
+          v-if="canCreate && !filtersActive"
+          type="button"
+          @click="router.push({ name: 'content-type-create' })"
+        >
+          New content type
+        </AppButton>
+      </div>
     </div>
 
     <div v-else class="data-table-wrap">
