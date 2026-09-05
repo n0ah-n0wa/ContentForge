@@ -3,6 +3,17 @@ import { expect } from '@playwright/test';
 
 export type EntryStatusLabel = 'Draft' | 'In review' | 'Published' | 'Archived' | 'Unpublished';
 
+/** Confirm button labels from getLifecycleConfirmLabel (UI no longer uses generic "Confirm"). */
+const LIFECYCLE_CONFIRM_LABELS: Record<string, string> = {
+  'Submit for review': 'Submit for review',
+  'Withdraw from review': 'Withdraw from review',
+  Publish: 'Publish entry',
+  Unpublish: 'Unpublish entry',
+  Archive: 'Archive entry',
+  'Restore to draft': 'Restore to draft',
+  Delete: 'Delete entry',
+};
+
 export class ContentEntryPage {
   private readonly page: Page;
 
@@ -54,7 +65,11 @@ export class ContentEntryPage {
   }
 
   titleInput(): Locator {
-    return this.page.locator('label.form-field', { hasText: 'Title' }).locator('input');
+    // Dynamic fields use div.entry-field.form-field with a nested <label>, not label.form-field.
+    return this.page
+      .locator('.entry-field.form-field')
+      .filter({ has: this.page.locator('label', { hasText: /^Title\b/ }) })
+      .locator('input');
   }
 
   async setTitle(title: string): Promise<void> {
@@ -105,12 +120,8 @@ export class ContentEntryPage {
       await summary.fill(options?.changeSummary ?? `E2E ${actionLabel}`);
     }
 
-    const destructiveConfirm = dialog.getByRole('button', { name: 'Confirm destructive action' });
-    if ((await destructiveConfirm.count()) > 0) {
-      await destructiveConfirm.click();
-    } else {
-      await dialog.getByRole('button', { name: 'Confirm' }).click();
-    }
+    const confirmLabel = LIFECYCLE_CONFIRM_LABELS[actionLabel] ?? actionLabel;
+    await dialog.getByRole('button', { name: confirmLabel, exact: true }).click();
 
     await expect(dialog).toBeHidden();
     if (options?.expectStatus) {

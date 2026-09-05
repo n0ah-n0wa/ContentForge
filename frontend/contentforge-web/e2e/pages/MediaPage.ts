@@ -27,7 +27,8 @@ export class MediaPage {
         .fill(options.title);
     }
 
-    await this.page.getByRole('button', { name: /Upload/i }).click();
+    // Exact match: aria-label "Choose file to upload" also matches /Upload/i.
+    await this.page.getByRole('button', { name: 'Upload', exact: true }).click();
     const title = options.title ?? fileName;
     await expect(
       this.page.getByTestId('media-asset-card').filter({ hasText: title }),
