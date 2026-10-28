@@ -12,5 +12,7 @@ export default defineConfig({
   test: {
     environment: 'jsdom',
     include: ['tests/**/*.{test,spec}.ts'],
+    // Vitest 4 reuses the same spy when vi.spyOn is called again; clear call history between tests.
+    clearMocks: true,
   },
 });

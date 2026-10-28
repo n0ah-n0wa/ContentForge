@@ -9,6 +9,7 @@ import { useAuthStore } from '@/stores/authStore';
 describe('RoleListView', () => {
   beforeEach(() => {
     setActivePinia(createPinia());
+    vi.clearAllMocks();
     vi.spyOn(rolesApi, 'listRoles').mockResolvedValue([
       {
         name: 'Administrator',
