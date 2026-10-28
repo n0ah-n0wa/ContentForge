@@ -1,5 +1,7 @@
 # ContentForge
 
+[![CI](https://github.com/n0ah-n0wa/ContentForge/actions/workflows/ci.yml/badge.svg)](https://github.com/n0ah-n0wa/ContentForge/actions/workflows/ci.yml)
+
 Production-oriented **headless Content Management System** for creating, reviewing, versioning, publishing, and consuming structured content through a versioned REST API.
 
 ContentForge demonstrates production-grade engineering with **.NET 8**, **Vue 3**, **PostgreSQL / Azure SQL**, **Docker**, **GitHub Actions**, and **Microsoft Azure**.
